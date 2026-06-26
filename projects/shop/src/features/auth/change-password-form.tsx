@@ -1,53 +1,53 @@
-import * as React from "react"
-import { Button } from "@workspace/ui/components/button"
-import { Input } from "@workspace/ui/components/input"
-import { Label } from "@workspace/ui/components/label"
-import { PasswordStrengthIndicator } from "./password-strength-indicator"
-import { validatePassword } from "./password-validation"
+import * as React from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { PasswordStrengthIndicator } from "./password-strength-indicator";
+import { validatePassword } from "./password-validation";
 
 export interface ChangePasswordFormProps {
-  onSubmit: (newPassword: string) => void
-  isLoading: boolean
-  error: string | null
+  onSubmit: (newPassword: string) => void;
+  isLoading: boolean;
+  error: string | null;
 }
 
 interface FormErrors {
-  newPassword?: string
-  confirmPassword?: string
+  newPassword?: string;
+  confirmPassword?: string;
 }
 
-const PASSWORD_MAX_LENGTH = 128
+const PASSWORD_MAX_LENGTH = 128;
 
 export function ChangePasswordForm({
   onSubmit,
   isLoading,
   error,
 }: ChangePasswordFormProps): React.ReactNode {
-  const [newPassword, setNewPassword] = React.useState("")
-  const [confirmPassword, setConfirmPassword] = React.useState("")
-  const [formErrors, setFormErrors] = React.useState<FormErrors>({})
+  const [newPassword, setNewPassword] = React.useState("");
+  const [confirmPassword, setConfirmPassword] = React.useState("");
+  const [formErrors, setFormErrors] = React.useState<FormErrors>({});
 
   function handleSubmit(event: React.FormEvent<HTMLFormElement>): void {
-    event.preventDefault()
+    event.preventDefault();
 
-    const errors: FormErrors = {}
+    const errors: FormErrors = {};
 
-    const validation = validatePassword(newPassword)
+    const validation = validatePassword(newPassword);
     if (!validation.allSatisfied) {
-      errors.newPassword = "Password does not meet all requirements"
+      errors.newPassword = "Password does not meet all requirements";
     }
 
     if (newPassword !== confirmPassword) {
-      errors.confirmPassword = "Passwords do not match"
+      errors.confirmPassword = "Passwords do not match";
     }
 
     if (errors.newPassword || errors.confirmPassword) {
-      setFormErrors(errors)
-      return
+      setFormErrors(errors);
+      return;
     }
 
-    setFormErrors({})
-    onSubmit(newPassword)
+    setFormErrors({});
+    onSubmit(newPassword);
   }
 
   return (
@@ -120,5 +120,5 @@ export function ChangePasswordForm({
         </Button>
       </div>
     </form>
-  )
+  );
 }

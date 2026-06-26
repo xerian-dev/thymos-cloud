@@ -6,7 +6,18 @@
 /
 ├── infrastructure/     # Terraform project (AWS resources)
 ├── projects/
-│   └── shop/          # React frontend (shadcn/ui + Vite)
+│   └── shop/          # React frontend (shadcn/ui + Vite) — flat structure, no nested apps/packages
+│       ├── src/
+│       │   ├── components/ui/   # shadcn/ui components
+│       │   ├── components/layout/  # layout components
+│       │   ├── config/          # app configuration
+│       │   ├── features/        # feature modules
+│       │   ├── lib/             # utilities
+│       │   ├── providers/       # React context providers
+│       │   └── styles/          # global CSS
+│       ├── components.json      # shadcn/ui config
+│       ├── vite.config.ts
+│       └── package.json
 └── .kiro/             # Spec and steering files
 ```
 

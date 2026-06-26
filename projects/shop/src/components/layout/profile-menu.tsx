@@ -1,5 +1,5 @@
-import type { ReactNode } from "react"
-import { LogOut, User } from "lucide-react"
+import type { ReactNode } from "react";
+import { LogOut, User } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -8,30 +8,30 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@workspace/ui/components/dropdown-menu"
-import { Button } from "@workspace/ui/components/button"
-import { useAuth } from "../../providers/auth-provider"
+} from "@/components/ui/dropdown-menu";
+import { Button } from "@/components/ui/button";
+import { useAuth } from "../../providers/auth-provider";
 
 function getDisplayName(user: { email: string; name?: string }): string {
   if (user.name && user.name.trim().length > 0) {
-    return user.name.trim()
+    return user.name.trim();
   }
-  return user.email
+  return user.email;
 }
 
 export function ProfileMenu(): ReactNode {
-  const { state, signOut } = useAuth()
-  const user = state.user
+  const { state, signOut } = useAuth();
+  const user = state.user;
 
   if (!user) {
-    return null
+    return null;
   }
 
-  const displayName = getDisplayName(user)
+  const displayName = getDisplayName(user);
 
   const handleLogout = (): void => {
-    void signOut()
-  }
+    void signOut();
+  };
 
   return (
     <DropdownMenu>
@@ -66,5 +66,5 @@ export function ProfileMenu(): ReactNode {
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
-  )
+  );
 }
