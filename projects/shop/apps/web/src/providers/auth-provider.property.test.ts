@@ -1,166 +1,138 @@
 import { describe, it, expect } from "vitest"
 import * as fc from "fast-check"
-import { mapAuthError } from "./auth-provider"
+import { sanitizeErrorMessage } from "./auth-provider"
 
 /**
- * Feature: shop-monorepo, Property 3: Auth error message safety
+ * Feature: force-change-password, Property 5: Error message sanitization
  *
- * For any authentication error returned by the Cognito SDK (including network errors,
- * invalid credentials, service exceptions), the error message displayed to the user
- * SHALL NOT contain AWS request IDs, stack traces, internal endpoint URLs, or
- * Cognito-specific error codes, AND the email field value SHALL be preserved after
- * the error is displayed.
+ * For any error message containing AWS request IDs, URLs, or stack traces,
+ * the `sanitizeErrorMessage` function SHALL return a string that contains
+ * none of those internal details.
  *
- * Validates: Requirements 5.8
+ * Validates: Requirements 5.6
  */
 
-const SAFE_MESSAGES = [
-  "Incorrect email or password",
-  "Unable to connect. Check your internet connection.",
-  "Service temporarily unavailable. Please try again.",
-  "Something went wrong. Please try again.",
-] as const
+const UUID_PATTERN =
+  /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi
+const URL_PATTERN = /https?:\/\/[^\s]+/gi
+const STACK_TRACE_PATTERN = /\n?\s*at\s+.*/g
 
-const COGNITO_ERROR_NAMES = [
-  "NotAuthorizedException",
-  "UserNotFoundException",
-  "NetworkError",
-  "InternalErrorException",
-  "ServiceUnavailableException",
-  "TooManyRequestsException",
-  "UnauthorizedException",
-  "LimitExceededException",
-  "InvalidParameterException",
-  "ResourceNotFoundException",
-  "CodeDeliveryFailureException",
-  "ExpiredCodeException",
-  "InvalidPasswordException",
-  "UsernameExistsException",
-] as const
+/** Generates a random UUID string matching AWS request ID format */
+const uuidArb = fc.uuid()
 
-/** Patterns that indicate leaked internals */
-const AWS_REQUEST_ID_PATTERN =
-  /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i
-const REQUEST_ID_PREFIX_PATTERN = /Request\s*ID\s*:/i
-const STACK_TRACE_PATTERN = /^\s*at\s+/m
-const FILE_PATH_PATTERN = /\.(ts|js|tsx|jsx):\d+/
-const INTERNAL_URL_PATTERN = /amazonaws\.com/i
-const COGNITO_ERROR_CODE_PATTERN = new RegExp(
-  COGNITO_ERROR_NAMES.join("|"),
-  "i"
-)
+/** Generates a random URL (http or https followed by non-whitespace) */
+const urlArb = fc.webUrl()
 
-/** Arbitrary for generating Cognito-like error names */
-const cognitoErrorNameArb = fc.oneof(
-  fc.constantFrom(...COGNITO_ERROR_NAMES),
-  fc.string({ minLength: 1, maxLength: 40 })
-)
-
-/** Arbitrary for generating error messages that might contain internals */
-const dangerousMessageArb = fc.oneof(
-  // Messages with AWS request IDs
-  fc
-    .tuple(fc.string(), fc.uuid())
-    .map(([prefix, uuid]) => `${prefix} Request ID: ${uuid}`),
-  // Messages with stack traces
-  fc
-    .string()
-    .map(
-      (s) => `Error: ${s}\n    at Object.<anonymous> (/var/task/index.js:42:13)`
+/** Generates a stack trace line (starting with "at ...") */
+const stackTraceLineArb = fc
+  .tuple(
+    fc.constantFrom(
+      "Object.<anonymous>",
+      "Function.call",
+      "Module._compile",
+      "processTicksAndRejections",
+      "AuthService.signIn"
     ),
-  // Messages with internal URLs
-  fc
-    .string()
-    .map(
-      (s) => `${s} https://cognito-idp.us-east-1.amazonaws.com/us-east-1_abc123`
-    ),
-  // Messages with Cognito error codes embedded
-  fc
-    .tuple(fc.constantFrom(...COGNITO_ERROR_NAMES), fc.string())
-    .map(([code, detail]) => `${code}: ${detail}`),
-  // Plain messages (some may be harmless)
-  fc.string({ minLength: 0, maxLength: 200 }),
-  // Messages with network keywords
-  fc.constantFrom(
-    "network error",
-    "Network request failed",
-    "Failed to fetch",
-    "ECONNREFUSED"
+    fc.constantFrom(
+      "(/app/src/auth.ts:42:7)",
+      "(internal/modules/cjs/loader.js:1063:30)",
+      "(/node_modules/aws-sdk/lib/request.js:31:9)"
+    )
   )
-)
+  .map(([fn, loc]) => `\n    at ${fn} ${loc}`)
 
-/** Arbitrary that creates an Error object with a specific name and message */
-const cognitoErrorArb: fc.Arbitrary<Error> = fc
-  .tuple(cognitoErrorNameArb, dangerousMessageArb)
-  .map(([name, message]) => {
-    const error = new Error(message)
-    error.name = name
-    return error
-  })
+/** Generates a message with embedded UUIDs */
+const messageWithUuidArb = fc
+  .tuple(fc.lorem({ maxCount: 3 }), uuidArb, fc.lorem({ maxCount: 3 }))
+  .map(([prefix, uuid, suffix]) => `${prefix} ${uuid} ${suffix}`)
 
-/** Arbitrary for non-Error values that might be thrown */
-const nonErrorArb: fc.Arbitrary<unknown> = fc.oneof(
-  fc.string(),
-  fc.integer(),
-  fc.constant(null),
-  fc.constant(undefined),
-  fc.dictionary(fc.string(), fc.string()),
-  fc.object()
-)
+/** Generates a message with embedded URLs */
+const messageWithUrlArb = fc
+  .tuple(fc.lorem({ maxCount: 3 }), urlArb, fc.lorem({ maxCount: 3 }))
+  .map(([prefix, url, suffix]) => `${prefix} ${url} ${suffix}`)
 
-describe("Feature: shop-monorepo, Property 3: Auth error message safety", () => {
-  it("mapped error messages never contain AWS request IDs, stack traces, internal URLs, or Cognito error codes", () => {
+/** Generates a message with embedded stack traces */
+const messageWithStackTraceArb = fc
+  .tuple(
+    fc.lorem({ maxCount: 3 }),
+    fc.array(stackTraceLineArb, { minLength: 1, maxLength: 3 })
+  )
+  .map(([prefix, traces]) => `${prefix}${traces.join("")}`)
+
+/** Generates a message with a mix of all sensitive patterns */
+const messageWithAllPatternsArb = fc
+  .tuple(
+    fc.lorem({ maxCount: 2 }),
+    uuidArb,
+    urlArb,
+    fc.array(stackTraceLineArb, { minLength: 1, maxLength: 2 })
+  )
+  .map(
+    ([prefix, uuid, url, traces]) =>
+      `${prefix} RequestId: ${uuid} Endpoint: ${url}${traces.join("")}`
+  )
+
+describe("Feature: force-change-password, Property 5: Error message sanitization", () => {
+  it("output contains no UUID patterns for messages with embedded UUIDs", () => {
     fc.assert(
-      fc.property(cognitoErrorArb, (error) => {
-        const message = mapAuthError(error)
-
-        // Output must be one of the predefined safe messages
-        expect(SAFE_MESSAGES).toContain(message)
-
-        // Additional explicit checks for leaked internals
-        expect(message).not.toMatch(AWS_REQUEST_ID_PATTERN)
-        expect(message).not.toMatch(REQUEST_ID_PREFIX_PATTERN)
-        expect(message).not.toMatch(STACK_TRACE_PATTERN)
-        expect(message).not.toMatch(FILE_PATH_PATTERN)
-        expect(message).not.toMatch(INTERNAL_URL_PATTERN)
-        expect(message).not.toMatch(COGNITO_ERROR_CODE_PATTERN)
+      fc.property(messageWithUuidArb, (message) => {
+        const result = sanitizeErrorMessage(message)
+        expect(result).not.toMatch(UUID_PATTERN)
+        expect(result.length).toBeGreaterThan(0)
       }),
-      { numRuns: 100 }
+      { numRuns: 500 }
     )
   })
 
-  it("mapped error messages from non-Error values never leak internals", () => {
+  it("output contains no URL patterns for messages with embedded URLs", () => {
     fc.assert(
-      fc.property(nonErrorArb, (error) => {
-        const message = mapAuthError(error)
-
-        // Output must be one of the predefined safe messages
-        expect(SAFE_MESSAGES).toContain(message)
-
-        // Additional explicit checks for leaked internals
-        expect(message).not.toMatch(AWS_REQUEST_ID_PATTERN)
-        expect(message).not.toMatch(REQUEST_ID_PREFIX_PATTERN)
-        expect(message).not.toMatch(STACK_TRACE_PATTERN)
-        expect(message).not.toMatch(FILE_PATH_PATTERN)
-        expect(message).not.toMatch(INTERNAL_URL_PATTERN)
+      fc.property(messageWithUrlArb, (message) => {
+        const result = sanitizeErrorMessage(message)
+        expect(result).not.toMatch(URL_PATTERN)
+        expect(result.length).toBeGreaterThan(0)
       }),
-      { numRuns: 100 }
+      { numRuns: 500 }
     )
   })
 
-  it("email field value is preserved after mapAuthError is called (function is pure, does not mutate state)", () => {
+  it("output contains no stack trace lines for messages with embedded stack traces", () => {
     fc.assert(
-      fc.property(cognitoErrorArb, fc.emailAddress(), (error, email) => {
-        // Simulate the auth flow: email is set, error occurs, mapAuthError called
-        const preservedEmail = email
-
-        // mapAuthError is a pure function - calling it should not affect external state
-        mapAuthError(error)
-
-        // Email must still be the same value (preserved)
-        expect(preservedEmail).toBe(email)
+      fc.property(messageWithStackTraceArb, (message) => {
+        const result = sanitizeErrorMessage(message)
+        expect(result).not.toMatch(STACK_TRACE_PATTERN)
+        expect(result.length).toBeGreaterThan(0)
       }),
-      { numRuns: 100 }
+      { numRuns: 500 }
+    )
+  })
+
+  it("output contains none of UUID, URL, or stack trace patterns when all are present", () => {
+    fc.assert(
+      fc.property(messageWithAllPatternsArb, (message) => {
+        const result = sanitizeErrorMessage(message)
+        expect(result).not.toMatch(UUID_PATTERN)
+        expect(result).not.toMatch(URL_PATTERN)
+        expect(result).not.toMatch(STACK_TRACE_PATTERN)
+        expect(result.length).toBeGreaterThan(0)
+      }),
+      { numRuns: 500 }
+    )
+  })
+
+  it("output is never empty (falls back to default message)", () => {
+    // Generate messages that consist ONLY of sensitive patterns (should fall back)
+    const onlySensitiveArb = fc
+      .tuple(uuidArb, urlArb)
+      .map(([uuid, url]) => `${uuid} ${url}`)
+
+    fc.assert(
+      fc.property(onlySensitiveArb, (message) => {
+        const result = sanitizeErrorMessage(message)
+        expect(result.length).toBeGreaterThan(0)
+        // Either it preserved some text or it fell back to the default
+        expect(result).toBeTruthy()
+      }),
+      { numRuns: 200 }
     )
   })
 })

@@ -10,6 +10,7 @@ import {
 import {
   signIn as amplifySignIn,
   signOut as amplifySignOut,
+  confirmSignIn,
   fetchAuthSession,
   getCurrentUser,
 } from "aws-amplify/auth"
@@ -21,7 +22,12 @@ export interface AuthUser {
 }
 
 export interface AuthState {
-  status: "loading" | "authenticated" | "unauthenticated" | "error"
+  status:
+    | "loading"
+    | "authenticated"
+    | "unauthenticated"
+    | "error"
+    | "newPasswordRequired"
   user: AuthUser | null
   error: string | null
 }
@@ -30,6 +36,7 @@ export interface AuthContextValue {
   state: AuthState
   signIn: (email: string, password: string) => Promise<void>
   signOut: () => Promise<void>
+  confirmNewPassword: (newPassword: string) => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
@@ -68,6 +75,47 @@ export function mapAuthError(error: unknown): string {
       name === "ServiceUnavailableException" ||
       name === "InternalErrorException" ||
       name === "TooManyRequestsException"
+    ) {
+      return "Service temporarily unavailable. Please try again."
+    }
+  }
+
+  return "Something went wrong. Please try again."
+}
+
+export function sanitizeErrorMessage(message: string): string {
+  let sanitized = message
+  // Remove AWS request IDs (UUID pattern)
+  sanitized = sanitized.replace(
+    /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi,
+    ""
+  )
+  // Remove URLs
+  sanitized = sanitized.replace(/https?:\/\/[^\s]+/gi, "")
+  // Remove stack trace lines
+  sanitized = sanitized.replace(/\n?\s*at\s+.*/g, "")
+  // Clean up extra whitespace
+  sanitized = sanitized.replace(/\s{2,}/g, " ").trim()
+  return sanitized || "Something went wrong. Please try again."
+}
+
+export function mapConfirmSignInError(error: unknown): string {
+  if (error instanceof Error) {
+    if (
+      error.name === "InvalidPasswordException" ||
+      error.name === "InvalidParameterException"
+    ) {
+      return sanitizeErrorMessage(error.message)
+    }
+
+    if (error.name === "NetworkError" || error.message.includes("network")) {
+      return "Unable to connect. Check your internet connection."
+    }
+
+    if (
+      error.name === "ServiceUnavailableException" ||
+      error.name === "InternalErrorException" ||
+      error.name === "TooManyRequestsException"
     ) {
       return "Service temporarily unavailable. Please try again."
     }
@@ -192,13 +240,25 @@ export function AuthProvider({
       }))
 
       try {
-        await amplifySignIn({
+        const result = await amplifySignIn({
           username: email,
           password,
           options: {
             authFlowType: "USER_SRP_AUTH",
           },
         })
+
+        if (
+          result.nextStep.signInStep ===
+          "CONFIRM_SIGN_IN_WITH_NEW_PASSWORD_REQUIRED"
+        ) {
+          setState({
+            status: "newPasswordRequired",
+            user: null,
+            error: null,
+          })
+          return
+        }
 
         const session = await fetchAuthSession()
         const idToken = session.tokens?.idToken
@@ -247,10 +307,37 @@ export function AuthProvider({
     })
   }, [clearRefreshTimer])
 
+  const confirmNewPassword = useCallback(
+    async (newPassword: string): Promise<void> => {
+      setState((prev) => ({ ...prev, status: "loading", error: null }))
+      try {
+        await confirmSignIn({ challengeResponse: newPassword })
+        const session = await fetchAuthSession()
+        const idToken = session.tokens?.idToken
+        if (!idToken) {
+          setState({
+            status: "error",
+            user: null,
+            error: "Something went wrong. Please try again.",
+          })
+          return
+        }
+        const user = parseUserFromIdToken(idToken)
+        setState({ status: "authenticated", user, error: null })
+        startRefreshTimer()
+      } catch (error: unknown) {
+        const message = mapConfirmSignInError(error)
+        setState({ status: "error", user: null, error: message })
+      }
+    },
+    [startRefreshTimer]
+  )
+
   const contextValue: AuthContextValue = {
     state,
     signIn,
     signOut,
+    confirmNewPassword,
   }
 
   return (
