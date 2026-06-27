@@ -1,10 +1,11 @@
-import { createElement } from "react"
-import { createBrowserRouter, Navigate } from "react-router"
-import { AuthGuard } from "@/components/auth-guard"
-import { AdminLayout } from "@/components/layout/admin-layout"
-import { LoginScreen } from "@/features/auth/login-screen"
-import { InventoryPage } from "@/features/inventory/inventory-page"
-import { HelpPage } from "@/features/help/help-page"
+import { createElement } from "react";
+import { createBrowserRouter, Navigate } from "react-router";
+import { AuthGuard } from "@/components/auth-guard";
+import { AdminLayout } from "@/components/layout/admin-layout";
+import { LoginScreen } from "@/features/auth/login-screen";
+import { AccountsPage } from "@/features/accounts/accounts-page";
+import { InventoryPage } from "@/features/inventory/inventory-page";
+import { HelpPage } from "@/features/help/help-page";
 
 /**
  * Application route configuration.
@@ -35,6 +36,10 @@ export const router = createBrowserRouter([
             Component: InventoryPage,
           },
           {
+            path: "accounts",
+            Component: AccountsPage,
+          },
+          {
             path: "help",
             Component: HelpPage,
           },
@@ -42,4 +47,4 @@ export const router = createBrowserRouter([
       },
     ],
   },
-])
+]);
