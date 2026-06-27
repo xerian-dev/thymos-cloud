@@ -1,0 +1,25 @@
+import { build } from "esbuild";
+import { execSync } from "node:child_process";
+import { rmSync } from "node:fs";
+
+const outdir = "dist";
+
+// Clean output directory
+rmSync(outdir, { recursive: true, force: true });
+
+await build({
+  entryPoints: ["src/handler.ts", "src/authorizer.ts"],
+  bundle: true,
+  platform: "node",
+  target: "node20",
+  format: "cjs",
+  outdir,
+  external: ["@aws-sdk/*"],
+});
+
+execSync(`cd ${outdir} && zip -j handler.zip handler.js`, { stdio: "inherit" });
+execSync(`cd ${outdir} && zip -j authorizer.zip authorizer.js`, {
+  stdio: "inherit",
+});
+
+console.log("Build complete: dist/handler.zip and dist/authorizer.zip");

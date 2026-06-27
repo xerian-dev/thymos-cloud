@@ -1,0 +1,26 @@
+{
+  "name": "shop-api",
+  "version": "1.0.0",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "build": "node esbuild.config.mjs",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "eslint src/"
+  },
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "3.1075.0",
+    "@aws-sdk/lib-dynamodb": "3.1075.0",
+    "jose": "6.2.3"
+  },
+  "devDependencies": {
+    "@types/aws-lambda": "8.10.162",
+    "@types/node": "26.0.1",
+    "esbuild": "0.28.1",
+    "eslint": "10.6.0",
+    "fast-check": "4.8.0",
+    "typescript": "6.0.3",
+    "vitest": "4.1.9"
+  }
+}

@@ -1,0 +1,93 @@
+# -----------------------------------------------------------------------------
+# API Gateway HTTP API
+# -----------------------------------------------------------------------------
+
+resource "aws_apigatewayv2_api" "shop_api" {
+  name          = "${var.project_name}-${var.environment}-shop-api"
+  protocol_type = "HTTP"
+
+  cors_configuration {
+    allow_origins = ["*"]
+    allow_methods = ["GET", "POST", "OPTIONS"]
+    allow_headers = ["Authorization", "Content-Type"]
+    max_age       = 3600
+  }
+
+  tags = {
+    Environment = var.environment
+    Project     = var.project_name
+  }
+}
+
+# -----------------------------------------------------------------------------
+# Stage
+# -----------------------------------------------------------------------------
+
+resource "aws_apigatewayv2_stage" "default" {
+  api_id      = aws_apigatewayv2_api.shop_api.id
+  name        = "$default"
+  auto_deploy = true
+
+  tags = {
+    Environment = var.environment
+    Project     = var.project_name
+  }
+}
+
+# -----------------------------------------------------------------------------
+# Authorizer
+# -----------------------------------------------------------------------------
+
+resource "aws_apigatewayv2_authorizer" "cognito" {
+  api_id                            = aws_apigatewayv2_api.shop_api.id
+  authorizer_type                   = "REQUEST"
+  authorizer_uri                    = aws_lambda_function.shop_api_authorizer.invoke_arn
+  authorizer_payload_format_version = "2.0"
+  authorizer_result_ttl_in_seconds  = 300
+  identity_sources                  = ["$request.header.Authorization"]
+  name                              = "${var.project_name}-${var.environment}-cognito-authorizer"
+  enable_simple_responses           = true
+}
+
+# -----------------------------------------------------------------------------
+# Integration
+# -----------------------------------------------------------------------------
+
+resource "aws_apigatewayv2_integration" "monolambda" {
+  api_id                 = aws_apigatewayv2_api.shop_api.id
+  integration_type       = "AWS_PROXY"
+  integration_uri        = aws_lambda_function.shop_api.invoke_arn
+  integration_method     = "POST"
+  payload_format_version = "2.0"
+}
+
+# -----------------------------------------------------------------------------
+# Routes
+# -----------------------------------------------------------------------------
+
+resource "aws_apigatewayv2_route" "get_accounts" {
+  api_id    = aws_apigatewayv2_api.shop_api.id
+  route_key = "GET /api/accounts"
+  target    = "integrations/${aws_apigatewayv2_integration.monolambda.id}"
+
+  authorization_type = "CUSTOM"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "get_next_number" {
+  api_id    = aws_apigatewayv2_api.shop_api.id
+  route_key = "GET /api/accounts/next-number"
+  target    = "integrations/${aws_apigatewayv2_integration.monolambda.id}"
+
+  authorization_type = "CUSTOM"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "post_accounts" {
+  api_id    = aws_apigatewayv2_api.shop_api.id
+  route_key = "POST /api/accounts"
+  target    = "integrations/${aws_apigatewayv2_integration.monolambda.id}"
+
+  authorization_type = "CUSTOM"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
