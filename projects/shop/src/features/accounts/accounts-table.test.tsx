@@ -53,6 +53,7 @@ describe("AccountsTable", () => {
         "Canton",
         "Email",
         "Telephone",
+        "",
       ]);
     });
 
