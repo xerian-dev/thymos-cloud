@@ -53,16 +53,4 @@ export const accountsColumns: ColumnDef<Account>[] = [
     enableSorting: true,
     sortingFn: "caseInsensitive",
   },
-  {
-    accessorKey: "commentCount",
-    header: "Comments",
-    enableSorting: false,
-    cell: ({ row }) => String(row.getValue<number>("commentCount")),
-  },
-  {
-    accessorKey: "tags",
-    header: "Tags",
-    enableSorting: false,
-    cell: ({ row }) => (row.getValue<string[]>("tags") ?? []).join(", "),
-  },
 ];
