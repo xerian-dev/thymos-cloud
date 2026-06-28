@@ -2,8 +2,12 @@ export interface Account {
   uuid: string;
   shopUid: number;
   name: string;
-  address: string;
-  telephone: string;
+  street?: string;
+  place?: string;
+  postcode?: string;
+  canton?: string;
+  email?: string;
+  telephone?: string;
   commentCount: number;
   tags: string[];
 }
@@ -11,8 +15,12 @@ export interface Account {
 export interface CreateAccountRequest {
   accountNumber: number;
   name: string;
-  address: string;
-  telephone: string;
+  street?: string;
+  place?: string;
+  postcode?: string;
+  canton?: string;
+  email?: string;
+  telephone?: string;
 }
 
 export type CreateAccountResult =

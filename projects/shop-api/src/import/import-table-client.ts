@@ -34,16 +34,22 @@ export interface ImportError {
 export interface ImportedAccountRecord {
   PK: string;
   SK: string;
+  importedAt: string;
   id: string;
   number: string;
-  firstName: string;
-  lastName: string;
+  first_name: string;
+  last_name: string;
   company: string;
   email: string;
+  phone_number?: string;
+  address_line_1?: string;
+  address_line_2?: string;
+  city?: string;
+  state?: string;
+  postal_code?: string;
   balance: number;
-  emailNotificationsEnabled: boolean;
+  email_notifications_enabled: boolean;
   created: string;
-  importedAt: string;
 }
 
 const client = new DynamoDBClient({});
@@ -67,15 +73,7 @@ export async function writeImportedAccounts(
         Item: {
           PK: `IMPORT#CONSIGNCLOUD#${account.id}`,
           SK: "METADATA",
-          id: account.id,
-          number: account.number,
-          firstName: account.first_name,
-          lastName: account.last_name,
-          company: account.company,
-          email: account.email,
-          balance: account.balance,
-          emailNotificationsEnabled: account.email_notifications_enabled,
-          created: account.created,
+          ...account,
           importedAt,
         },
       },

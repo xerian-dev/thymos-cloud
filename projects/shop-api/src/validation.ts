@@ -1,7 +1,11 @@
 export interface CreateAccountInput {
   accountNumber: number;
   name: string;
-  address: string;
+  street: string;
+  place: string;
+  postcode: string;
+  canton: string;
+  email: string;
   telephone: string;
 }
 
@@ -59,27 +63,82 @@ export function validateCreateAccount(body: unknown): ValidationResult {
     });
   }
 
-  // Validate address
-  if (typeof input.address !== "string") {
-    errors.push({ field: "address", message: "address must be a string" });
-  } else if (input.address.length > 500) {
-    errors.push({
-      field: "address",
-      message: "address must be at most 500 characters",
-    });
+  // Validate street (optional, max 200)
+  if (input.street !== undefined && input.street !== null) {
+    if (typeof input.street !== "string") {
+      errors.push({ field: "street", message: "street must be a string" });
+    } else if (input.street.length > 200) {
+      errors.push({
+        field: "street",
+        message: "street must be at most 200 characters",
+      });
+    }
   }
 
-  // Validate telephone
-  if (typeof input.telephone !== "string") {
-    errors.push({
-      field: "telephone",
-      message: "telephone must be a string",
-    });
-  } else if (input.telephone.length > 30) {
-    errors.push({
-      field: "telephone",
-      message: "telephone must be at most 30 characters",
-    });
+  // Validate place (optional, max 100)
+  if (input.place !== undefined && input.place !== null) {
+    if (typeof input.place !== "string") {
+      errors.push({ field: "place", message: "place must be a string" });
+    } else if (input.place.length > 100) {
+      errors.push({
+        field: "place",
+        message: "place must be at most 100 characters",
+      });
+    }
+  }
+
+  // Validate postcode (optional, max 20)
+  if (input.postcode !== undefined && input.postcode !== null) {
+    if (typeof input.postcode !== "string") {
+      errors.push({
+        field: "postcode",
+        message: "postcode must be a string",
+      });
+    } else if (input.postcode.length > 20) {
+      errors.push({
+        field: "postcode",
+        message: "postcode must be at most 20 characters",
+      });
+    }
+  }
+
+  // Validate canton (optional, max 50)
+  if (input.canton !== undefined && input.canton !== null) {
+    if (typeof input.canton !== "string") {
+      errors.push({ field: "canton", message: "canton must be a string" });
+    } else if (input.canton.length > 50) {
+      errors.push({
+        field: "canton",
+        message: "canton must be at most 50 characters",
+      });
+    }
+  }
+
+  // Validate email (optional, max 254)
+  if (input.email !== undefined && input.email !== null) {
+    if (typeof input.email !== "string") {
+      errors.push({ field: "email", message: "email must be a string" });
+    } else if (input.email.length > 254) {
+      errors.push({
+        field: "email",
+        message: "email must be at most 254 characters",
+      });
+    }
+  }
+
+  // Validate telephone (optional, max 30)
+  if (input.telephone !== undefined && input.telephone !== null) {
+    if (typeof input.telephone !== "string") {
+      errors.push({
+        field: "telephone",
+        message: "telephone must be a string",
+      });
+    } else if (input.telephone.length > 30) {
+      errors.push({
+        field: "telephone",
+        message: "telephone must be at most 30 characters",
+      });
+    }
   }
 
   if (errors.length > 0) {
@@ -91,8 +150,12 @@ export function validateCreateAccount(body: unknown): ValidationResult {
     data: {
       accountNumber: input.accountNumber as number,
       name: input.name as string,
-      address: input.address as string,
-      telephone: input.telephone as string,
+      street: (input.street as string) ?? "",
+      place: (input.place as string) ?? "",
+      postcode: (input.postcode as string) ?? "",
+      canton: (input.canton as string) ?? "",
+      email: (input.email as string) ?? "",
+      telephone: (input.telephone as string) ?? "",
     },
   };
 }

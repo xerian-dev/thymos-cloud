@@ -6,22 +6,58 @@ describe("validation", () => {
     const validInput = {
       accountNumber: 42,
       name: "Jane Smith",
-      address: "123 Main St",
-      telephone: "555-0100",
     };
 
-    it("accepts a valid input", () => {
+    it("accepts a valid input with only required fields", () => {
       const result = validateCreateAccount(validInput);
-      expect(result).toEqual({ valid: true, data: validInput });
+      expect(result).toEqual({
+        valid: true,
+        data: {
+          accountNumber: 42,
+          name: "Jane Smith",
+          street: "",
+          place: "",
+          postcode: "",
+          canton: "",
+          email: "",
+          telephone: "",
+        },
+      });
     });
 
-    it("accepts empty address", () => {
-      const result = validateCreateAccount({ ...validInput, address: "" });
+    it("accepts a valid input with all optional fields", () => {
+      const input = {
+        ...validInput,
+        street: "123 Main St",
+        place: "Zurich",
+        postcode: "8001",
+        canton: "ZH",
+        email: "jane@example.com",
+        telephone: "555-0100",
+      };
+      const result = validateCreateAccount(input);
+      expect(result).toEqual({
+        valid: true,
+        data: input,
+      });
+    });
+
+    it("accepts empty optional fields", () => {
+      const input = {
+        ...validInput,
+        street: "",
+        place: "",
+        postcode: "",
+        canton: "",
+        email: "",
+        telephone: "",
+      };
+      const result = validateCreateAccount(input);
       expect(result.valid).toBe(true);
     });
 
-    it("accepts empty telephone", () => {
-      const result = validateCreateAccount({ ...validInput, telephone: "" });
+    it("accepts when optional fields are omitted (undefined)", () => {
+      const result = validateCreateAccount(validInput);
       expect(result.valid).toBe(true);
     });
 
@@ -180,36 +216,176 @@ describe("validation", () => {
       });
     });
 
-    describe("address validation", () => {
-      it("rejects non-string address", () => {
-        const result = validateCreateAccount({ ...validInput, address: 123 });
+    describe("street validation", () => {
+      it("rejects non-string street", () => {
+        const result = validateCreateAccount({ ...validInput, street: 123 });
         expect(result.valid).toBe(false);
         if (!result.valid) {
           expect(result.errors).toContainEqual({
-            field: "address",
-            message: "address must be a string",
+            field: "street",
+            message: "street must be a string",
           });
         }
       });
 
-      it("rejects address exceeding 500 characters", () => {
+      it("rejects street exceeding 200 characters", () => {
         const result = validateCreateAccount({
           ...validInput,
-          address: "a".repeat(501),
+          street: "a".repeat(201),
         });
         expect(result.valid).toBe(false);
         if (!result.valid) {
           expect(result.errors).toContainEqual({
-            field: "address",
-            message: "address must be at most 500 characters",
+            field: "street",
+            message: "street must be at most 200 characters",
           });
         }
       });
 
-      it("accepts address with exactly 500 characters", () => {
+      it("accepts street with exactly 200 characters", () => {
         const result = validateCreateAccount({
           ...validInput,
-          address: "a".repeat(500),
+          street: "a".repeat(200),
+        });
+        expect(result.valid).toBe(true);
+      });
+    });
+
+    describe("place validation", () => {
+      it("rejects non-string place", () => {
+        const result = validateCreateAccount({ ...validInput, place: 123 });
+        expect(result.valid).toBe(false);
+        if (!result.valid) {
+          expect(result.errors).toContainEqual({
+            field: "place",
+            message: "place must be a string",
+          });
+        }
+      });
+
+      it("rejects place exceeding 100 characters", () => {
+        const result = validateCreateAccount({
+          ...validInput,
+          place: "a".repeat(101),
+        });
+        expect(result.valid).toBe(false);
+        if (!result.valid) {
+          expect(result.errors).toContainEqual({
+            field: "place",
+            message: "place must be at most 100 characters",
+          });
+        }
+      });
+
+      it("accepts place with exactly 100 characters", () => {
+        const result = validateCreateAccount({
+          ...validInput,
+          place: "a".repeat(100),
+        });
+        expect(result.valid).toBe(true);
+      });
+    });
+
+    describe("postcode validation", () => {
+      it("rejects non-string postcode", () => {
+        const result = validateCreateAccount({ ...validInput, postcode: 8001 });
+        expect(result.valid).toBe(false);
+        if (!result.valid) {
+          expect(result.errors).toContainEqual({
+            field: "postcode",
+            message: "postcode must be a string",
+          });
+        }
+      });
+
+      it("rejects postcode exceeding 20 characters", () => {
+        const result = validateCreateAccount({
+          ...validInput,
+          postcode: "1".repeat(21),
+        });
+        expect(result.valid).toBe(false);
+        if (!result.valid) {
+          expect(result.errors).toContainEqual({
+            field: "postcode",
+            message: "postcode must be at most 20 characters",
+          });
+        }
+      });
+
+      it("accepts postcode with exactly 20 characters", () => {
+        const result = validateCreateAccount({
+          ...validInput,
+          postcode: "1".repeat(20),
+        });
+        expect(result.valid).toBe(true);
+      });
+    });
+
+    describe("canton validation", () => {
+      it("rejects non-string canton", () => {
+        const result = validateCreateAccount({ ...validInput, canton: 42 });
+        expect(result.valid).toBe(false);
+        if (!result.valid) {
+          expect(result.errors).toContainEqual({
+            field: "canton",
+            message: "canton must be a string",
+          });
+        }
+      });
+
+      it("rejects canton exceeding 50 characters", () => {
+        const result = validateCreateAccount({
+          ...validInput,
+          canton: "a".repeat(51),
+        });
+        expect(result.valid).toBe(false);
+        if (!result.valid) {
+          expect(result.errors).toContainEqual({
+            field: "canton",
+            message: "canton must be at most 50 characters",
+          });
+        }
+      });
+
+      it("accepts canton with exactly 50 characters", () => {
+        const result = validateCreateAccount({
+          ...validInput,
+          canton: "a".repeat(50),
+        });
+        expect(result.valid).toBe(true);
+      });
+    });
+
+    describe("email validation", () => {
+      it("rejects non-string email", () => {
+        const result = validateCreateAccount({ ...validInput, email: 123 });
+        expect(result.valid).toBe(false);
+        if (!result.valid) {
+          expect(result.errors).toContainEqual({
+            field: "email",
+            message: "email must be a string",
+          });
+        }
+      });
+
+      it("rejects email exceeding 254 characters", () => {
+        const result = validateCreateAccount({
+          ...validInput,
+          email: "a".repeat(255),
+        });
+        expect(result.valid).toBe(false);
+        if (!result.valid) {
+          expect(result.errors).toContainEqual({
+            field: "email",
+            message: "email must be at most 254 characters",
+          });
+        }
+      });
+
+      it("accepts email with exactly 254 characters", () => {
+        const result = validateCreateAccount({
+          ...validInput,
+          email: "a".repeat(254),
         });
         expect(result.valid).toBe(true);
       });
@@ -258,7 +434,7 @@ describe("validation", () => {
         const result = validateCreateAccount({
           accountNumber: "not-a-number",
           name: "",
-          address: 123,
+          street: 123,
           telephone: 456,
         });
         expect(result.valid).toBe(false);

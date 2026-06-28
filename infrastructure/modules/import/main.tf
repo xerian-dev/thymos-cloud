@@ -109,6 +109,7 @@ resource "aws_iam_role_policy" "shop_table" {
           "dynamodb:GetItem",
           "dynamodb:PutItem",
           "dynamodb:UpdateItem",
+          "dynamodb:DeleteItem",
           "dynamodb:Query",
           "dynamodb:Scan",
           "dynamodb:TransactWriteItems"
@@ -185,6 +186,11 @@ resource "aws_lambda_function" "import" {
     Environment = var.environment
     Project     = var.project_name
   }
+}
+
+resource "aws_lambda_function_event_invoke_config" "import_no_retry" {
+  function_name          = aws_lambda_function.import.function_name
+  maximum_retry_attempts = 0
 }
 
 # -----------------------------------------------------------------------------

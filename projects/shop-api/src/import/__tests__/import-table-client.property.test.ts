@@ -111,15 +111,15 @@ describe("Property 4: Import record construction preserves all fields with corre
           // SK is always METADATA
           expect(item.SK).toBe("METADATA");
 
-          // All original fields mapped correctly
+          // All original fields stored as-is from source
           expect(item.id).toBe(account.id);
           expect(item.number).toBe(account.number);
-          expect(item.firstName).toBe(account.first_name);
-          expect(item.lastName).toBe(account.last_name);
+          expect(item.first_name).toBe(account.first_name);
+          expect(item.last_name).toBe(account.last_name);
           expect(item.company).toBe(account.company);
           expect(item.email).toBe(account.email);
           expect(item.balance).toBe(account.balance);
-          expect(item.emailNotificationsEnabled).toBe(
+          expect(item.email_notifications_enabled).toBe(
             account.email_notifications_enabled,
           );
           expect(item.created).toBe(account.created);

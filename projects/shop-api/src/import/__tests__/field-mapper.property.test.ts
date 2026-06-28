@@ -4,6 +4,7 @@ import {
   mapConsignCloudToShop,
   hasFieldChanges,
   type ConsignCloudAccount,
+  type MappedAccountFields,
 } from "../field-mapper";
 
 /**
@@ -18,6 +19,24 @@ describe("Property 6: Field mapping from ConsignCloud to Shop format", () => {
     last_name: fc.string({ minLength: 0, maxLength: 50 }),
     company: fc.string({ minLength: 0, maxLength: 100 }),
     email: fc.emailAddress(),
+    phone_number: fc.option(fc.string({ minLength: 0, maxLength: 30 }), {
+      nil: undefined,
+    }),
+    address_line_1: fc.option(fc.string({ minLength: 0, maxLength: 100 }), {
+      nil: undefined,
+    }),
+    address_line_2: fc.option(fc.string({ minLength: 0, maxLength: 100 }), {
+      nil: undefined,
+    }),
+    city: fc.option(fc.string({ minLength: 0, maxLength: 50 }), {
+      nil: undefined,
+    }),
+    state: fc.option(fc.string({ minLength: 0, maxLength: 50 }), {
+      nil: undefined,
+    }),
+    postal_code: fc.option(fc.string({ minLength: 0, maxLength: 20 }), {
+      nil: undefined,
+    }),
     balance: fc.double({ min: -10000, max: 10000, noNaN: true }),
     email_notifications_enabled: fc.boolean(),
     created: fc
@@ -47,11 +66,11 @@ describe("Property 6: Field mapping from ConsignCloud to Shop format", () => {
     );
   });
 
-  it("telephone equals email", () => {
+  it("email maps directly from source email", () => {
     fc.assert(
       fc.property(arbConsignCloudAccount, (account) => {
         const result = mapConsignCloudToShop(account);
-        expect(result.telephone).toBe(account.email);
+        expect(result.email).toBe(account.email);
       }),
       { numRuns: 100 },
     );
@@ -64,63 +83,53 @@ describe("Property 6: Field mapping from ConsignCloud to Shop format", () => {
  */
 describe("Property 7: Change detection triggers update if and only if fields differ", () => {
   const arbFieldValue = fc.string({ minLength: 0, maxLength: 100 });
+  const arbTags = fc.array(fc.string({ minLength: 1, maxLength: 30 }), {
+    minLength: 0,
+    maxLength: 5,
+  });
+
+  const arbMappedFields: fc.Arbitrary<MappedAccountFields> = fc.record({
+    name: arbFieldValue,
+    company: arbFieldValue,
+    street: arbFieldValue,
+    place: arbFieldValue,
+    postcode: arbFieldValue,
+    canton: arbFieldValue,
+    email: arbFieldValue,
+    telephone: arbFieldValue,
+    tags: arbTags,
+  });
 
   it("returns false when all fields are identical", () => {
     fc.assert(
-      fc.property(
-        arbFieldValue,
-        arbFieldValue,
-        arbFieldValue,
-        (name, company, telephone) => {
-          const existing = { name, company, telephone };
-          const mapped = { name, company, telephone };
-          expect(hasFieldChanges(existing, mapped)).toBe(false);
-        },
-      ),
+      fc.property(arbMappedFields, (mapped) => {
+        const existing = { ...mapped };
+        expect(hasFieldChanges(existing, mapped)).toBe(false);
+      }),
       { numRuns: 100 },
     );
   });
 
-  it("returns true if at least one field differs", () => {
+  it("returns true if at least one scalar field differs", () => {
+    const scalarFields = [
+      "name",
+      "company",
+      "street",
+      "place",
+      "postcode",
+      "canton",
+      "email",
+      "telephone",
+    ] as const;
+
     fc.assert(
       fc.property(
-        arbFieldValue,
-        arbFieldValue,
-        arbFieldValue,
-        arbFieldValue,
-        arbFieldValue,
-        arbFieldValue,
-        fc.integer({ min: 0, max: 2 }),
-        (
-          name1,
-          company1,
-          telephone1,
-          name2,
-          company2,
-          telephone2,
-          diffIndex,
-        ) => {
-          // Ensure at least one field actually differs
-          const existing = {
-            name: name1,
-            company: company1,
-            telephone: telephone1,
-          };
-          const mapped = {
-            name: name2,
-            company: company2,
-            telephone: telephone2,
-          };
-
-          // Force at least one field to differ based on diffIndex
-          if (diffIndex === 0) {
-            mapped.name = existing.name + "X";
-          } else if (diffIndex === 1) {
-            mapped.company = existing.company + "X";
-          } else {
-            mapped.telephone = existing.telephone + "X";
-          }
-
+        arbMappedFields,
+        fc.integer({ min: 0, max: scalarFields.length - 1 }),
+        (mapped, fieldIdx) => {
+          const existing = { ...mapped, tags: [...mapped.tags] };
+          existing[scalarFields[fieldIdx]] =
+            mapped[scalarFields[fieldIdx]] + "X";
           expect(hasFieldChanges(existing, mapped)).toBe(true);
         },
       ),
@@ -128,11 +137,31 @@ describe("Property 7: Change detection triggers update if and only if fields dif
     );
   });
 
-  it("treats undefined company in existing as empty string for comparison", () => {
+  it("treats undefined optional fields in existing as empty string for comparison", () => {
     fc.assert(
-      fc.property(arbFieldValue, arbFieldValue, (name, telephone) => {
-        const existing = { name, company: undefined, telephone };
-        const mapped = { name, company: "", telephone };
+      fc.property(arbFieldValue, arbTags, (name, tags) => {
+        const existing = {
+          name,
+          company: undefined,
+          street: undefined,
+          place: undefined,
+          postcode: undefined,
+          canton: undefined,
+          email: undefined,
+          telephone: undefined,
+          tags,
+        };
+        const mapped: MappedAccountFields = {
+          name,
+          company: "",
+          street: "",
+          place: "",
+          postcode: "",
+          canton: "",
+          email: "",
+          telephone: "",
+          tags: [...tags],
+        };
         expect(hasFieldChanges(existing, mapped)).toBe(false);
       }),
       { numRuns: 100 },

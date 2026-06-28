@@ -62,13 +62,13 @@ describe("Property 8: Sync continues processing after individual record failures
       PK: `IMPORT#CONSIGNCLOUD#${id}`,
       SK: "METADATA",
       id,
-      number: `NUM-${index}`,
-      firstName: `First${index}`,
-      lastName: `Last${index}`,
+      number: String(index).padStart(6, "0"),
+      first_name: `First${index}`,
+      last_name: `Last${index}`,
       company: `Company${index}`,
       email: `user${index}@example.com`,
       balance: 0,
-      emailNotificationsEnabled: true,
+      email_notifications_enabled: true,
       created: "2024-01-01T00:00:00.000Z",
       importedAt: "2024-06-01T00:00:00.000Z",
     };
@@ -91,7 +91,7 @@ describe("Property 8: Sync continues processing after individual record failures
           const errorIds = new Set<string>();
           for (let i = 0; i < N; i++) {
             const id = `id-${i}-${crypto.randomUUID().slice(0, 8)}`;
-            records.push(makeRecord(id, i));
+            records.push(makeRecord(id, i + 1));
             if (i < K) {
               errorIds.add(id);
             }
@@ -106,13 +106,12 @@ describe("Property 8: Sync continues processing after individual record failures
           }));
 
           // Mock docClient.send to control behavior per record
-          let callIndex = 0;
           vi.doMock("../../dynamodb-client", () => ({
             docClient: {
               send: vi.fn(async (command: unknown) => {
                 const cmd = command as { input?: Record<string, unknown> };
 
-                // GetCommand for sequence counter
+                // GetCommand for sequence counter (at end of sync)
                 if (
                   cmd.input &&
                   "Key" in cmd.input &&
@@ -123,32 +122,42 @@ describe("Property 8: Sync continues processing after individual record failures
                     Item: {
                       PK: "SEQUENCE#ACCOUNT",
                       SK: "COUNTER",
-                      value: callIndex++,
+                      value: 0,
                     },
                   };
                 }
 
-                // ScanCommand to find by sourceId
-                if (cmd.input && "FilterExpression" in cmd.input) {
-                  const filterExpr = cmd.input.FilterExpression as string;
-                  if (filterExpr.includes("sourceId")) {
-                    const sourceIdValue = (
-                      cmd.input.ExpressionAttributeValues as Record<
-                        string,
-                        string
-                      >
-                    )?.[":sourceId"];
+                // QueryCommand on sourceId-index (findBySourceId)
+                if (
+                  cmd.input &&
+                  "IndexName" in cmd.input &&
+                  cmd.input.IndexName === "sourceId-index"
+                ) {
+                  const exprValues = cmd.input.ExpressionAttributeValues as
+                    | Record<string, string>
+                    | undefined;
+                  const sourceIdValue = exprValues?.[":sourceId"];
 
-                    if (sourceIdValue && errorIds.has(sourceIdValue)) {
-                      throw new Error(`Simulated error for ${sourceIdValue}`);
-                    }
-
-                    // Not found → will add
-                    return { Items: [], LastEvaluatedKey: undefined };
+                  if (sourceIdValue && errorIds.has(sourceIdValue)) {
+                    throw new Error(`Simulated error for ${sourceIdValue}`);
                   }
+
+                  // Not found → will add
+                  return { Items: [], LastEvaluatedKey: undefined };
                 }
 
-                // TransactWriteCommand / UpdateCommand → success
+                // QueryCommand for TAG# items (begins_with on SK)
+                if (
+                  cmd.input &&
+                  "KeyConditionExpression" in cmd.input &&
+                  (cmd.input.KeyConditionExpression as string)?.includes(
+                    "begins_with",
+                  )
+                ) {
+                  return { Items: [] };
+                }
+
+                // PutCommand / UpdateCommand → success
                 return {};
               }),
             },
@@ -233,13 +242,13 @@ describe("Property 9: Sync report accurately aggregates outcomes", () => {
       PK: `IMPORT#CONSIGNCLOUD#${id}`,
       SK: "METADATA",
       id,
-      number: `NUM-${index}`,
-      firstName: `First${index}`,
-      lastName: `Last${index}`,
+      number: String(index).padStart(6, "0"),
+      first_name: `First${index}`,
+      last_name: `Last${index}`,
       company: `Company${index}`,
       email: `user${index}@example.com`,
       balance: 0,
-      emailNotificationsEnabled: true,
+      email_notifications_enabled: true,
       created: "2024-01-01T00:00:00.000Z",
       importedAt: "2024-06-01T00:00:00.000Z",
     };
@@ -267,7 +276,7 @@ describe("Property 9: Sync report accurately aggregates outcomes", () => {
           const skipIds = new Set<string>();
           const errorIds = new Set<string>();
 
-          let idx = 0;
+          let idx = 1;
           for (let i = 0; i < A; i++) {
             const id = `add-${i}-${crypto.randomUUID().slice(0, 8)}`;
             records.push(makeRecord(id, idx++));
@@ -298,13 +307,12 @@ describe("Property 9: Sync report accurately aggregates outcomes", () => {
           }));
 
           // Mock docClient.send to simulate different outcomes per record
-          let sequenceCounter = 0;
           vi.doMock("../../dynamodb-client", () => ({
             docClient: {
               send: vi.fn(async (command: unknown) => {
                 const cmd = command as { input?: Record<string, unknown> };
 
-                // GetCommand for sequence counter
+                // GetCommand for sequence counter (at end of sync)
                 if (
                   cmd.input &&
                   "Key" in cmd.input &&
@@ -315,75 +323,116 @@ describe("Property 9: Sync report accurately aggregates outcomes", () => {
                     Item: {
                       PK: "SEQUENCE#ACCOUNT",
                       SK: "COUNTER",
-                      value: sequenceCounter++,
+                      value: 999999,
                     },
                   };
                 }
 
-                // ScanCommand to find by sourceId
-                if (cmd.input && "FilterExpression" in cmd.input) {
-                  const filterExpr = cmd.input.FilterExpression as string;
-                  if (filterExpr.includes("sourceId")) {
-                    const sourceIdValue = (
-                      cmd.input.ExpressionAttributeValues as Record<
-                        string,
-                        string
-                      >
-                    )?.[":sourceId"];
+                // QueryCommand on sourceId-index (findBySourceId)
+                if (
+                  cmd.input &&
+                  "IndexName" in cmd.input &&
+                  cmd.input.IndexName === "sourceId-index"
+                ) {
+                  const exprValues = cmd.input.ExpressionAttributeValues as
+                    | Record<string, string>
+                    | undefined;
+                  const sourceIdValue = exprValues?.[":sourceId"];
 
-                    if (sourceIdValue && errorIds.has(sourceIdValue)) {
-                      throw new Error(`Simulated error for ${sourceIdValue}`);
-                    }
+                  if (sourceIdValue && errorIds.has(sourceIdValue)) {
+                    throw new Error(`Simulated error for ${sourceIdValue}`);
+                  }
 
-                    if (sourceIdValue && addIds.has(sourceIdValue)) {
-                      // Not found → will trigger add path
-                      return { Items: [], LastEvaluatedKey: undefined };
-                    }
+                  if (sourceIdValue && addIds.has(sourceIdValue)) {
+                    // Not found → will trigger add path
+                    return { Items: [], LastEvaluatedKey: undefined };
+                  }
 
-                    if (sourceIdValue && updateIds.has(sourceIdValue)) {
-                      // Found with different fields → will trigger update path
+                  if (sourceIdValue && updateIds.has(sourceIdValue)) {
+                    // Found with different fields → will trigger update path
+                    return {
+                      Items: [
+                        {
+                          PK: "ACCOUNT#000001",
+                          SK: "METADATA",
+                          name: "DifferentName",
+                          company: "DifferentCompany",
+                          street: "DifferentStreet",
+                          place: "DifferentPlace",
+                          postcode: "99999",
+                          canton: "ZZ",
+                          email: "different@example.com",
+                          telephone: "0000000000",
+                          sourceId: sourceIdValue,
+                        },
+                      ],
+                      LastEvaluatedKey: undefined,
+                    };
+                  }
+
+                  if (sourceIdValue && skipIds.has(sourceIdValue)) {
+                    // Find the record to get matching mapped fields
+                    const rec = records.find((r) => r.id === sourceIdValue);
+                    if (rec) {
+                      const mappedName =
+                        `${rec.first_name} ${rec.last_name}`.trim();
                       return {
                         Items: [
                           {
-                            PK: `ACCOUNT#000001`,
+                            PK: "ACCOUNT#000002",
                             SK: "METADATA",
-                            name: "DifferentName",
-                            company: "DifferentCompany",
-                            telephone: "different@example.com",
+                            name: mappedName,
+                            company: rec.company,
+                            street: "",
+                            place: "",
+                            postcode: "",
+                            canton: "",
+                            email: rec.email,
+                            telephone: "",
                             sourceId: sourceIdValue,
                           },
                         ],
                         LastEvaluatedKey: undefined,
                       };
                     }
-
-                    if (sourceIdValue && skipIds.has(sourceIdValue)) {
-                      // Find the record to get matching mapped fields
-                      const rec = records.find((r) => r.id === sourceIdValue);
-                      if (rec) {
-                        const mappedName =
-                          `${rec.firstName} ${rec.lastName}`.trim();
-                        return {
-                          Items: [
-                            {
-                              PK: `ACCOUNT#000002`,
-                              SK: "METADATA",
-                              name: mappedName,
-                              company: rec.company,
-                              telephone: rec.email,
-                              sourceId: sourceIdValue,
-                            },
-                          ],
-                          LastEvaluatedKey: undefined,
-                        };
-                      }
-                    }
-
-                    return { Items: [], LastEvaluatedKey: undefined };
                   }
+
+                  return { Items: [], LastEvaluatedKey: undefined };
                 }
 
-                // TransactWriteCommand / UpdateCommand → success
+                // QueryCommand for TAG# items (used for change detection and tag replacement)
+                if (
+                  cmd.input &&
+                  "KeyConditionExpression" in cmd.input &&
+                  (cmd.input.KeyConditionExpression as string)?.includes(
+                    "begins_with",
+                  )
+                ) {
+                  // For skip records, return tags that match what deriveImportTags would produce
+                  // emailNotificationsEnabled=true → ["email_notification"]
+                  // (no phone so no text_notification)
+                  const exprValues = cmd.input.ExpressionAttributeValues as
+                    | Record<string, string>
+                    | undefined;
+                  const pk = exprValues?.[":pk"];
+
+                  // Skip records have PK "ACCOUNT#000002"
+                  if (pk === "ACCOUNT#000002") {
+                    return {
+                      Items: [
+                        {
+                          PK: "ACCOUNT#000002",
+                          SK: "TAG#email_notification",
+                          tag: "email_notification",
+                        },
+                      ],
+                    };
+                  }
+
+                  return { Items: [] };
+                }
+
+                // PutCommand / UpdateCommand / DeleteCommand → success
                 return {};
               }),
             },

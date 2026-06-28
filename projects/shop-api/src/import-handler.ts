@@ -5,9 +5,21 @@ import type {
 import { fetchFromConsignCloud } from "./import/fetch-from-consigncloud";
 import { syncToShopTable } from "./import/sync-to-shop-table";
 
+declare const __BUILD_TIMESTAMP__: string;
+
+const BUILD_VERSION: string =
+  typeof __BUILD_TIMESTAMP__ !== "undefined" ? __BUILD_TIMESTAMP__ : "dev";
+
+let coldStart = true;
+
 export async function handler(
   event: APIGatewayProxyEventV2,
 ): Promise<APIGatewayProxyResultV2> {
+  if (coldStart) {
+    console.info("Import handler cold start", { version: BUILD_VERSION });
+    coldStart = false;
+  }
+
   const method: string = event.requestContext.http.method;
   const path: string = event.rawPath;
 

@@ -3,6 +3,7 @@ import { execSync } from "node:child_process";
 import { rmSync } from "node:fs";
 
 const outdir = "dist";
+const buildTimestamp = new Date().toISOString();
 
 // Clean output directory
 rmSync(outdir, { recursive: true, force: true });
@@ -15,6 +16,9 @@ await build({
   format: "cjs",
   outdir,
   external: ["@aws-sdk/*"],
+  define: {
+    __BUILD_TIMESTAMP__: JSON.stringify(buildTimestamp),
+  },
 });
 
 execSync(`cd ${outdir} && zip -j handler.zip handler.js`, { stdio: "inherit" });
