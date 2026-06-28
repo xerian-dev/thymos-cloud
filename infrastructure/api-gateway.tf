@@ -91,3 +91,37 @@ resource "aws_apigatewayv2_route" "post_accounts" {
   authorization_type = "CUSTOM"
   authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
 }
+
+# -----------------------------------------------------------------------------
+# Import Lambda Integration
+# -----------------------------------------------------------------------------
+
+resource "aws_apigatewayv2_integration" "import_lambda" {
+  api_id                 = aws_apigatewayv2_api.shop_api.id
+  integration_type       = "AWS_PROXY"
+  integration_uri        = aws_lambda_function.shop_import.invoke_arn
+  integration_method     = "POST"
+  payload_format_version = "2.0"
+}
+
+# -----------------------------------------------------------------------------
+# Import Routes
+# -----------------------------------------------------------------------------
+
+resource "aws_apigatewayv2_route" "post_import_fetch" {
+  api_id    = aws_apigatewayv2_api.shop_api.id
+  route_key = "POST /api/import/fetch"
+  target    = "integrations/${aws_apigatewayv2_integration.import_lambda.id}"
+
+  authorization_type = "CUSTOM"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "post_import_sync" {
+  api_id    = aws_apigatewayv2_api.shop_api.id
+  route_key = "POST /api/import/sync"
+  target    = "integrations/${aws_apigatewayv2_integration.import_lambda.id}"
+
+  authorization_type = "CUSTOM"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
