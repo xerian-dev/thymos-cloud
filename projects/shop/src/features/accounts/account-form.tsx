@@ -9,15 +9,17 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { createAccount } from "./accounts-api";
+import { createAccount, updateAccount } from "./accounts-api";
 import { accountFormSchema } from "./accounts-validation";
 import { formatShopUid } from "./accounts-utils";
+import type { Account } from "./accounts-types";
 
 export interface AccountFormProps {
   open: boolean;
   onClose: () => void;
   onSuccess: () => void;
   defaultAccountNumber: number | null;
+  account?: Account | null;
 }
 
 interface FormErrors {
@@ -35,6 +37,7 @@ interface FormErrors {
 const ERROR_MESSAGES: Record<string, string> = {
   duplicate: "Account number is already in use",
   max_reached: "Maximum account number (9999999) has been reached",
+  not_found: "Account not found.",
   network: "Connection failed. Check your internet connection.",
   server: "An unexpected error occurred. Please try again.",
   timeout: "Request timed out. Please try again.",
@@ -45,7 +48,10 @@ export function AccountForm({
   onClose,
   onSuccess,
   defaultAccountNumber,
+  account,
 }: AccountFormProps): React.ReactNode {
+  const isEditMode = account != null;
+
   const [accountNumber, setAccountNumber] = React.useState("");
   const [name, setName] = React.useState("");
   const [street, setStreet] = React.useState("");
@@ -57,35 +63,52 @@ export function AccountForm({
   const [errors, setErrors] = React.useState<FormErrors>({});
   const [submitting, setSubmitting] = React.useState(false);
 
+  const nameRef = React.useRef<HTMLInputElement>(null);
   const accountNumberRef = React.useRef<HTMLInputElement>(null);
 
   // Reset form state when dialog opens
   React.useEffect(() => {
     if (open) {
-      const defaultValue =
-        defaultAccountNumber !== null
-          ? formatShopUid(defaultAccountNumber)
-          : "";
-      setAccountNumber(defaultValue);
-      setName("");
-      setStreet("");
-      setPlace("");
-      setPostcode("");
-      setCanton("");
-      setEmail("");
-      setTelephone("");
+      if (account) {
+        setAccountNumber(formatShopUid(account.shopUid));
+        setName(account.name);
+        setStreet(account.street ?? "");
+        setPlace(account.place ?? "");
+        setPostcode(account.postcode ?? "");
+        setCanton(account.canton ?? "");
+        setEmail(account.email ?? "");
+        setTelephone(account.telephone ?? "");
+      } else {
+        const defaultValue =
+          defaultAccountNumber !== null
+            ? formatShopUid(defaultAccountNumber)
+            : "";
+        setAccountNumber(defaultValue);
+        setName("");
+        setStreet("");
+        setPlace("");
+        setPostcode("");
+        setCanton("");
+        setEmail("");
+        setTelephone("");
+      }
       setErrors({});
       setSubmitting(false);
 
-      // Focus first input within 100ms
+      // Focus first editable input
       const timer = setTimeout(() => {
-        accountNumberRef.current?.focus();
+        if (account) {
+          nameRef.current?.focus();
+        } else {
+          accountNumberRef.current?.focus();
+        }
       }, 100);
       return () => clearTimeout(timer);
     }
-  }, [open, defaultAccountNumber]);
+  }, [open, defaultAccountNumber, account]);
 
   function handleAccountNumberBlur(): void {
+    if (isEditMode) return;
     const parsed = parseInt(accountNumber, 10);
     if (!isNaN(parsed) && parsed > 0 && parsed <= 9999999) {
       setAccountNumber(formatShopUid(parsed));
@@ -97,10 +120,8 @@ export function AccountForm({
   ): Promise<void> {
     event.preventDefault();
 
-    // Parse account number from string to integer
     const parsedAccountNumber = parseInt(accountNumber, 10);
 
-    // Validate with Zod schema
     const result = accountFormSchema.safeParse({
       accountNumber: isNaN(parsedAccountNumber)
         ? undefined
@@ -122,7 +143,6 @@ export function AccountForm({
           fieldErrors[field] = issue.message;
         }
       }
-      // If accountNumber field has issues due to NaN/undefined, provide a clear message
       if (!fieldErrors.accountNumber && isNaN(parsedAccountNumber)) {
         fieldErrors.accountNumber = "Account number is required";
       }
@@ -133,24 +153,45 @@ export function AccountForm({
     setErrors({});
     setSubmitting(true);
 
-    const apiResult = await createAccount({
-      accountNumber: result.data.accountNumber,
-      name: result.data.name,
-      street: result.data.street,
-      place: result.data.place,
-      postcode: result.data.postcode,
-      canton: result.data.canton,
-      email: result.data.email,
-      telephone: result.data.telephone,
-    });
-
-    if (apiResult.success) {
-      onSuccess();
-    } else {
-      setSubmitting(false);
-      setErrors({
-        general: ERROR_MESSAGES[apiResult.error] ?? ERROR_MESSAGES.server,
+    if (isEditMode) {
+      const apiResult = await updateAccount(account.shopUid, {
+        name: result.data.name,
+        street: result.data.street,
+        place: result.data.place,
+        postcode: result.data.postcode,
+        canton: result.data.canton,
+        email: result.data.email,
+        telephone: result.data.telephone,
       });
+
+      if (apiResult.success) {
+        onSuccess();
+      } else {
+        setSubmitting(false);
+        setErrors({
+          general: ERROR_MESSAGES[apiResult.error] ?? ERROR_MESSAGES.server,
+        });
+      }
+    } else {
+      const apiResult = await createAccount({
+        accountNumber: result.data.accountNumber,
+        name: result.data.name,
+        street: result.data.street,
+        place: result.data.place,
+        postcode: result.data.postcode,
+        canton: result.data.canton,
+        email: result.data.email,
+        telephone: result.data.telephone,
+      });
+
+      if (apiResult.success) {
+        onSuccess();
+      } else {
+        setSubmitting(false);
+        setErrors({
+          general: ERROR_MESSAGES[apiResult.error] ?? ERROR_MESSAGES.server,
+        });
+      }
     }
   }
 
@@ -158,9 +199,13 @@ export function AccountForm({
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
       <DialogContent aria-describedby="account-form-description">
         <DialogHeader>
-          <DialogTitle>Add Account</DialogTitle>
+          <DialogTitle>
+            {isEditMode ? "Edit Account" : "Add Account"}
+          </DialogTitle>
           <DialogDescription id="account-form-description">
-            Create a new consigner account.
+            {isEditMode
+              ? "Update the account details."
+              : "Create a new consigner account."}
           </DialogDescription>
         </DialogHeader>
 
@@ -188,7 +233,8 @@ export function AccountForm({
                 aria-describedby={
                   errors.accountNumber ? "account-number-error" : undefined
                 }
-                disabled={submitting}
+                disabled={submitting || isEditMode}
+                readOnly={isEditMode}
               />
               {errors.accountNumber && (
                 <p
@@ -207,6 +253,7 @@ export function AccountForm({
                 <span className="sr-only">(required)</span>
               </Label>
               <Input
+                ref={nameRef}
                 id="name"
                 name="name"
                 type="text"
@@ -387,7 +434,13 @@ export function AccountForm({
                 Cancel
               </Button>
               <Button type="submit" disabled={submitting}>
-                {submitting ? "Creating…" : "Create Account"}
+                {submitting
+                  ? isEditMode
+                    ? "Saving…"
+                    : "Creating…"
+                  : isEditMode
+                    ? "Save Changes"
+                    : "Create Account"}
               </Button>
             </div>
           </div>
