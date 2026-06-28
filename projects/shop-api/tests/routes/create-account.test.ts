@@ -279,11 +279,10 @@ describe("POST /api/accounts - createAccount", () => {
      * **Validates: Requirements 3.5, 3.6**
      *
      * For any accountNumber N in [1, 9999999]: the TransactWriteCommand
-     * always sends `:newValue` = N + 1 and `:accountNum` = N, ensuring that
-     * if N >= current counter, the counter updates to N+1;
-     * if N < current counter, the condition prevents the update.
+     * always sends `:newValue` = N and `:accountNum` = N, ensuring that
+     * the counter stores the last used number. next-number returns counter + 1.
      */
-    it("always sends :newValue = accountNumber + 1 and :accountNum = accountNumber", async () => {
+    it("always sends :newValue = accountNumber and :accountNum = accountNumber", async () => {
       await fc.assert(
         fc.asyncProperty(fc.integer({ min: 1, max: 9999999 }), async (n) => {
           mockedSend.mockReset();
@@ -313,9 +312,7 @@ describe("POST /api/accounts - createAccount", () => {
           // The second item is the counter Update
           const updateItem = transactItems[1].Update;
           expect(updateItem).toBeDefined();
-          expect(updateItem!.ExpressionAttributeValues[":newValue"]).toBe(
-            n + 1,
-          );
+          expect(updateItem!.ExpressionAttributeValues[":newValue"]).toBe(n);
           expect(updateItem!.ExpressionAttributeValues[":accountNum"]).toBe(n);
         }),
         { numRuns: 100 },

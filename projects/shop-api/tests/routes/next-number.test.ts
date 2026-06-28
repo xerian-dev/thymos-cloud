@@ -22,17 +22,8 @@ describe("GET /api/accounts/next-number", () => {
     vi.clearAllMocks();
   });
 
-  it("returns value + 1 from existing counter using 'value' attribute", async () => {
+  it("returns value + 1 from existing counter", async () => {
     mockedSend.mockResolvedValueOnce({ Item: { value: 42 } } as never);
-
-    const response = await nextNumber(makeEvent());
-
-    expect(response.statusCode).toBe(200);
-    expect(JSON.parse(response.body as string)).toEqual({ nextNumber: 43 });
-  });
-
-  it("returns nextValue + 1 from existing counter using legacy 'nextValue' attribute", async () => {
-    mockedSend.mockResolvedValueOnce({ Item: { nextValue: 42 } } as never);
 
     const response = await nextNumber(makeEvent());
 
