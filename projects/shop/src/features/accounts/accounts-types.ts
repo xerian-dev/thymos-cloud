@@ -46,3 +46,10 @@ export type UpdateAccountResult =
       success: false;
       error: "not_found" | "network" | "server" | "timeout";
     };
+
+export type DeleteAccountResult =
+  | { success: true }
+  | {
+      success: false;
+      error: "not_found" | "network" | "server" | "timeout";
+    };

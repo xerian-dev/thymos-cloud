@@ -2,6 +2,7 @@ import * as React from "react";
 import { Button } from "@/components/ui/button";
 import { AccountsTable } from "./accounts-table";
 import { AccountForm } from "./account-form";
+import { DeleteAccountDialog } from "./delete-account-dialog";
 import { useAccounts } from "./use-accounts";
 import { fetchNextAccountNumber } from "./accounts-api";
 import type { Account } from "./accounts-types";
@@ -10,6 +11,9 @@ export function AccountsPage(): React.ReactNode {
   const { accounts, loading, error, refresh } = useAccounts();
   const [formOpen, setFormOpen] = React.useState(false);
   const [editingAccount, setEditingAccount] = React.useState<Account | null>(
+    null,
+  );
+  const [deletingAccount, setDeletingAccount] = React.useState<Account | null>(
     null,
   );
   const [defaultAccountNumber, setDefaultAccountNumber] = React.useState<
@@ -34,17 +38,30 @@ export function AccountsPage(): React.ReactNode {
     setFormOpen(true);
   }
 
+  function handleDelete(account: Account): void {
+    setDeletingAccount(account);
+  }
+
   function handleCloseForm(): void {
     setFormOpen(false);
     setEditingAccount(null);
     addButtonRef.current?.focus();
   }
 
-  function handleSuccess(): void {
+  function handleFormSuccess(): void {
     setFormOpen(false);
     setEditingAccount(null);
     refresh();
     addButtonRef.current?.focus();
+  }
+
+  function handleCloseDelete(): void {
+    setDeletingAccount(null);
+  }
+
+  function handleDeleteSuccess(): void {
+    setDeletingAccount(null);
+    refresh();
   }
 
   const memoizedTable = React.useMemo(
@@ -55,6 +72,7 @@ export function AccountsPage(): React.ReactNode {
         error={error}
         onRetry={refresh}
         onEdit={handleEdit}
+        onDelete={handleDelete}
       />
     ),
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -75,9 +93,16 @@ export function AccountsPage(): React.ReactNode {
       <AccountForm
         open={formOpen}
         onClose={handleCloseForm}
-        onSuccess={handleSuccess}
+        onSuccess={handleFormSuccess}
         defaultAccountNumber={defaultAccountNumber}
         account={editingAccount}
+      />
+
+      <DeleteAccountDialog
+        open={deletingAccount != null}
+        account={deletingAccount}
+        onClose={handleCloseDelete}
+        onSuccess={handleDeleteSuccess}
       />
     </div>
   );
