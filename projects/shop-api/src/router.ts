@@ -5,6 +5,8 @@ import type {
 import { listAccounts } from "./routes/list-accounts.js";
 import { nextNumber } from "./routes/next-number.js";
 import { createAccount } from "./routes/create-account.js";
+import { updateAccount } from "./routes/update-account.js";
+import { deleteAccount } from "./routes/delete-account.js";
 import { jsonResponse } from "./response.js";
 
 type RouteHandler = (
@@ -15,6 +17,8 @@ const routes: Record<string, RouteHandler> = {
   "GET /api/accounts": listAccounts,
   "GET /api/accounts/next-number": nextNumber,
   "POST /api/accounts": createAccount,
+  "PUT /api/accounts/{accountNumber}": updateAccount,
+  "DELETE /api/accounts/{accountNumber}": deleteAccount,
 };
 
 export function routeRequest(

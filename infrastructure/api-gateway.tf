@@ -8,7 +8,7 @@ resource "aws_apigatewayv2_api" "shop_api" {
 
   cors_configuration {
     allow_origins = ["*"]
-    allow_methods = ["GET", "POST", "OPTIONS"]
+    allow_methods = ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
     allow_headers = ["Authorization", "Content-Type"]
     max_age       = 3600
   }
@@ -86,6 +86,24 @@ resource "aws_apigatewayv2_route" "get_next_number" {
 resource "aws_apigatewayv2_route" "post_accounts" {
   api_id    = aws_apigatewayv2_api.shop_api.id
   route_key = "POST /api/accounts"
+  target    = "integrations/${aws_apigatewayv2_integration.monolambda.id}"
+
+  authorization_type = "CUSTOM"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "put_account" {
+  api_id    = aws_apigatewayv2_api.shop_api.id
+  route_key = "PUT /api/accounts/{accountNumber}"
+  target    = "integrations/${aws_apigatewayv2_integration.monolambda.id}"
+
+  authorization_type = "CUSTOM"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "delete_account" {
+  api_id    = aws_apigatewayv2_api.shop_api.id
+  route_key = "DELETE /api/accounts/{accountNumber}"
   target    = "integrations/${aws_apigatewayv2_integration.monolambda.id}"
 
   authorization_type = "CUSTOM"

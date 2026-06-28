@@ -63,6 +63,7 @@ resource "aws_iam_role_policy" "shop_api_dynamodb" {
           "dynamodb:GetItem",
           "dynamodb:PutItem",
           "dynamodb:UpdateItem",
+          "dynamodb:DeleteItem",
           "dynamodb:Query",
           "dynamodb:Scan",
           "dynamodb:TransactWriteItems"
