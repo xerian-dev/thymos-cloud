@@ -8,7 +8,11 @@ const mockAccounts: Account[] = [
     uuid: "uuid-1",
     shopUid: 42,
     name: "Alice",
-    address: "123 Main",
+    street: "123 Main",
+    place: "Zurich",
+    postcode: "8001",
+    canton: "ZH",
+    email: "alice@example.com",
     telephone: "555-0001",
     commentCount: 3,
     tags: ["vip"],
@@ -17,7 +21,11 @@ const mockAccounts: Account[] = [
     uuid: "uuid-2",
     shopUid: 7,
     name: "Bob",
-    address: "456 Oak",
+    street: "456 Oak",
+    place: "Bern",
+    postcode: "3001",
+    canton: "BE",
+    email: "bob@example.com",
     telephone: "555-0002",
     commentCount: 0,
     tags: ["wholesale", "vip"],
@@ -39,7 +47,11 @@ describe("AccountsTable", () => {
       expect(headerTexts).toEqual([
         "Account #",
         "Name",
-        "Address",
+        "Street",
+        "Place",
+        "Postcode",
+        "Canton",
+        "Email",
         "Telephone",
         "Comments",
         "Tags",
@@ -139,9 +151,25 @@ describe("AccountsTable", () => {
       expect(screen.getByText("Alice")).toBeInTheDocument();
       expect(screen.getByText("Bob")).toBeInTheDocument();
 
-      // Addresses
+      // Street
       expect(screen.getByText("123 Main")).toBeInTheDocument();
       expect(screen.getByText("456 Oak")).toBeInTheDocument();
+
+      // Place
+      expect(screen.getByText("Zurich")).toBeInTheDocument();
+      expect(screen.getByText("Bern")).toBeInTheDocument();
+
+      // Postcode
+      expect(screen.getByText("8001")).toBeInTheDocument();
+      expect(screen.getByText("3001")).toBeInTheDocument();
+
+      // Canton
+      expect(screen.getByText("ZH")).toBeInTheDocument();
+      expect(screen.getByText("BE")).toBeInTheDocument();
+
+      // Email
+      expect(screen.getByText("alice@example.com")).toBeInTheDocument();
+      expect(screen.getByText("bob@example.com")).toBeInTheDocument();
 
       // Telephone
       expect(screen.getByText("555-0001")).toBeInTheDocument();

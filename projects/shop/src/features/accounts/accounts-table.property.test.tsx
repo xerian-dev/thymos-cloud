@@ -31,7 +31,11 @@ const accountArb = fc.record({
   name: fc
     .string({ minLength: 1, maxLength: 50 })
     .filter((s) => s.trim().length > 0),
-  address: fc.string({ maxLength: 50 }),
+  street: fc.string({ maxLength: 50 }),
+  place: fc.string({ maxLength: 50 }),
+  postcode: fc.string({ maxLength: 20 }),
+  canton: fc.string({ maxLength: 20 }),
+  email: fc.string({ maxLength: 50 }),
   telephone: fc.string({ maxLength: 20 }),
   commentCount: fc.nat({ max: 100 }),
   tags: fc.array(fc.string({ minLength: 1, maxLength: 10 }), { maxLength: 5 }),
@@ -62,8 +66,12 @@ function clickColumnHeader(name: RegExp): void {
 const sortableColumns = [
   { name: "Account #", index: 0, type: "numeric" as const },
   { name: "Name", index: 1, type: "alpha" as const },
-  { name: "Address", index: 2, type: "alpha" as const },
-  { name: "Telephone", index: 3, type: "alpha" as const },
+  { name: "Street", index: 2, type: "alpha" as const },
+  { name: "Place", index: 3, type: "alpha" as const },
+  { name: "Postcode", index: 4, type: "alpha" as const },
+  { name: "Canton", index: 5, type: "alpha" as const },
+  { name: "Email", index: 6, type: "alpha" as const },
+  { name: "Telephone", index: 7, type: "alpha" as const },
 ];
 
 describe("Feature: accounts-page, Property 5: Sort ordering correctness", () => {

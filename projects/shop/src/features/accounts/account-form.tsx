@@ -23,7 +23,11 @@ export interface AccountFormProps {
 interface FormErrors {
   accountNumber?: string;
   name?: string;
-  address?: string;
+  street?: string;
+  place?: string;
+  postcode?: string;
+  canton?: string;
+  email?: string;
   telephone?: string;
   general?: string;
 }
@@ -44,7 +48,11 @@ export function AccountForm({
 }: AccountFormProps): React.ReactNode {
   const [accountNumber, setAccountNumber] = React.useState("");
   const [name, setName] = React.useState("");
-  const [address, setAddress] = React.useState("");
+  const [street, setStreet] = React.useState("");
+  const [place, setPlace] = React.useState("");
+  const [postcode, setPostcode] = React.useState("");
+  const [canton, setCanton] = React.useState("");
+  const [email, setEmail] = React.useState("");
   const [telephone, setTelephone] = React.useState("");
   const [errors, setErrors] = React.useState<FormErrors>({});
   const [submitting, setSubmitting] = React.useState(false);
@@ -60,7 +68,11 @@ export function AccountForm({
           : "";
       setAccountNumber(defaultValue);
       setName("");
-      setAddress("");
+      setStreet("");
+      setPlace("");
+      setPostcode("");
+      setCanton("");
+      setEmail("");
       setTelephone("");
       setErrors({});
       setSubmitting(false);
@@ -94,7 +106,11 @@ export function AccountForm({
         ? undefined
         : parsedAccountNumber,
       name,
-      address,
+      street,
+      place,
+      postcode,
+      canton,
+      email,
       telephone,
     });
 
@@ -120,7 +136,11 @@ export function AccountForm({
     const apiResult = await createAccount({
       accountNumber: result.data.accountNumber,
       name: result.data.name,
-      address: result.data.address,
+      street: result.data.street,
+      place: result.data.place,
+      postcode: result.data.postcode,
+      canton: result.data.canton,
+      email: result.data.email,
       telephone: result.data.telephone,
     });
 
@@ -210,25 +230,123 @@ export function AccountForm({
             </div>
 
             <div className="flex flex-col gap-2">
-              <Label htmlFor="address">Address</Label>
+              <Label htmlFor="street">Street</Label>
               <Input
-                id="address"
-                name="address"
+                id="street"
+                name="street"
                 type="text"
-                maxLength={500}
-                value={address}
-                onChange={(e) => setAddress(e.target.value)}
-                aria-invalid={errors.address ? true : undefined}
-                aria-describedby={errors.address ? "address-error" : undefined}
+                maxLength={200}
+                value={street}
+                onChange={(e) => setStreet(e.target.value)}
+                aria-invalid={errors.street ? true : undefined}
+                aria-describedby={errors.street ? "street-error" : undefined}
                 disabled={submitting}
               />
-              {errors.address && (
+              {errors.street && (
                 <p
-                  id="address-error"
+                  id="street-error"
                   role="alert"
                   className="text-sm text-destructive"
                 >
-                  {errors.address}
+                  {errors.street}
+                </p>
+              )}
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="place">Place</Label>
+              <Input
+                id="place"
+                name="place"
+                type="text"
+                maxLength={100}
+                value={place}
+                onChange={(e) => setPlace(e.target.value)}
+                aria-invalid={errors.place ? true : undefined}
+                aria-describedby={errors.place ? "place-error" : undefined}
+                disabled={submitting}
+              />
+              {errors.place && (
+                <p
+                  id="place-error"
+                  role="alert"
+                  className="text-sm text-destructive"
+                >
+                  {errors.place}
+                </p>
+              )}
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="postcode">Postcode</Label>
+              <Input
+                id="postcode"
+                name="postcode"
+                type="text"
+                maxLength={20}
+                value={postcode}
+                onChange={(e) => setPostcode(e.target.value)}
+                aria-invalid={errors.postcode ? true : undefined}
+                aria-describedby={
+                  errors.postcode ? "postcode-error" : undefined
+                }
+                disabled={submitting}
+              />
+              {errors.postcode && (
+                <p
+                  id="postcode-error"
+                  role="alert"
+                  className="text-sm text-destructive"
+                >
+                  {errors.postcode}
+                </p>
+              )}
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="canton">Canton</Label>
+              <Input
+                id="canton"
+                name="canton"
+                type="text"
+                maxLength={50}
+                value={canton}
+                onChange={(e) => setCanton(e.target.value)}
+                aria-invalid={errors.canton ? true : undefined}
+                aria-describedby={errors.canton ? "canton-error" : undefined}
+                disabled={submitting}
+              />
+              {errors.canton && (
+                <p
+                  id="canton-error"
+                  role="alert"
+                  className="text-sm text-destructive"
+                >
+                  {errors.canton}
+                </p>
+              )}
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="email">Email</Label>
+              <Input
+                id="email"
+                name="email"
+                type="text"
+                maxLength={254}
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                aria-invalid={errors.email ? true : undefined}
+                aria-describedby={errors.email ? "email-error" : undefined}
+                disabled={submitting}
+              />
+              {errors.email && (
+                <p
+                  id="email-error"
+                  role="alert"
+                  className="text-sm text-destructive"
+                >
+                  {errors.email}
                 </p>
               )}
             </div>

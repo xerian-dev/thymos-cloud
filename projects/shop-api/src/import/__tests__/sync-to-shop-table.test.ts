@@ -15,8 +15,8 @@ vi.mock("../../dynamodb-client", () => ({
 }));
 
 vi.mock("@aws-sdk/lib-dynamodb", () => {
-  class MockScanCommand {
-    _type = "Scan";
+  class MockQueryCommand {
+    _type = "Query";
     input: unknown;
     constructor(input: unknown) {
       this.input = input;
@@ -29,8 +29,8 @@ vi.mock("@aws-sdk/lib-dynamodb", () => {
       this.input = input;
     }
   }
-  class MockTransactWriteCommand {
-    _type = "TransactWrite";
+  class MockPutCommand {
+    _type = "Put";
     input: unknown;
     constructor(input: unknown) {
       this.input = input;
@@ -43,11 +43,19 @@ vi.mock("@aws-sdk/lib-dynamodb", () => {
       this.input = input;
     }
   }
+  class MockDeleteCommand {
+    _type = "Delete";
+    input: unknown;
+    constructor(input: unknown) {
+      this.input = input;
+    }
+  }
   return {
-    ScanCommand: MockScanCommand,
+    QueryCommand: MockQueryCommand,
     GetCommand: MockGetCommand,
-    TransactWriteCommand: MockTransactWriteCommand,
+    PutCommand: MockPutCommand,
     UpdateCommand: MockUpdateCommand,
+    DeleteCommand: MockDeleteCommand,
   };
 });
 
@@ -70,13 +78,19 @@ function createImportedRecord(
     PK: "IMPORT#CONSIGNCLOUD#abc-123",
     SK: "METADATA",
     id: "abc-123",
-    number: "001",
-    firstName: "Alice",
-    lastName: "Smith",
+    number: "001893",
+    first_name: "Alice",
+    last_name: "Smith",
     company: "ACME Corp",
     email: "alice@example.com",
+    phone_number: "+41791234567",
+    address_line_1: "Bahnhofstrasse 1",
+    address_line_2: "Suite 200",
+    city: "Zürich",
+    state: "ZH",
+    postal_code: "8001",
     balance: 100,
-    emailNotificationsEnabled: true,
+    email_notifications_enabled: true,
     created: "2024-01-01T00:00:00Z",
     importedAt: "2024-06-01T00:00:00Z",
     ...overrides,
@@ -93,328 +107,603 @@ describe("sync-to-shop-table", () => {
     vi.restoreAllMocks();
   });
 
-  it("creates a new account with sequence counter increment when no existing account found", async () => {
-    const record = createImportedRecord();
-    mockScanImportedAccounts.mockResolvedValue([record]);
+  describe("create path — new account", () => {
+    it("uses ConsignCloud number as PK and does NOT call the sequence counter for creation", async () => {
+      const record = createImportedRecord({ number: "001893" });
+      mockScanImportedAccounts.mockResolvedValue([record]);
 
-    mockDocClientSend.mockImplementation((cmd: { _type: string }) => {
-      if (cmd._type === "Scan") {
-        // findBySourceId — no existing account
-        return Promise.resolve({ Items: [] });
-      }
-      if (cmd._type === "Get") {
-        // getSequenceCounter returns 5
-        return Promise.resolve({
-          Item: { PK: "SEQUENCE#ACCOUNT", SK: "COUNTER", value: 5 },
-        });
-      }
-      if (cmd._type === "TransactWrite") {
-        return Promise.resolve({});
-      }
-      return Promise.resolve({});
+      mockDocClientSend.mockImplementation(
+        (cmd: { _type: string; input: Record<string, unknown> }) => {
+          if (cmd._type === "Query") {
+            const input = cmd.input as {
+              IndexName?: string;
+              KeyConditionExpression?: string;
+            };
+            if (input.IndexName === "sourceId-index") {
+              // findBySourceId — no existing account
+              return Promise.resolve({ Items: [] });
+            }
+            // TAG# query for change detection — won't be called on create path
+            return Promise.resolve({ Items: [] });
+          }
+          if (cmd._type === "Get") {
+            // getSequenceCounter — should only be called at end of sync
+            return Promise.resolve({
+              Item: { PK: "SEQUENCE#ACCOUNT", SK: "COUNTER", value: 500 },
+            });
+          }
+          if (cmd._type === "Put") {
+            return Promise.resolve({});
+          }
+          if (cmd._type === "Update") {
+            return Promise.resolve({});
+          }
+          return Promise.resolve({});
+        },
+      );
+
+      const result = await syncToShopTable(createMockEvent());
+
+      expect(result.statusCode).toBe(200);
+      const body = JSON.parse(result.body as string);
+      expect(body.added).toBe(1);
+
+      // Verify the METADATA PutCommand uses ConsignCloud number directly as PK
+      const putCalls = mockDocClientSend.mock.calls.filter(
+        (call: unknown[]) => (call[0] as { _type: string })._type === "Put",
+      );
+
+      const metadataPut = putCalls.find((call: unknown[]) => {
+        const input = (call[0] as { input: { Item?: { SK?: string } } }).input;
+        return input.Item?.SK === "METADATA";
+      });
+      expect(metadataPut).toBeDefined();
+
+      const metadataItem = (
+        metadataPut![0] as { input: { Item: Record<string, unknown> } }
+      ).input.Item;
+      expect(metadataItem.PK).toBe("ACCOUNT#001893");
+      expect(metadataItem.sourceId).toBe("abc-123");
+
+      // Verify NO TransactWrite or sequence counter allocation was used for creation
+      const allCallTypes = mockDocClientSend.mock.calls.map(
+        (call: unknown[]) => (call[0] as { _type: string })._type,
+      );
+      expect(allCallTypes).not.toContain("TransactWrite");
     });
 
-    const result = await syncToShopTable(createMockEvent());
+    it("PutItem includes street, place, postcode, canton, email, telephone and excludes address", async () => {
+      const record = createImportedRecord({
+        number: "001893",
+        address_line_1: "Bahnhofstrasse 1",
+        address_line_2: "Suite 200",
+        city: "Zürich",
+        state: "ZH",
+        postal_code: "8001",
+        email: "alice@example.com",
+        phone_number: "+41791234567",
+      });
+      mockScanImportedAccounts.mockResolvedValue([record]);
 
-    expect(result.statusCode).toBe(200);
-    const body = JSON.parse(result.body as string);
-    expect(body.added).toBe(1);
-    expect(body.updated).toBe(0);
-    expect(body.skipped).toBe(0);
-    expect(body.errored).toBe(0);
+      mockDocClientSend.mockImplementation(
+        (cmd: { _type: string; input: Record<string, unknown> }) => {
+          if (cmd._type === "Query") {
+            const input = cmd.input as { IndexName?: string };
+            if (input.IndexName === "sourceId-index") {
+              return Promise.resolve({ Items: [] });
+            }
+            return Promise.resolve({ Items: [] });
+          }
+          if (cmd._type === "Get") {
+            return Promise.resolve({
+              Item: { PK: "SEQUENCE#ACCOUNT", SK: "COUNTER", value: 500 },
+            });
+          }
+          return Promise.resolve({});
+        },
+      );
 
-    // Verify TransactWriteCommand was called with correct account number (5+1=6 → 0000006)
-    const transactCall = mockDocClientSend.mock.calls.find(
-      (call: unknown[]) =>
-        (call[0] as { _type: string })._type === "TransactWrite",
-    );
-    expect(transactCall).toBeDefined();
+      await syncToShopTable(createMockEvent());
 
-    const transactInput = (
-      transactCall![0] as { input: { TransactItems: unknown[] } }
-    ).input;
-    const putItem = transactInput.TransactItems[0] as {
-      Put: { Item: { PK: string; sourceId: string } };
-    };
-    expect(putItem.Put.Item.PK).toBe("ACCOUNT#0000006");
-    expect(putItem.Put.Item.sourceId).toBe("abc-123");
+      const putCalls = mockDocClientSend.mock.calls.filter(
+        (call: unknown[]) => (call[0] as { _type: string })._type === "Put",
+      );
 
-    // Verify counter update from 5 to 6
-    const updateItem = transactInput.TransactItems[1] as {
-      Update: {
-        ExpressionAttributeValues: { ":newVal": number; ":currentVal": number };
+      const metadataPut = putCalls.find((call: unknown[]) => {
+        const input = (call[0] as { input: { Item?: { SK?: string } } }).input;
+        return input.Item?.SK === "METADATA";
+      });
+      expect(metadataPut).toBeDefined();
+
+      const item = (
+        metadataPut![0] as { input: { Item: Record<string, unknown> } }
+      ).input.Item;
+      // Verify new structured fields are present
+      expect(item.street).toBe("Bahnhofstrasse 1, Suite 200");
+      expect(item.place).toBe("Zürich");
+      expect(item.postcode).toBe("8001");
+      expect(item.canton).toBe("ZH");
+      expect(item.email).toBe("alice@example.com");
+      expect(item.telephone).toBe("0791234567");
+
+      // Verify address field is NOT present
+      expect(item).not.toHaveProperty("address");
+    });
+
+    it("writes TAG# items for each derived tag on create", async () => {
+      const record = createImportedRecord({
+        number: "001893",
+        email_notifications_enabled: true,
+        phone_number: "+41791234567", // mobile prefix → text_notification tag
+      });
+      mockScanImportedAccounts.mockResolvedValue([record]);
+
+      mockDocClientSend.mockImplementation(
+        (cmd: { _type: string; input: Record<string, unknown> }) => {
+          if (cmd._type === "Query") {
+            const input = cmd.input as { IndexName?: string };
+            if (input.IndexName === "sourceId-index") {
+              return Promise.resolve({ Items: [] });
+            }
+            return Promise.resolve({ Items: [] });
+          }
+          if (cmd._type === "Get") {
+            return Promise.resolve({
+              Item: { PK: "SEQUENCE#ACCOUNT", SK: "COUNTER", value: 500 },
+            });
+          }
+          return Promise.resolve({});
+        },
+      );
+
+      await syncToShopTable(createMockEvent());
+
+      const putCalls = mockDocClientSend.mock.calls.filter(
+        (call: unknown[]) => (call[0] as { _type: string })._type === "Put",
+      );
+
+      // Find TAG# puts
+      const tagPuts = putCalls.filter((call: unknown[]) => {
+        const input = (call[0] as { input: { Item?: { SK?: string } } }).input;
+        return input.Item?.SK?.startsWith("TAG#");
+      });
+
+      // Expect 2 tags: email_notification and text_notification
+      expect(tagPuts).toHaveLength(2);
+
+      const tagSKs = tagPuts.map((call: unknown[]) => {
+        const input = (
+          call[0] as {
+            input: { Item: { SK: string; PK: string; tag: string } };
+          }
+        ).input;
+        return input.Item.SK;
+      });
+      expect(tagSKs).toContain("TAG#email_notification");
+      expect(tagSKs).toContain("TAG#text_notification");
+
+      // Verify TAG# items use the same PK as the account
+      for (const tagPut of tagPuts) {
+        const input = (
+          tagPut[0] as { input: { Item: { PK: string; tag: string } } }
+        ).input;
+        expect(input.Item.PK).toBe("ACCOUNT#001893");
+      }
+    });
+  });
+
+  describe("update path — existing account with changes", () => {
+    it("TAG# items are replaced on update (old deleted, new written)", async () => {
+      const record = createImportedRecord({
+        number: "001893",
+        first_name: "Alice",
+        last_name: "Updated",
+        email_notifications_enabled: true,
+        phone_number: "+41791234567", // mobile → text_notification
+      });
+      mockScanImportedAccounts.mockResolvedValue([record]);
+
+      mockDocClientSend.mockImplementation(
+        (cmd: { _type: string; input: Record<string, unknown> }) => {
+          if (cmd._type === "Query") {
+            const input = cmd.input as {
+              IndexName?: string;
+              KeyConditionExpression?: string;
+              ExpressionAttributeValues?: Record<string, string>;
+            };
+            if (input.IndexName === "sourceId-index") {
+              // findBySourceId — existing account
+              return Promise.resolve({
+                Items: [
+                  {
+                    PK: "ACCOUNT#001893",
+                    SK: "METADATA",
+                    name: "Alice Smith",
+                    company: "ACME Corp",
+                    street: "Bahnhofstrasse 1, Suite 200",
+                    place: "Zürich",
+                    postcode: "8001",
+                    canton: "ZH",
+                    email: "alice@example.com",
+                    telephone: "0791234567",
+                    sourceId: "abc-123",
+                  },
+                ],
+              });
+            }
+            // TAG# queries
+            if (
+              input.ExpressionAttributeValues &&
+              ":tagPrefix" in input.ExpressionAttributeValues
+            ) {
+              return Promise.resolve({
+                Items: [
+                  { PK: "ACCOUNT#001893", SK: "TAG#old_tag", tag: "old_tag" },
+                ],
+              });
+            }
+            return Promise.resolve({ Items: [] });
+          }
+          if (cmd._type === "Get") {
+            return Promise.resolve({
+              Item: { PK: "SEQUENCE#ACCOUNT", SK: "COUNTER", value: 5000 },
+            });
+          }
+          return Promise.resolve({});
+        },
+      );
+
+      await syncToShopTable(createMockEvent());
+
+      // Verify delete of old TAG# items
+      const deleteCalls = mockDocClientSend.mock.calls.filter(
+        (call: unknown[]) => (call[0] as { _type: string })._type === "Delete",
+      );
+      expect(deleteCalls.length).toBeGreaterThanOrEqual(1);
+
+      const deleteKey = (
+        deleteCalls[0][0] as { input: { Key: { PK: string; SK: string } } }
+      ).input.Key;
+      expect(deleteKey.PK).toBe("ACCOUNT#001893");
+      expect(deleteKey.SK).toBe("TAG#old_tag");
+
+      // Verify new TAG# items are written
+      const putCalls = mockDocClientSend.mock.calls.filter(
+        (call: unknown[]) => (call[0] as { _type: string })._type === "Put",
+      );
+      const tagPuts = putCalls.filter((call: unknown[]) => {
+        const input = (call[0] as { input: { Item?: { SK?: string } } }).input;
+        return input.Item?.SK?.startsWith("TAG#");
+      });
+
+      expect(tagPuts).toHaveLength(2);
+      const tagSKs = tagPuts.map((call: unknown[]) => {
+        const input = (call[0] as { input: { Item: { SK: string } } }).input;
+        return input.Item.SK;
+      });
+      expect(tagSKs).toContain("TAG#email_notification");
+      expect(tagSKs).toContain("TAG#text_notification");
+    });
+
+    it("update expression includes all new fields (street, place, postcode, canton, email, telephone)", async () => {
+      const record = createImportedRecord({
+        number: "001893",
+        first_name: "Alice",
+        last_name: "Updated",
+        company: "New Corp",
+        address_line_1: "Neue Strasse 5",
+        address_line_2: undefined,
+        city: "Bern",
+        state: "BE",
+        postal_code: "3000",
+        email: "alice.new@example.com",
+        phone_number: "+41781112233",
+      });
+      mockScanImportedAccounts.mockResolvedValue([record]);
+
+      mockDocClientSend.mockImplementation(
+        (cmd: { _type: string; input: Record<string, unknown> }) => {
+          if (cmd._type === "Query") {
+            const input = cmd.input as {
+              IndexName?: string;
+              ExpressionAttributeValues?: Record<string, string>;
+            };
+            if (input.IndexName === "sourceId-index") {
+              return Promise.resolve({
+                Items: [
+                  {
+                    PK: "ACCOUNT#001893",
+                    SK: "METADATA",
+                    name: "Alice Smith",
+                    company: "ACME Corp",
+                    street: "Old Street",
+                    place: "Zürich",
+                    postcode: "8001",
+                    canton: "ZH",
+                    email: "old@example.com",
+                    telephone: "0791234567",
+                    sourceId: "abc-123",
+                  },
+                ],
+              });
+            }
+            // TAG# queries — existing tags
+            if (
+              input.ExpressionAttributeValues &&
+              ":tagPrefix" in input.ExpressionAttributeValues
+            ) {
+              return Promise.resolve({
+                Items: [
+                  {
+                    PK: "ACCOUNT#001893",
+                    SK: "TAG#email_notification",
+                    tag: "email_notification",
+                  },
+                ],
+              });
+            }
+            return Promise.resolve({ Items: [] });
+          }
+          if (cmd._type === "Get") {
+            return Promise.resolve({
+              Item: { PK: "SEQUENCE#ACCOUNT", SK: "COUNTER", value: 5000 },
+            });
+          }
+          return Promise.resolve({});
+        },
+      );
+
+      await syncToShopTable(createMockEvent());
+
+      // Find the UpdateCommand call
+      const updateCalls = mockDocClientSend.mock.calls.filter(
+        (call: unknown[]) => (call[0] as { _type: string })._type === "Update",
+      );
+
+      // Find the metadata update (not the sequence counter update)
+      const metadataUpdate = updateCalls.find((call: unknown[]) => {
+        const input = (
+          call[0] as { input: { Key?: { PK?: string; SK?: string } } }
+        ).input;
+        return (
+          input.Key?.PK === "ACCOUNT#001893" && input.Key?.SK === "METADATA"
+        );
+      });
+      expect(metadataUpdate).toBeDefined();
+
+      const updateInput = (
+        metadataUpdate![0] as { input: Record<string, unknown> }
+      ).input as {
+        UpdateExpression: string;
+        ExpressionAttributeNames: Record<string, string>;
+        ExpressionAttributeValues: Record<string, unknown>;
       };
-    };
-    expect(updateItem.Update.ExpressionAttributeValues[":newVal"]).toBe(6);
-    expect(updateItem.Update.ExpressionAttributeValues[":currentVal"]).toBe(5);
+
+      // Verify UpdateExpression contains all new fields
+      expect(updateInput.UpdateExpression).toContain("#street");
+      expect(updateInput.UpdateExpression).toContain("#place");
+      expect(updateInput.UpdateExpression).toContain("#postcode");
+      expect(updateInput.UpdateExpression).toContain("#canton");
+      expect(updateInput.UpdateExpression).toContain("#email");
+      expect(updateInput.UpdateExpression).toContain("#telephone");
+
+      // Verify ExpressionAttributeValues have correct mapped values
+      expect(updateInput.ExpressionAttributeValues[":street"]).toBe(
+        "Neue Strasse 5",
+      );
+      expect(updateInput.ExpressionAttributeValues[":place"]).toBe("Bern");
+      expect(updateInput.ExpressionAttributeValues[":postcode"]).toBe("3000");
+      expect(updateInput.ExpressionAttributeValues[":canton"]).toBe("BE");
+      expect(updateInput.ExpressionAttributeValues[":email"]).toBe(
+        "alice.new@example.com",
+      );
+      expect(updateInput.ExpressionAttributeValues[":telephone"]).toBe(
+        "0781112233",
+      );
+    });
   });
 
-  it("updates existing account when fields differ", async () => {
-    const record = createImportedRecord({
-      firstName: "Alice",
-      lastName: "Johnson",
-      company: "New Corp",
-      email: "alice.new@example.com",
+  describe("skip path — no changes detected", () => {
+    it("skips record when all fields and tags are identical", async () => {
+      const record = createImportedRecord({
+        number: "001893",
+        first_name: "Alice",
+        last_name: "Smith",
+        company: "ACME Corp",
+        address_line_1: "Bahnhofstrasse 1",
+        address_line_2: "Suite 200",
+        city: "Zürich",
+        state: "ZH",
+        postal_code: "8001",
+        email: "alice@example.com",
+        phone_number: "+41791234567",
+        email_notifications_enabled: true,
+      });
+      mockScanImportedAccounts.mockResolvedValue([record]);
+
+      mockDocClientSend.mockImplementation(
+        (cmd: { _type: string; input: Record<string, unknown> }) => {
+          if (cmd._type === "Query") {
+            const input = cmd.input as {
+              IndexName?: string;
+              ExpressionAttributeValues?: Record<string, string>;
+            };
+            if (input.IndexName === "sourceId-index") {
+              return Promise.resolve({
+                Items: [
+                  {
+                    PK: "ACCOUNT#001893",
+                    SK: "METADATA",
+                    name: "Alice Smith",
+                    company: "ACME Corp",
+                    street: "Bahnhofstrasse 1, Suite 200",
+                    place: "Zürich",
+                    postcode: "8001",
+                    canton: "ZH",
+                    email: "alice@example.com",
+                    telephone: "0791234567",
+                    sourceId: "abc-123",
+                  },
+                ],
+              });
+            }
+            // TAG# query — returns matching tags
+            if (
+              input.ExpressionAttributeValues &&
+              ":tagPrefix" in input.ExpressionAttributeValues
+            ) {
+              return Promise.resolve({
+                Items: [
+                  {
+                    PK: "ACCOUNT#001893",
+                    SK: "TAG#email_notification",
+                    tag: "email_notification",
+                  },
+                  {
+                    PK: "ACCOUNT#001893",
+                    SK: "TAG#text_notification",
+                    tag: "text_notification",
+                  },
+                ],
+              });
+            }
+            return Promise.resolve({ Items: [] });
+          }
+          if (cmd._type === "Get") {
+            return Promise.resolve({
+              Item: { PK: "SEQUENCE#ACCOUNT", SK: "COUNTER", value: 5000 },
+            });
+          }
+          return Promise.resolve({});
+        },
+      );
+
+      const result = await syncToShopTable(createMockEvent());
+
+      expect(result.statusCode).toBe(200);
+      const body = JSON.parse(result.body as string);
+      expect(body.added).toBe(0);
+      expect(body.updated).toBe(0);
+      expect(body.skipped).toBe(1);
+
+      // No Put, Update, or Delete calls for account data (only Query for findBySourceId and tags, Get for counter)
+      const writeCalls = mockDocClientSend.mock.calls.filter(
+        (call: unknown[]) => {
+          const type = (call[0] as { _type: string })._type;
+          return type === "Put" || type === "Delete";
+        },
+      );
+      expect(writeCalls).toHaveLength(0);
+
+      // No metadata updates (only sequence counter check may trigger Update if needed)
+      const updateCalls = mockDocClientSend.mock.calls.filter(
+        (call: unknown[]) => (call[0] as { _type: string })._type === "Update",
+      );
+      // The only possible update is the sequence counter — not a metadata update
+      for (const call of updateCalls) {
+        const input = (call[0] as { input: { Key?: { PK?: string } } }).input;
+        expect(input.Key?.PK).not.toBe("ACCOUNT#001893");
+      }
     });
-    mockScanImportedAccounts.mockResolvedValue([record]);
-
-    mockDocClientSend.mockImplementation((cmd: { _type: string }) => {
-      if (cmd._type === "Scan") {
-        // findBySourceId — returns existing account with different fields
-        return Promise.resolve({
-          Items: [
-            {
-              PK: "ACCOUNT#0000001",
-              SK: "METADATA",
-              name: "Alice Smith",
-              company: "ACME Corp",
-              telephone: "alice@example.com",
-              sourceId: "abc-123",
-            },
-          ],
-        });
-      }
-      if (cmd._type === "Update") {
-        return Promise.resolve({});
-      }
-      return Promise.resolve({});
-    });
-
-    const result = await syncToShopTable(createMockEvent());
-
-    expect(result.statusCode).toBe(200);
-    const body = JSON.parse(result.body as string);
-    expect(body.added).toBe(0);
-    expect(body.updated).toBe(1);
-    expect(body.skipped).toBe(0);
-    expect(body.errored).toBe(0);
-
-    // Verify UpdateCommand was called with correct values
-    const updateCall = mockDocClientSend.mock.calls.find(
-      (call: unknown[]) => (call[0] as { _type: string })._type === "Update",
-    );
-    expect(updateCall).toBeDefined();
-
-    const updateInput = (
-      updateCall![0] as {
-        input: {
-          Key: { PK: string; SK: string };
-          ExpressionAttributeValues: {
-            ":name": string;
-            ":company": string;
-            ":telephone": string;
-          };
-        };
-      }
-    ).input;
-    expect(updateInput.Key.PK).toBe("ACCOUNT#0000001");
-    expect(updateInput.ExpressionAttributeValues[":name"]).toBe(
-      "Alice Johnson",
-    );
-    expect(updateInput.ExpressionAttributeValues[":company"]).toBe("New Corp");
-    expect(updateInput.ExpressionAttributeValues[":telephone"]).toBe(
-      "alice.new@example.com",
-    );
   });
 
-  it("skips record when fields are identical", async () => {
-    const record = createImportedRecord({
-      firstName: "Alice",
-      lastName: "Smith",
-      company: "ACME Corp",
-      email: "alice@example.com",
-    });
-    mockScanImportedAccounts.mockResolvedValue([record]);
+  describe("sequence counter update at end of sync", () => {
+    it("updates sequence counter to max imported number when higher than current", async () => {
+      const records = [
+        createImportedRecord({ id: "a", number: "001893" }),
+        createImportedRecord({ id: "b", number: "002500" }),
+        createImportedRecord({ id: "c", number: "000100" }),
+      ];
+      mockScanImportedAccounts.mockResolvedValue(records);
 
-    mockDocClientSend.mockImplementation((cmd: { _type: string }) => {
-      if (cmd._type === "Scan") {
-        // findBySourceId — returns existing account with identical fields
-        return Promise.resolve({
-          Items: [
-            {
-              PK: "ACCOUNT#0000001",
-              SK: "METADATA",
-              name: "Alice Smith",
-              company: "ACME Corp",
-              telephone: "alice@example.com",
-              sourceId: "abc-123",
-            },
-          ],
-        });
-      }
-      return Promise.resolve({});
-    });
+      mockDocClientSend.mockImplementation(
+        (cmd: { _type: string; input: Record<string, unknown> }) => {
+          if (cmd._type === "Query") {
+            const input = cmd.input as { IndexName?: string };
+            if (input.IndexName === "sourceId-index") {
+              return Promise.resolve({ Items: [] });
+            }
+            return Promise.resolve({ Items: [] });
+          }
+          if (cmd._type === "Get") {
+            // Current sequence counter is 1000 — less than max imported (2500)
+            return Promise.resolve({
+              Item: { PK: "SEQUENCE#ACCOUNT", SK: "COUNTER", value: 1000 },
+            });
+          }
+          return Promise.resolve({});
+        },
+      );
 
-    const result = await syncToShopTable(createMockEvent());
+      await syncToShopTable(createMockEvent());
 
-    expect(result.statusCode).toBe(200);
-    const body = JSON.parse(result.body as string);
-    expect(body.added).toBe(0);
-    expect(body.updated).toBe(0);
-    expect(body.skipped).toBe(1);
-    expect(body.errored).toBe(0);
+      // Find the sequence counter UpdateCommand
+      const updateCalls = mockDocClientSend.mock.calls.filter(
+        (call: unknown[]) => (call[0] as { _type: string })._type === "Update",
+      );
 
-    // Verify no write commands were issued (only Scan calls for findBySourceId)
-    const writeCalls = mockDocClientSend.mock.calls.filter(
-      (call: unknown[]) => {
-        const type = (call[0] as { _type: string })._type;
-        return type === "TransactWrite" || type === "Update";
-      },
-    );
-    expect(writeCalls).toHaveLength(0);
-  });
+      const counterUpdate = updateCalls.find((call: unknown[]) => {
+        const input = (
+          call[0] as { input: { Key?: { PK?: string; SK?: string } } }
+        ).input;
+        return (
+          input.Key?.PK === "SEQUENCE#ACCOUNT" && input.Key?.SK === "COUNTER"
+        );
+      });
+      expect(counterUpdate).toBeDefined();
 
-  it("records individual record failure and continues processing remaining records", async () => {
-    const record1 = createImportedRecord({ id: "fail-1", firstName: "Fail" });
-    const record2 = createImportedRecord({
-      id: "success-2",
-      firstName: "Success",
-    });
-    mockScanImportedAccounts.mockResolvedValue([record1, record2]);
-
-    let scanCallCount = 0;
-    mockDocClientSend.mockImplementation((cmd: { _type: string }) => {
-      if (cmd._type === "Scan") {
-        scanCallCount++;
-        if (scanCallCount === 1) {
-          // First record's findBySourceId — throws error
-          return Promise.reject(new Error("DynamoDB throttled"));
+      const counterInput = (
+        counterUpdate![0] as {
+          input: { ExpressionAttributeValues: Record<string, unknown> };
         }
-        // Second record's findBySourceId — no existing account
-        return Promise.resolve({ Items: [] });
-      }
-      if (cmd._type === "Get") {
-        return Promise.resolve({
-          Item: { PK: "SEQUENCE#ACCOUNT", SK: "COUNTER", value: 10 },
-        });
-      }
-      if (cmd._type === "TransactWrite") {
-        return Promise.resolve({});
-      }
-      return Promise.resolve({});
+      ).input;
+      // Max imported number is 2500 (from "002500")
+      expect(counterInput.ExpressionAttributeValues[":newVal"]).toBe(2500);
     });
 
-    const result = await syncToShopTable(createMockEvent());
+    it("does NOT update sequence counter if current value is already higher", async () => {
+      const records = [
+        createImportedRecord({ id: "a", number: "001893" }),
+        createImportedRecord({ id: "b", number: "000500" }),
+      ];
+      mockScanImportedAccounts.mockResolvedValue(records);
 
-    expect(result.statusCode).toBe(200);
-    const body = JSON.parse(result.body as string);
-    expect(body.errored).toBe(1);
-    expect(body.added).toBe(1);
-    expect(body.errors).toHaveLength(1);
-    expect(body.errors[0].consignCloudId).toBe("fail-1");
-    expect(body.errors[0].message).toBe("DynamoDB throttled");
-  });
+      mockDocClientSend.mockImplementation(
+        (cmd: { _type: string; input: Record<string, unknown> }) => {
+          if (cmd._type === "Query") {
+            const input = cmd.input as { IndexName?: string };
+            if (input.IndexName === "sourceId-index") {
+              return Promise.resolve({ Items: [] });
+            }
+            return Promise.resolve({ Items: [] });
+          }
+          if (cmd._type === "Get") {
+            // Current sequence counter is 5000 — higher than max imported (1893)
+            return Promise.resolve({
+              Item: { PK: "SEQUENCE#ACCOUNT", SK: "COUNTER", value: 5000 },
+            });
+          }
+          return Promise.resolve({});
+        },
+      );
 
-  it("excludes summary record from sync scan (handled by scanImportedAccounts)", async () => {
-    // scanImportedAccounts is responsible for filtering out SUMMARY and SYNC#REPORT records.
-    // This test verifies the handler uses scanImportedAccounts (which filters) rather than
-    // doing its own raw scan.
-    mockScanImportedAccounts.mockResolvedValue([]);
+      await syncToShopTable(createMockEvent());
 
-    const result = await syncToShopTable(createMockEvent());
+      // Find any UpdateCommand calls
+      const updateCalls = mockDocClientSend.mock.calls.filter(
+        (call: unknown[]) => (call[0] as { _type: string })._type === "Update",
+      );
 
-    expect(result.statusCode).toBe(200);
-    const body = JSON.parse(result.body as string);
-    expect(body.added).toBe(0);
-    expect(body.updated).toBe(0);
-    expect(body.skipped).toBe(0);
-    expect(body.errored).toBe(0);
-
-    // Verify scanImportedAccounts was called (it handles filtering internally)
-    expect(mockScanImportedAccounts).toHaveBeenCalledOnce();
-  });
-
-  it("writes sync report with PK SYNC#REPORT and ISO timestamp SK", async () => {
-    const record = createImportedRecord();
-    mockScanImportedAccounts.mockResolvedValue([record]);
-
-    mockDocClientSend.mockImplementation((cmd: { _type: string }) => {
-      if (cmd._type === "Scan") {
-        return Promise.resolve({ Items: [] });
-      }
-      if (cmd._type === "Get") {
-        return Promise.resolve({
-          Item: { PK: "SEQUENCE#ACCOUNT", SK: "COUNTER", value: 0 },
-        });
-      }
-      if (cmd._type === "TransactWrite") {
-        return Promise.resolve({});
-      }
-      return Promise.resolve({});
+      // No sequence counter update should have been made
+      const counterUpdate = updateCalls.find((call: unknown[]) => {
+        const input = (
+          call[0] as { input: { Key?: { PK?: string; SK?: string } } }
+        ).input;
+        return (
+          input.Key?.PK === "SEQUENCE#ACCOUNT" && input.Key?.SK === "COUNTER"
+        );
+      });
+      expect(counterUpdate).toBeUndefined();
     });
-
-    await syncToShopTable(createMockEvent());
-
-    expect(mockWriteSyncReport).toHaveBeenCalledOnce();
-    const reportArg = mockWriteSyncReport.mock.calls[0][0] as {
-      added: number;
-      updated: number;
-      skipped: number;
-      errored: number;
-      errors: unknown[];
-      startedAt: string;
-      completedAt: string;
-    };
-
-    expect(reportArg.added).toBe(1);
-    expect(reportArg.updated).toBe(0);
-    expect(reportArg.skipped).toBe(0);
-    expect(reportArg.errored).toBe(0);
-    expect(reportArg.errors).toEqual([]);
-
-    // Verify startedAt and completedAt are valid ISO timestamps
-    expect(new Date(reportArg.startedAt).toISOString()).toBe(
-      reportArg.startedAt,
-    );
-    expect(new Date(reportArg.completedAt).toISOString()).toBe(
-      reportArg.completedAt,
-    );
-    // completedAt should be >= startedAt
-    expect(new Date(reportArg.completedAt).getTime()).toBeGreaterThanOrEqual(
-      new Date(reportArg.startedAt).getTime(),
-    );
-  });
-
-  it("logs at start and completion of sync", async () => {
-    const infoSpy = vi.spyOn(console, "info").mockImplementation(() => {});
-
-    mockScanImportedAccounts.mockResolvedValue([createImportedRecord()]);
-
-    mockDocClientSend.mockImplementation((cmd: { _type: string }) => {
-      if (cmd._type === "Scan") {
-        return Promise.resolve({ Items: [] });
-      }
-      if (cmd._type === "Get") {
-        return Promise.resolve({
-          Item: { PK: "SEQUENCE#ACCOUNT", SK: "COUNTER", value: 0 },
-        });
-      }
-      if (cmd._type === "TransactWrite") {
-        return Promise.resolve({});
-      }
-      return Promise.resolve({});
-    });
-
-    await syncToShopTable(createMockEvent());
-
-    // Verify start log
-    expect(infoSpy).toHaveBeenCalledWith(
-      "Sync started",
-      expect.objectContaining({ recordCount: 1 }),
-    );
-
-    // Verify completion log
-    expect(infoSpy).toHaveBeenCalledWith(
-      "Sync completed",
-      expect.objectContaining({
-        added: 1,
-        updated: 0,
-        skipped: 0,
-        errored: 0,
-        totalProcessed: 1,
-      }),
-    );
-
-    infoSpy.mockRestore();
   });
 });

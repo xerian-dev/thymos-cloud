@@ -35,7 +35,11 @@ describe("POST /api/accounts - createAccount", () => {
       const event = makeEvent({
         accountNumber: 42,
         name: "Jane Smith",
-        address: "123 Main St",
+        street: "123 Main St",
+        place: "Zurich",
+        postcode: "8001",
+        canton: "ZH",
+        email: "jane@example.com",
         telephone: "555-0100",
       });
 
@@ -48,12 +52,47 @@ describe("POST /api/accounts - createAccount", () => {
           uuid: "test-uuid-1234",
           shopUid: 42,
           name: "Jane Smith",
-          address: "123 Main St",
+          street: "123 Main St",
+          place: "Zurich",
+          postcode: "8001",
+          canton: "ZH",
+          email: "jane@example.com",
           telephone: "555-0100",
           commentCount: 0,
           tags: [],
         }),
       });
+    });
+
+    it("response includes structured address fields and excludes address", async () => {
+      mockedSend.mockResolvedValueOnce({} as never);
+
+      const event = makeEvent({
+        accountNumber: 100,
+        name: "Test User",
+        street: "Bahnhofstrasse 1",
+        place: "Bern",
+        postcode: "3000",
+        canton: "BE",
+        email: "test@example.com",
+        telephone: "0791234567",
+      });
+
+      const result = await createAccount(event);
+
+      expect(result.statusCode).toBe(201);
+      const body = JSON.parse((result as { body: string }).body);
+
+      // Verify new fields are present
+      expect(body).toHaveProperty("street", "Bahnhofstrasse 1");
+      expect(body).toHaveProperty("place", "Bern");
+      expect(body).toHaveProperty("postcode", "3000");
+      expect(body).toHaveProperty("canton", "BE");
+      expect(body).toHaveProperty("email", "test@example.com");
+      expect(body).toHaveProperty("telephone", "0791234567");
+
+      // Verify address field is NOT present
+      expect(body).not.toHaveProperty("address");
     });
 
     it("returns 409 when account number already exists (duplicate)", async () => {
@@ -68,7 +107,7 @@ describe("POST /api/accounts - createAccount", () => {
       const event = makeEvent({
         accountNumber: 42,
         name: "Jane Smith",
-        address: "123 Main St",
+        street: "123 Main St",
         telephone: "555-0100",
       });
 
@@ -88,7 +127,7 @@ describe("POST /api/accounts - createAccount", () => {
       const event = makeEvent({
         accountNumber: 10000000,
         name: "Jane Smith",
-        address: "123 Main St",
+        street: "123 Main St",
         telephone: "555-0100",
       });
 
@@ -154,7 +193,7 @@ describe("POST /api/accounts - createAccount", () => {
       const event = makeEvent({
         accountNumber: 5,
         name: "Jane Smith",
-        address: "123 Main St",
+        street: "123 Main St",
         telephone: "555-0100",
       });
 
@@ -167,7 +206,11 @@ describe("POST /api/accounts - createAccount", () => {
           uuid: "test-uuid-1234",
           shopUid: 5,
           name: "Jane Smith",
-          address: "123 Main St",
+          street: "123 Main St",
+          place: "",
+          postcode: "",
+          canton: "",
+          email: "",
           telephone: "555-0100",
           commentCount: 0,
           tags: [],
@@ -196,7 +239,7 @@ describe("POST /api/accounts - createAccount", () => {
       const event = makeEvent({
         accountNumber: 5,
         name: "Jane Smith",
-        address: "123 Main St",
+        street: "123 Main St",
         telephone: "555-0100",
       });
 
@@ -217,7 +260,7 @@ describe("POST /api/accounts - createAccount", () => {
       const event = makeEvent({
         accountNumber: 42,
         name: "Jane Smith",
-        address: "123 Main St",
+        street: "123 Main St",
         telephone: "555-0100",
       });
 
@@ -249,7 +292,7 @@ describe("POST /api/accounts - createAccount", () => {
           const event = makeEvent({
             accountNumber: n,
             name: "Test",
-            address: "Addr",
+            street: "Addr",
             telephone: "123",
           });
 

@@ -11,29 +11,44 @@ export async function listAccounts(
   _event: APIGatewayProxyEventV2,
 ): Promise<APIGatewayProxyResultV2> {
   try {
-    const scanResult = await docClient.send(
-      new ScanCommand({
-        TableName: TABLE_NAME,
-        FilterExpression: "SK = :metadata AND begins_with(PK, :prefix)",
-        ExpressionAttributeValues: {
-          ":metadata": "METADATA",
-          ":prefix": "ACCOUNT#",
-        },
-        Limit: 5000,
-      }),
-    );
+    const allItems: Record<string, unknown>[] = [];
+    let exclusiveStartKey: Record<string, unknown> | undefined;
 
-    const items = scanResult.Items ?? [];
+    do {
+      const scanResult = await docClient.send(
+        new ScanCommand({
+          TableName: TABLE_NAME,
+          FilterExpression: "SK = :metadata AND begins_with(PK, :prefix)",
+          ExpressionAttributeValues: {
+            ":metadata": "METADATA",
+            ":prefix": "ACCOUNT#",
+          },
+          ExclusiveStartKey: exclusiveStartKey,
+        }),
+      );
 
-    const accounts = items.map((item) => {
+      if (scanResult.Items) {
+        allItems.push(...scanResult.Items);
+      }
+
+      exclusiveStartKey = scanResult.LastEvaluatedKey as
+        | Record<string, unknown>
+        | undefined;
+    } while (exclusiveStartKey);
+
+    const accounts = allItems.map((item) => {
       const pk = item.PK as string;
 
       return {
         uuid: item.uuid as string,
         shopUid: parseAccountPk(pk),
         name: item.name as string,
-        address: item.address as string,
-        telephone: item.telephone as string,
+        street: (item.street as string) ?? "",
+        place: (item.place as string) ?? "",
+        postcode: (item.postcode as string) ?? "",
+        canton: (item.canton as string) ?? "",
+        email: (item.email as string) ?? "",
+        telephone: (item.telephone as string) ?? "",
         company: (item.company as string) ?? "",
         commentCount: 0,
         tags: [] as string[],

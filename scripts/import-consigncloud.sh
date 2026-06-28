@@ -31,14 +31,18 @@ case "${1:-help}" in
   fetch)
     LAMBDA_NAME="${PROJECT_NAME}-${ENVIRONMENT}-shop-import"
     PAYLOAD='{"rawPath":"/api/import/fetch","requestContext":{"http":{"method":"POST","path":"/api/import/fetch"}}}'
-    echo "Invoking fetch Lambda directly..."
-    aws lambda invoke \
+    echo "Invoking fetch Lambda: ${LAMBDA_NAME}..."
+    if ! aws lambda invoke \
       --function-name "$LAMBDA_NAME" \
       --payload "$PAYLOAD" \
       --cli-binary-format raw-in-base64-out \
-      /tmp/fetch-response.json > /dev/null 2>&1
-    echo "Fetch complete. Response:"
-    python3 -c "import json; r=json.load(open('/tmp/fetch-response.json')); print(json.dumps(json.loads(r.get('body','{}')), indent=2))"
+      /tmp/fetch-response.json; then
+      echo "ERROR: Lambda invocation failed."
+      exit 1
+    fi
+    echo ""
+    echo "Response:"
+    python3 -c "import json; r=json.load(open('/tmp/fetch-response.json')); body=r.get('body','{}'); print(json.dumps(json.loads(body) if body else {}, indent=2))" || cat /tmp/fetch-response.json
     ;;
 
   sync)
@@ -46,19 +50,24 @@ case "${1:-help}" in
     LOG_GROUP="/aws/lambda/${LAMBDA_NAME}"
     PAYLOAD='{"rawPath":"/api/import/sync","requestContext":{"http":{"method":"POST","path":"/api/import/sync"}}}'
 
-    echo "Invoking sync Lambda directly..."
+    echo "Invoking sync Lambda: ${LAMBDA_NAME}..."
 
     # Start log tailing in background
     aws logs tail "$LOG_GROUP" --follow --format short \
       --filter-pattern "Sync" 2>/dev/null &
     TAIL_PID=$!
 
-    # Invoke Lambda (blocks until complete)
-    aws lambda invoke \
+    # Invoke Lambda (blocks until complete; 5min read timeout matches Lambda timeout)
+    if ! aws lambda invoke \
       --function-name "$LAMBDA_NAME" \
       --payload "$PAYLOAD" \
       --cli-binary-format raw-in-base64-out \
-      /tmp/sync-response.json > /dev/null 2>&1
+      --cli-read-timeout 300 \
+      /tmp/sync-response.json; then
+      kill "$TAIL_PID" 2>/dev/null || true
+      echo "ERROR: Lambda invocation failed."
+      exit 1
+    fi
 
     # Stop log tailing
     kill "$TAIL_PID" 2>/dev/null || true
@@ -66,26 +75,33 @@ case "${1:-help}" in
 
     echo ""
     echo "=== Final Result ==="
-    python3 -c "import json; r=json.load(open('/tmp/sync-response.json')); print(json.dumps(json.loads(r.get('body','{}')), indent=2))" 2>/dev/null || echo "Check logs above for results."
+    python3 -c "import json; r=json.load(open('/tmp/sync-response.json')); body=r.get('body','{}'); print(json.dumps(json.loads(body) if body else {}, indent=2))" || cat /tmp/sync-response.json
     ;;
 
   run)
     echo "=== Phase 1: Fetch from ConsignCloud ==="
     LAMBDA_NAME="${PROJECT_NAME}-${ENVIRONMENT}-shop-import"
-    aws lambda invoke \
+    if ! aws lambda invoke \
       --function-name "$LAMBDA_NAME" \
       --payload '{"rawPath":"/api/import/fetch","requestContext":{"http":{"method":"POST","path":"/api/import/fetch"}}}' \
       --cli-binary-format raw-in-base64-out \
-      /tmp/fetch-response.json > /dev/null 2>&1
-    python3 -c "import json; r=json.load(open('/tmp/fetch-response.json')); print(json.dumps(json.loads(r.get('body','{}')), indent=2))"
+      /tmp/fetch-response.json; then
+      echo "ERROR: Fetch Lambda invocation failed."
+      exit 1
+    fi
+    python3 -c "import json; r=json.load(open('/tmp/fetch-response.json')); body=r.get('body','{}'); print(json.dumps(json.loads(body) if body else {}, indent=2))" || cat /tmp/fetch-response.json
     echo ""
     echo "=== Phase 2: Sync to Shop table ==="
-    aws lambda invoke \
+    if ! aws lambda invoke \
       --function-name "$LAMBDA_NAME" \
       --payload '{"rawPath":"/api/import/sync","requestContext":{"http":{"method":"POST","path":"/api/import/sync"}}}' \
       --cli-binary-format raw-in-base64-out \
-      /tmp/sync-response.json > /dev/null 2>&1
-    python3 -c "import json; r=json.load(open('/tmp/sync-response.json')); print(json.dumps(json.loads(r.get('body','{}')), indent=2))"
+      --cli-read-timeout 300 \
+      /tmp/sync-response.json; then
+      echo "ERROR: Sync Lambda invocation failed."
+      exit 1
+    fi
+    python3 -c "import json; r=json.load(open('/tmp/sync-response.json')); body=r.get('body','{}'); print(json.dumps(json.loads(body) if body else {}, indent=2))" || cat /tmp/sync-response.json
     ;;
 
   *)

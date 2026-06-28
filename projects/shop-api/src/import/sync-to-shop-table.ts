@@ -10,8 +10,9 @@ import { docClient, TABLE_NAME } from "../dynamodb-client";
 import {
   QueryCommand,
   GetCommand,
-  TransactWriteCommand,
+  PutCommand,
   UpdateCommand,
+  DeleteCommand,
 } from "@aws-sdk/lib-dynamodb";
 
 export type { ImportReport, ImportError } from "./import-table-client";
@@ -21,7 +22,12 @@ interface ShopTableAccount {
   SK: string;
   name: string;
   company?: string;
-  telephone: string;
+  street?: string;
+  place?: string;
+  postcode?: string;
+  canton?: string;
+  email?: string;
+  telephone?: string;
   sourceId?: string;
 }
 
@@ -31,12 +37,18 @@ function toConsignCloudAccount(
   return {
     id: record.id,
     number: record.number,
-    first_name: record.firstName,
-    last_name: record.lastName,
+    first_name: record.first_name,
+    last_name: record.last_name,
     company: record.company,
     email: record.email,
+    phone_number: record.phone_number,
+    address_line_1: record.address_line_1,
+    address_line_2: record.address_line_2,
+    city: record.city,
+    state: record.state,
+    postal_code: record.postal_code,
     balance: record.balance,
-    email_notifications_enabled: record.emailNotificationsEnabled,
+    email_notifications_enabled: record.email_notifications_enabled,
     created: record.created,
   };
 }
@@ -138,67 +150,128 @@ export async function syncToShopTable(
       const mapped = mapConsignCloudToShop(consignCloudAccount);
       const existing = await findBySourceId(record.id);
 
+      // Query existing tags for change detection
+      let existingTags: string[] = [];
+      if (existing) {
+        const tagResult = await docClient.send(
+          new QueryCommand({
+            TableName: TABLE_NAME,
+            KeyConditionExpression: "PK = :pk AND begins_with(SK, :tagPrefix)",
+            ExpressionAttributeValues: {
+              ":pk": existing.PK,
+              ":tagPrefix": "TAG#",
+            },
+          }),
+        );
+        existingTags = (tagResult.Items ?? []).map(
+          (item) => item.tag as string,
+        );
+      }
+
       if (!existing) {
-        const currentCounter: number = await getSequenceCounter();
-        const nextCounter: number = currentCounter + 1;
-        const paddedNumber: string = padAccountNumber(nextCounter);
+        const paddedNumber = record.number;
 
         await docClient.send(
-          new TransactWriteCommand({
-            TransactItems: [
-              {
-                Put: {
-                  TableName: TABLE_NAME,
-                  Item: {
-                    PK: `ACCOUNT#${paddedNumber}`,
-                    SK: "METADATA",
-                    uuid: crypto.randomUUID(),
-                    name: mapped.name,
-                    address: "",
-                    telephone: mapped.telephone,
-                    company: mapped.company,
-                    sourceId: record.id,
-                    createdAt: new Date().toISOString(),
-                  },
-                },
-              },
-              {
-                Update: {
-                  TableName: TABLE_NAME,
-                  Key: { PK: "SEQUENCE#ACCOUNT", SK: "COUNTER" },
-                  UpdateExpression: "SET #val = :newVal",
-                  ConditionExpression: "#val = :currentVal",
-                  ExpressionAttributeNames: { "#val": "value" },
-                  ExpressionAttributeValues: {
-                    ":newVal": nextCounter,
-                    ":currentVal": currentCounter,
-                  },
-                },
-              },
-            ],
+          new PutCommand({
+            TableName: TABLE_NAME,
+            Item: {
+              PK: `ACCOUNT#${paddedNumber}`,
+              SK: "METADATA",
+              uuid: crypto.randomUUID(),
+              name: mapped.name,
+              street: mapped.street,
+              place: mapped.place,
+              postcode: mapped.postcode,
+              canton: mapped.canton,
+              email: mapped.email,
+              telephone: mapped.telephone,
+              company: mapped.company,
+              sourceId: record.id,
+              createdAt: new Date().toISOString(),
+            },
           }),
         );
 
+        for (const tag of mapped.tags) {
+          await docClient.send(
+            new PutCommand({
+              TableName: TABLE_NAME,
+              Item: {
+                PK: `ACCOUNT#${paddedNumber}`,
+                SK: `TAG#${tag}`,
+                tag,
+                createdAt: new Date().toISOString(),
+              },
+            }),
+          );
+        }
+
         added++;
-      } else if (hasFieldChanges(existing, mapped)) {
+      } else if (hasFieldChanges({ ...existing, tags: existingTags }, mapped)) {
         await docClient.send(
           new UpdateCommand({
             TableName: TABLE_NAME,
             Key: { PK: existing.PK, SK: existing.SK },
             UpdateExpression:
-              "SET #name = :name, #company = :company, #telephone = :telephone",
+              "SET #name = :name, #company = :company, #street = :street, #place = :place, #postcode = :postcode, #canton = :canton, #email = :email, #telephone = :telephone",
             ExpressionAttributeNames: {
               "#name": "name",
               "#company": "company",
+              "#street": "street",
+              "#place": "place",
+              "#postcode": "postcode",
+              "#canton": "canton",
+              "#email": "email",
               "#telephone": "telephone",
             },
             ExpressionAttributeValues: {
               ":name": mapped.name,
               ":company": mapped.company,
+              ":street": mapped.street,
+              ":place": mapped.place,
+              ":postcode": mapped.postcode,
+              ":canton": mapped.canton,
+              ":email": mapped.email,
               ":telephone": mapped.telephone,
             },
           }),
         );
+
+        // Delete existing TAG# items
+        const existingTagItems = await docClient.send(
+          new QueryCommand({
+            TableName: TABLE_NAME,
+            KeyConditionExpression: "PK = :pk AND begins_with(SK, :tagPrefix)",
+            ExpressionAttributeValues: {
+              ":pk": existing.PK,
+              ":tagPrefix": "TAG#",
+            },
+          }),
+        );
+
+        for (const tagItem of existingTagItems.Items ?? []) {
+          await docClient.send(
+            new DeleteCommand({
+              TableName: TABLE_NAME,
+              Key: { PK: tagItem.PK as string, SK: tagItem.SK as string },
+            }),
+          );
+        }
+
+        // Write new TAG# items
+        for (const tag of mapped.tags) {
+          await docClient.send(
+            new PutCommand({
+              TableName: TABLE_NAME,
+              Item: {
+                PK: existing.PK,
+                SK: `TAG#${tag}`,
+                tag,
+                createdAt: new Date().toISOString(),
+              },
+            }),
+          );
+        }
 
         updated++;
       } else {
@@ -226,6 +299,25 @@ export async function syncToShopTable(
         skipped,
         errored,
       });
+    }
+  }
+
+  // Update sequence counter to max imported number (if higher)
+  if (records.length > 0) {
+    const maxImportedNumber = Math.max(
+      ...records.map((r) => parseInt(r.number, 10)),
+    );
+    const currentCounter = await getSequenceCounter();
+    if (maxImportedNumber > currentCounter) {
+      await docClient.send(
+        new UpdateCommand({
+          TableName: TABLE_NAME,
+          Key: { PK: "SEQUENCE#ACCOUNT", SK: "COUNTER" },
+          UpdateExpression: "SET #val = :newVal",
+          ExpressionAttributeNames: { "#val": "value" },
+          ExpressionAttributeValues: { ":newVal": maxImportedNumber },
+        }),
+      );
     }
   }
 

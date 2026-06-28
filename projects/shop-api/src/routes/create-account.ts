@@ -47,7 +47,16 @@ export async function createAccount(
     });
   }
 
-  const { accountNumber, name, address, telephone } = validation.data;
+  const {
+    accountNumber,
+    name,
+    street,
+    place,
+    postcode,
+    canton,
+    email,
+    telephone,
+  } = validation.data;
 
   // 3. Check max
   if (accountNumber > 9999999) {
@@ -64,7 +73,11 @@ export async function createAccount(
     SK: "METADATA",
     uuid,
     name,
-    address,
+    street,
+    place,
+    postcode,
+    canton,
+    email,
     telephone,
     createdAt,
   };
@@ -136,7 +149,11 @@ export async function createAccount(
     uuid,
     shopUid: accountNumber,
     name,
-    address,
+    street,
+    place,
+    postcode,
+    canton,
+    email,
     telephone,
     commentCount: 0,
     tags: [],

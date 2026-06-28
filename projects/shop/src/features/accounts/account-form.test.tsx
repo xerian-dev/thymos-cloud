@@ -55,13 +55,23 @@ describe("AccountForm", () => {
   });
 
   describe("field presence", () => {
-    it("renders all 4 input fields", () => {
+    it("renders all input fields", () => {
       renderForm();
 
       expect(screen.getByLabelText(/account number/i)).toBeInTheDocument();
       expect(screen.getByLabelText(/name/i)).toBeInTheDocument();
-      expect(screen.getByLabelText(/address/i)).toBeInTheDocument();
+      expect(screen.getByLabelText(/street/i)).toBeInTheDocument();
+      expect(screen.getByLabelText(/place/i)).toBeInTheDocument();
+      expect(screen.getByLabelText(/postcode/i)).toBeInTheDocument();
+      expect(screen.getByLabelText(/canton/i)).toBeInTheDocument();
+      expect(screen.getByLabelText(/email/i)).toBeInTheDocument();
       expect(screen.getByLabelText(/telephone/i)).toBeInTheDocument();
+    });
+
+    it("does not render an address input", () => {
+      renderForm();
+
+      expect(screen.queryByLabelText(/address/i)).not.toBeInTheDocument();
     });
 
     it("all fields have associated labels via htmlFor/id pairing", () => {
@@ -69,12 +79,20 @@ describe("AccountForm", () => {
 
       const accountNumberInput = screen.getByLabelText(/account number/i);
       const nameInput = screen.getByLabelText(/name/i);
-      const addressInput = screen.getByLabelText(/address/i);
+      const streetInput = screen.getByLabelText(/street/i);
+      const placeInput = screen.getByLabelText(/place/i);
+      const postcodeInput = screen.getByLabelText(/postcode/i);
+      const cantonInput = screen.getByLabelText(/canton/i);
+      const emailInput = screen.getByLabelText(/email/i);
       const telephoneInput = screen.getByLabelText(/telephone/i);
 
       expect(accountNumberInput).toHaveAttribute("id", "account-number");
       expect(nameInput).toHaveAttribute("id", "name");
-      expect(addressInput).toHaveAttribute("id", "address");
+      expect(streetInput).toHaveAttribute("id", "street");
+      expect(placeInput).toHaveAttribute("id", "place");
+      expect(postcodeInput).toHaveAttribute("id", "postcode");
+      expect(cantonInput).toHaveAttribute("id", "canton");
+      expect(emailInput).toHaveAttribute("id", "email");
       expect(telephoneInput).toHaveAttribute("id", "telephone");
     });
   });
@@ -170,7 +188,11 @@ describe("AccountForm", () => {
         expect(screen.getByLabelText(/account number/i)).toBeDisabled();
       });
       expect(screen.getByLabelText(/name/i)).toBeDisabled();
-      expect(screen.getByLabelText(/address/i)).toBeDisabled();
+      expect(screen.getByLabelText(/street/i)).toBeDisabled();
+      expect(screen.getByLabelText(/place/i)).toBeDisabled();
+      expect(screen.getByLabelText(/postcode/i)).toBeDisabled();
+      expect(screen.getByLabelText(/canton/i)).toBeDisabled();
+      expect(screen.getByLabelText(/email/i)).toBeDisabled();
       expect(screen.getByLabelText(/telephone/i)).toBeDisabled();
       expect(screen.getByRole("button", { name: /creating/i })).toBeDisabled();
 
@@ -182,7 +204,11 @@ describe("AccountForm", () => {
             uuid: "1",
             shopUid: 42,
             name: "Test",
-            address: "",
+            street: "",
+            place: "",
+            postcode: "",
+            canton: "",
+            email: "",
             telephone: "",
             commentCount: 0,
             tags: [],
@@ -267,11 +293,11 @@ describe("AccountForm", () => {
       renderForm({ defaultAccountNumber: 42 });
 
       const nameInput = screen.getByLabelText(/name/i);
-      const addressInput = screen.getByLabelText(/address/i);
+      const streetInput = screen.getByLabelText(/street/i);
       const telephoneInput = screen.getByLabelText(/telephone/i);
 
       fireEvent.change(nameInput, { target: { value: "Test Account" } });
-      fireEvent.change(addressInput, { target: { value: "123 Main St" } });
+      fireEvent.change(streetInput, { target: { value: "123 Main St" } });
       fireEvent.change(telephoneInput, { target: { value: "555-0100" } });
 
       const form = screen.getByRole("dialog").querySelector("form")!;
@@ -288,13 +314,13 @@ describe("AccountForm", () => {
       // Values preserved
       expect(screen.getByLabelText(/account number/i)).toHaveValue("0000042");
       expect(screen.getByLabelText(/name/i)).toHaveValue("Test Account");
-      expect(screen.getByLabelText(/address/i)).toHaveValue("123 Main St");
+      expect(screen.getByLabelText(/street/i)).toHaveValue("123 Main St");
       expect(screen.getByLabelText(/telephone/i)).toHaveValue("555-0100");
 
       // Inputs re-enabled
       expect(screen.getByLabelText(/account number/i)).not.toBeDisabled();
       expect(screen.getByLabelText(/name/i)).not.toBeDisabled();
-      expect(screen.getByLabelText(/address/i)).not.toBeDisabled();
+      expect(screen.getByLabelText(/street/i)).not.toBeDisabled();
       expect(screen.getByLabelText(/telephone/i)).not.toBeDisabled();
       expect(
         screen.getByRole("button", { name: /create account/i }),
@@ -322,7 +348,11 @@ describe("AccountForm", () => {
           uuid: "test-uuid",
           shopUid: 42,
           name: "Test Account",
-          address: "",
+          street: "",
+          place: "",
+          postcode: "",
+          canton: "",
+          email: "",
           telephone: "",
           commentCount: 0,
           tags: [],

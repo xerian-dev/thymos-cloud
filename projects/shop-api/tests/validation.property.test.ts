@@ -7,8 +7,6 @@ function validBase(overrides: Record<string, unknown> = {}): unknown {
   return {
     accountNumber: 1,
     name: "Test",
-    address: "",
-    telephone: "",
     ...overrides,
   };
 }
@@ -120,27 +118,123 @@ describe("Feature: accounts-api-backend, Property 4: Name validation", () => {
 /**
  * Feature: accounts-api-backend, Property 5: Optional field length validation
  *
- * Validates: Requirements 4.3, 4.4
+ * Validates: Requirements 1.3, 1.4, 1.5, 1.6, 2.2, 3.2
  */
 describe("Feature: accounts-api-backend, Property 5: Optional field length validation", () => {
-  it("accepts address strings of length 0–500", () => {
+  it("accepts street strings of length 0–200", () => {
     fc.assert(
       fc.property(
-        fc.string({ minLength: 0, maxLength: 500 }),
-        (address: string) => {
-          const result = validateCreateAccount(validBase({ address }));
+        fc.string({ minLength: 0, maxLength: 200 }),
+        (street: string) => {
+          const result = validateCreateAccount(validBase({ street }));
           expect(result.valid).toBe(true);
         },
       ),
     );
   });
 
-  it("rejects address strings longer than 500 characters", () => {
+  it("rejects street strings longer than 200 characters", () => {
     fc.assert(
       fc.property(
-        fc.string({ minLength: 501, maxLength: 600 }),
-        (address: string) => {
-          const result = validateCreateAccount(validBase({ address }));
+        fc.string({ minLength: 201, maxLength: 300 }),
+        (street: string) => {
+          const result = validateCreateAccount(validBase({ street }));
+          expect(result.valid).toBe(false);
+        },
+      ),
+    );
+  });
+
+  it("accepts place strings of length 0–100", () => {
+    fc.assert(
+      fc.property(
+        fc.string({ minLength: 0, maxLength: 100 }),
+        (place: string) => {
+          const result = validateCreateAccount(validBase({ place }));
+          expect(result.valid).toBe(true);
+        },
+      ),
+    );
+  });
+
+  it("rejects place strings longer than 100 characters", () => {
+    fc.assert(
+      fc.property(
+        fc.string({ minLength: 101, maxLength: 200 }),
+        (place: string) => {
+          const result = validateCreateAccount(validBase({ place }));
+          expect(result.valid).toBe(false);
+        },
+      ),
+    );
+  });
+
+  it("accepts postcode strings of length 0–20", () => {
+    fc.assert(
+      fc.property(
+        fc.string({ minLength: 0, maxLength: 20 }),
+        (postcode: string) => {
+          const result = validateCreateAccount(validBase({ postcode }));
+          expect(result.valid).toBe(true);
+        },
+      ),
+    );
+  });
+
+  it("rejects postcode strings longer than 20 characters", () => {
+    fc.assert(
+      fc.property(
+        fc.string({ minLength: 21, maxLength: 40 }),
+        (postcode: string) => {
+          const result = validateCreateAccount(validBase({ postcode }));
+          expect(result.valid).toBe(false);
+        },
+      ),
+    );
+  });
+
+  it("accepts canton strings of length 0–50", () => {
+    fc.assert(
+      fc.property(
+        fc.string({ minLength: 0, maxLength: 50 }),
+        (canton: string) => {
+          const result = validateCreateAccount(validBase({ canton }));
+          expect(result.valid).toBe(true);
+        },
+      ),
+    );
+  });
+
+  it("rejects canton strings longer than 50 characters", () => {
+    fc.assert(
+      fc.property(
+        fc.string({ minLength: 51, maxLength: 100 }),
+        (canton: string) => {
+          const result = validateCreateAccount(validBase({ canton }));
+          expect(result.valid).toBe(false);
+        },
+      ),
+    );
+  });
+
+  it("accepts email strings of length 0–254", () => {
+    fc.assert(
+      fc.property(
+        fc.string({ minLength: 0, maxLength: 254 }),
+        (email: string) => {
+          const result = validateCreateAccount(validBase({ email }));
+          expect(result.valid).toBe(true);
+        },
+      ),
+    );
+  });
+
+  it("rejects email strings longer than 254 characters", () => {
+    fc.assert(
+      fc.property(
+        fc.string({ minLength: 255, maxLength: 400 }),
+        (email: string) => {
+          const result = validateCreateAccount(validBase({ email }));
           expect(result.valid).toBe(false);
         },
       ),
@@ -166,6 +260,25 @@ describe("Feature: accounts-api-backend, Property 5: Optional field length valid
         (telephone: string) => {
           const result = validateCreateAccount(validBase({ telephone }));
           expect(result.valid).toBe(false);
+        },
+      ),
+    );
+  });
+
+  it("accepts undefined/null for all optional fields", () => {
+    fc.assert(
+      fc.property(
+        fc.constantFrom(undefined, null),
+        fc.constantFrom(undefined, null),
+        fc.constantFrom(undefined, null),
+        fc.constantFrom(undefined, null),
+        fc.constantFrom(undefined, null),
+        fc.constantFrom(undefined, null),
+        (street, place, postcode, canton, email, telephone) => {
+          const result = validateCreateAccount(
+            validBase({ street, place, postcode, canton, email, telephone }),
+          );
+          expect(result.valid).toBe(true);
         },
       ),
     );
