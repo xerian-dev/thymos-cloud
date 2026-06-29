@@ -98,11 +98,12 @@ export async function createAccount(
             Update: {
               TableName: TABLE_NAME,
               Key: { PK: "SEQUENCE#ACCOUNT", SK: "COUNTER" },
-              UpdateExpression: "SET nextValue = :newValue",
+              UpdateExpression: "SET #val = :newValue",
               ConditionExpression:
-                "attribute_not_exists(nextValue) OR nextValue <= :accountNum",
+                "attribute_not_exists(#val) OR #val < :accountNum",
+              ExpressionAttributeNames: { "#val": "value" },
               ExpressionAttributeValues: {
-                ":newValue": accountNumber + 1,
+                ":newValue": accountNumber,
                 ":accountNum": accountNumber,
               },
             },

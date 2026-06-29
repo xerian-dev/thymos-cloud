@@ -17,8 +17,8 @@ export async function nextNumber(
       }),
     );
 
-    const nextValue = result.Item?.nextValue as number | undefined;
-    return jsonResponse(200, { nextNumber: nextValue ?? 1 });
+    const currentValue = (result.Item?.value ?? 0) as number;
+    return jsonResponse(200, { nextNumber: currentValue + 1 });
   } catch {
     return errorResponse();
   }

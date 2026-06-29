@@ -9,12 +9,15 @@ import {
 } from "@tanstack/react-table";
 import type { Account } from "./accounts-types";
 import { accountsColumns } from "./accounts-columns";
+import type { AccountsTableMeta } from "./accounts-columns";
 
 export interface AccountsTableProps {
   data: Account[];
   loading: boolean;
   error: string | null;
   onRetry?: () => void;
+  onEdit?: (account: Account) => void;
+  onDelete?: (account: Account) => void;
 }
 
 function getAriaSortValue(
@@ -52,8 +55,15 @@ export function AccountsTable({
   loading,
   error,
   onRetry,
+  onEdit,
+  onDelete,
 }: AccountsTableProps): React.ReactNode {
   const [sorting, setSorting] = React.useState<SortingState>([]);
+
+  const meta: AccountsTableMeta = React.useMemo(
+    () => ({ onEdit, onDelete }),
+    [onEdit, onDelete],
+  );
 
   const table = useReactTable({
     data,
@@ -63,6 +73,7 @@ export function AccountsTable({
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
     enableMultiSort: false,
+    meta,
     sortingFns: {
       caseInsensitive: (rowA, rowB, columnId) => {
         const a = String(rowA.getValue(columnId) ?? "").toLowerCase();

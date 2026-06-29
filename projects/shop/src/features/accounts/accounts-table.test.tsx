@@ -53,8 +53,7 @@ describe("AccountsTable", () => {
         "Canton",
         "Email",
         "Telephone",
-        "Comments",
-        "Tags",
+        "",
       ]);
     });
 
@@ -174,14 +173,6 @@ describe("AccountsTable", () => {
       // Telephone
       expect(screen.getByText("555-0001")).toBeInTheDocument();
       expect(screen.getByText("555-0002")).toBeInTheDocument();
-
-      // Comment counts
-      expect(screen.getByText("3")).toBeInTheDocument();
-      expect(screen.getByText("0")).toBeInTheDocument();
-
-      // Tags (comma-separated)
-      expect(screen.getByText("vip")).toBeInTheDocument();
-      expect(screen.getByText("wholesale, vip")).toBeInTheDocument();
     });
   });
 
