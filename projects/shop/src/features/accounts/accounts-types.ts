@@ -53,3 +53,34 @@ export type DeleteAccountResult =
       success: false;
       error: "not_found" | "network" | "server" | "timeout";
     };
+
+export type PageSize = 20 | 50 | 100;
+
+export interface CursorPaginationParams {
+  pageSize: PageSize;
+  cursor?: string;
+}
+
+export interface CursorPaginatedResponse {
+  accounts: Account[];
+  nextCursor: string | null;
+  hasMore: boolean;
+}
+
+export interface CachedPage {
+  accounts: Account[];
+  nextCursor: string | null;
+}
+
+export interface UseCursorPaginatedAccountsResult {
+  accounts: Account[];
+  loading: boolean;
+  error: string | null;
+  hasMore: boolean;
+  hasPrevious: boolean;
+  pageSize: PageSize;
+  goNext: () => void;
+  goPrevious: () => void;
+  setPageSize: (size: PageSize) => void;
+  retry: () => void;
+}

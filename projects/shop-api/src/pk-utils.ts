@@ -2,20 +2,11 @@ const ACCOUNT_PREFIX = "ACCOUNT#";
 const PAD_LENGTH = 7;
 
 /**
- * Constructs a DynamoDB PK from an account number.
- * Example: buildAccountPk(42) → "ACCOUNT#0000042"
+ * Constructs a DynamoDB PK from a UUID.
+ * Example: buildAccountUuidPk("abc-123") → "ACCOUNT#abc-123"
  */
-export function buildAccountPk(accountNumber: number): string {
-  return `${ACCOUNT_PREFIX}${formatAccountNumber(accountNumber)}`;
-}
-
-/**
- * Parses an account number from a DynamoDB PK.
- * Example: parseAccountPk("ACCOUNT#0000042") → 42
- */
-export function parseAccountPk(pk: string): number {
-  const numericPart = pk.slice(ACCOUNT_PREFIX.length);
-  return parseInt(numericPart, 10);
+export function buildAccountUuidPk(uuid: string): string {
+  return `${ACCOUNT_PREFIX}${uuid}`;
 }
 
 /**

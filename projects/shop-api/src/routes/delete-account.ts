@@ -4,7 +4,7 @@ import type {
 } from "aws-lambda";
 import { QueryCommand, DeleteCommand } from "@aws-sdk/lib-dynamodb";
 import { docClient, TABLE_NAME } from "../dynamodb-client.js";
-import { buildAccountPk } from "../pk-utils.js";
+import { formatAccountNumber } from "../pk-utils.js";
 import { jsonResponse, errorResponse } from "../response.js";
 
 export async function deleteAccount(
@@ -20,10 +20,30 @@ export async function deleteAccount(
     return jsonResponse(400, { error: "invalid_account_number" });
   }
 
-  const pk = buildAccountPk(accountNumber);
-
   try {
-    // Query all items for this account (METADATA + TAG# items)
+    // Look up account by account number via GSI1 to get the UUID-based PK
+    const paddedAccountNumber = formatAccountNumber(accountNumber);
+    const gsiResult = await docClient.send(
+      new QueryCommand({
+        TableName: TABLE_NAME,
+        IndexName: "GSI1",
+        KeyConditionExpression: "GSI1PK = :gsi1pk AND GSI1SK = :gsi1sk",
+        ExpressionAttributeValues: {
+          ":gsi1pk": "ACCOUNT",
+          ":gsi1sk": paddedAccountNumber,
+        },
+        Limit: 1,
+      }),
+    );
+
+    const gsiItems = gsiResult.Items ?? [];
+    if (gsiItems.length === 0) {
+      return jsonResponse(404, { error: "not_found" });
+    }
+
+    const pk = gsiItems[0].PK as string;
+
+    // Query all items for this account (METADATA + TAG# items) using the resolved PK
     const queryResult = await docClient.send(
       new QueryCommand({
         TableName: TABLE_NAME,
@@ -33,10 +53,6 @@ export async function deleteAccount(
     );
 
     const items = queryResult.Items ?? [];
-
-    if (items.length === 0) {
-      return jsonResponse(404, { error: "not_found" });
-    }
 
     // Delete all items for this account
     for (const item of items) {

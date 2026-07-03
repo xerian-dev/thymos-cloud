@@ -9,7 +9,9 @@ import {
 import { AccountsPage } from "./accounts-page";
 
 vi.mock("./accounts-api", () => ({
-  fetchAccounts: vi.fn().mockResolvedValue({ accounts: [] }),
+  fetchCursorPaginatedAccounts: vi
+    .fn()
+    .mockResolvedValue({ accounts: [], nextCursor: null, hasMore: false }),
   fetchNextAccountNumber: vi.fn().mockResolvedValue(1),
   createAccount: vi.fn().mockResolvedValue({
     success: true,
@@ -17,7 +19,6 @@ vi.mock("./accounts-api", () => ({
       uuid: "test-uuid",
       shopUid: 1,
       name: "Test",
-      address: "",
       telephone: "",
       commentCount: 0,
       tags: [],
@@ -78,7 +79,8 @@ describe("AccountsPage", () => {
   });
 
   it("AccountForm onSuccess refreshes accounts and closes modal", async () => {
-    const { fetchAccounts, createAccount } = await import("./accounts-api");
+    const { fetchCursorPaginatedAccounts, createAccount } =
+      await import("./accounts-api");
 
     render(<AccountsPage />);
 
@@ -97,16 +99,16 @@ describe("AccountsPage", () => {
     const form = screen.getByRole("dialog").querySelector("form")!;
     fireEvent.submit(form);
 
-    // After success: modal closes and fetchAccounts is called again (refresh)
+    // After success: modal closes and fetchCursorPaginatedAccounts is called again (refresh)
     await waitFor(() => {
       expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     });
 
     expect(createAccount).toHaveBeenCalled();
     // Initial load + refresh after success
-    expect(vi.mocked(fetchAccounts).mock.calls.length).toBeGreaterThanOrEqual(
-      2,
-    );
+    expect(
+      vi.mocked(fetchCursorPaginatedAccounts).mock.calls.length,
+    ).toBeGreaterThanOrEqual(2);
   });
 
   it("after modal close, focus returns to 'Add Account' button", async () => {

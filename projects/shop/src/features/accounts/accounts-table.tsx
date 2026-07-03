@@ -2,14 +2,12 @@ import * as React from "react";
 import {
   useReactTable,
   getCoreRowModel,
-  getSortedRowModel,
   flexRender,
-  type SortingState,
-  type Column,
 } from "@tanstack/react-table";
-import type { Account } from "./accounts-types";
+import type { Account, PageSize } from "./accounts-types";
 import { accountsColumns } from "./accounts-columns";
 import type { AccountsTableMeta } from "./accounts-columns";
+import { PaginationControls } from "./pagination-controls";
 
 export interface AccountsTableProps {
   data: Account[];
@@ -18,36 +16,12 @@ export interface AccountsTableProps {
   onRetry?: () => void;
   onEdit?: (account: Account) => void;
   onDelete?: (account: Account) => void;
-}
-
-function getAriaSortValue(
-  column: Column<Account>,
-  sorting: SortingState,
-): "ascending" | "descending" | "none" | undefined {
-  if (!column.getCanSort()) {
-    return undefined;
-  }
-  const sortEntry = sorting.find((s) => s.id === column.id);
-  if (!sortEntry) {
-    return "none";
-  }
-  return sortEntry.desc ? "descending" : "ascending";
-}
-
-function SortIndicator({
-  column,
-}: {
-  column: Column<Account>;
-}): React.ReactNode {
-  const sorted = column.getIsSorted();
-  if (!sorted) {
-    return <span className="text-muted-foreground/50 ml-1">⇅</span>;
-  }
-  return (
-    <span className="ml-1" aria-hidden="true">
-      {sorted === "asc" ? "▲" : "▼"}
-    </span>
-  );
+  hasPrevious: boolean;
+  hasMore: boolean;
+  pageSize: PageSize;
+  onNext: () => void;
+  onPrevious: () => void;
+  onPageSizeChange: (pageSize: PageSize) => void;
 }
 
 export function AccountsTable({
@@ -57,9 +31,13 @@ export function AccountsTable({
   onRetry,
   onEdit,
   onDelete,
+  hasPrevious,
+  hasMore,
+  pageSize,
+  onNext,
+  onPrevious,
+  onPageSizeChange,
 }: AccountsTableProps): React.ReactNode {
-  const [sorting, setSorting] = React.useState<SortingState>([]);
-
   const meta: AccountsTableMeta = React.useMemo(
     () => ({ onEdit, onDelete }),
     [onEdit, onDelete],
@@ -68,19 +46,8 @@ export function AccountsTable({
   const table = useReactTable({
     data,
     columns: accountsColumns,
-    state: { sorting },
-    onSortingChange: setSorting,
     getCoreRowModel: getCoreRowModel(),
-    getSortedRowModel: getSortedRowModel(),
-    enableMultiSort: false,
     meta,
-    sortingFns: {
-      caseInsensitive: (rowA, rowB, columnId) => {
-        const a = String(rowA.getValue(columnId) ?? "").toLowerCase();
-        const b = String(rowB.getValue(columnId) ?? "").toLowerCase();
-        return a < b ? -1 : a > b ? 1 : 0;
-      },
-    },
   });
 
   if (error) {
@@ -109,45 +76,27 @@ export function AccountsTable({
   }
 
   return (
-    <div className="w-full overflow-x-auto">
+    <div
+      className="w-full overflow-x-auto"
+      role="region"
+      aria-label="Accounts table"
+    >
       <table className="w-full border-collapse text-sm">
         <thead>
           {table.getHeaderGroups().map((headerGroup) => (
             <tr key={headerGroup.id} className="border-b border-border">
-              {headerGroup.headers.map((header) => {
-                const canSort = header.column.getCanSort();
-                const ariaSort = getAriaSortValue(header.column, sorting);
-
-                return (
-                  <th
-                    key={header.id}
-                    scope="col"
-                    className="px-4 py-2 text-left text-sm font-medium text-foreground"
-                    {...(ariaSort !== undefined
-                      ? { "aria-sort": ariaSort }
-                      : {})}
-                  >
-                    {canSort ? (
-                      <button
-                        type="button"
-                        className="flex cursor-pointer items-center gap-1 bg-transparent font-medium focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-                        onClick={header.column.getToggleSortingHandler()}
-                      >
-                        {flexRender(
-                          header.column.columnDef.header,
-                          header.getContext(),
-                        )}
-                        <SortIndicator column={header.column} />
-                      </button>
-                    ) : (
-                      flexRender(
-                        header.column.columnDef.header,
-                        header.getContext(),
-                      )
-                    )}
-                  </th>
-                );
-              })}
+              {headerGroup.headers.map((header) => (
+                <th
+                  key={header.id}
+                  scope="col"
+                  className="px-4 py-2 text-left text-sm font-medium text-foreground"
+                >
+                  {flexRender(
+                    header.column.columnDef.header,
+                    header.getContext(),
+                  )}
+                </th>
+              ))}
             </tr>
           ))}
         </thead>
@@ -177,6 +126,15 @@ export function AccountsTable({
           )}
         </tbody>
       </table>
+      <PaginationControls
+        hasPrevious={hasPrevious}
+        hasMore={hasMore}
+        pageSize={pageSize}
+        onNext={onNext}
+        onPrevious={onPrevious}
+        onPageSizeChange={onPageSizeChange}
+        disabled={loading}
+      />
     </div>
   );
 }

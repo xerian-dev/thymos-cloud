@@ -2,9 +2,9 @@ import type {
   APIGatewayProxyEventV2,
   APIGatewayProxyResultV2,
 } from "aws-lambda";
-import { UpdateCommand } from "@aws-sdk/lib-dynamodb";
+import { QueryCommand, UpdateCommand } from "@aws-sdk/lib-dynamodb";
 import { docClient, TABLE_NAME } from "../dynamodb-client.js";
-import { buildAccountPk } from "../pk-utils.js";
+import { formatAccountNumber } from "../pk-utils.js";
 import { jsonResponse, errorResponse } from "../response.js";
 
 export async function updateAccount(
@@ -32,7 +32,6 @@ export async function updateAccount(
   }
 
   const input = body as Record<string, unknown>;
-  const pk = buildAccountPk(accountNumber);
 
   const fields: Record<string, string> = {
     name: (input.name as string) ?? "",
@@ -52,6 +51,28 @@ export async function updateAccount(
   }
 
   try {
+    // Look up account by account number via GSI1
+    const paddedAccountNumber = formatAccountNumber(accountNumber);
+    const queryResult = await docClient.send(
+      new QueryCommand({
+        TableName: TABLE_NAME,
+        IndexName: "GSI1",
+        KeyConditionExpression: "GSI1PK = :gsi1pk AND GSI1SK = :gsi1sk",
+        ExpressionAttributeValues: {
+          ":gsi1pk": "ACCOUNT",
+          ":gsi1sk": paddedAccountNumber,
+        },
+        Limit: 1,
+      }),
+    );
+
+    const items = queryResult.Items ?? [];
+    if (items.length === 0) {
+      return jsonResponse(404, { error: "not_found" });
+    }
+
+    const pk = items[0].PK as string;
+
     const result = await docClient.send(
       new UpdateCommand({
         TableName: TABLE_NAME,

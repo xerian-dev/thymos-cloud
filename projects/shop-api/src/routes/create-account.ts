@@ -5,7 +5,7 @@ import type {
 import { TransactWriteCommand, PutCommand } from "@aws-sdk/lib-dynamodb";
 import { randomUUID } from "node:crypto";
 import { docClient, TABLE_NAME } from "../dynamodb-client.js";
-import { buildAccountPk } from "../pk-utils.js";
+import { buildAccountUuidPk, formatAccountNumber } from "../pk-utils.js";
 import { validateCreateAccount } from "../validation.js";
 import { jsonResponse, textResponse, errorResponse } from "../response.js";
 
@@ -66,12 +66,16 @@ export async function createAccount(
   // 4. Build item
   const uuid = randomUUID();
   const createdAt = new Date().toISOString();
-  const pk = buildAccountPk(accountNumber);
+  const paddedAccountNumber = formatAccountNumber(accountNumber);
+  const pk = buildAccountUuidPk(uuid);
 
   const accountItem = {
     PK: pk,
     SK: "METADATA",
     uuid,
+    shopUid: paddedAccountNumber,
+    GSI1PK: "ACCOUNT",
+    GSI1SK: paddedAccountNumber,
     name,
     street,
     place,

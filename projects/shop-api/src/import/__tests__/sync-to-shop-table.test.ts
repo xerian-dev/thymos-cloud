@@ -108,7 +108,7 @@ describe("sync-to-shop-table", () => {
   });
 
   describe("create path — new account", () => {
-    it("uses ConsignCloud number as PK and does NOT call the sequence counter for creation", async () => {
+    it("uses UUID-based PK with GSI1 attributes and shopUid", async () => {
       const record = createImportedRecord({ number: "001893" });
       mockScanImportedAccounts.mockResolvedValue([record]);
 
@@ -148,7 +148,7 @@ describe("sync-to-shop-table", () => {
       const body = JSON.parse(result.body as string);
       expect(body.added).toBe(1);
 
-      // Verify the METADATA PutCommand uses ConsignCloud number directly as PK
+      // Verify the METADATA PutCommand uses UUID-based PK
       const putCalls = mockDocClientSend.mock.calls.filter(
         (call: unknown[]) => (call[0] as { _type: string })._type === "Put",
       );
@@ -162,7 +162,18 @@ describe("sync-to-shop-table", () => {
       const metadataItem = (
         metadataPut![0] as { input: { Item: Record<string, unknown> } }
       ).input.Item;
-      expect(metadataItem.PK).toBe("ACCOUNT#001893");
+      // PK should be ACCOUNT#<uuid> pattern
+      expect(metadataItem.PK).toMatch(
+        /^ACCOUNT#[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/,
+      );
+      // uuid attribute should match the UUID portion of PK
+      const pkUuid = (metadataItem.PK as string).replace("ACCOUNT#", "");
+      expect(metadataItem.uuid).toBe(pkUuid);
+      // shopUid should be zero-padded account number
+      expect(metadataItem.shopUid).toBe("0001893");
+      // GSI1 attributes
+      expect(metadataItem.GSI1PK).toBe("ACCOUNT");
+      expect(metadataItem.GSI1SK).toBe("0001893");
       expect(metadataItem.sourceId).toBe("abc-123");
 
       // Verify NO TransactWrite or sequence counter allocation was used for creation
@@ -282,12 +293,19 @@ describe("sync-to-shop-table", () => {
       expect(tagSKs).toContain("TAG#email_notification");
       expect(tagSKs).toContain("TAG#text_notification");
 
-      // Verify TAG# items use the same PK as the account
+      // Verify TAG# items use the same UUID-based PK as the account
+      const metadataPut = putCalls.find((call: unknown[]) => {
+        const input = (call[0] as { input: { Item?: { SK?: string } } }).input;
+        return input.Item?.SK === "METADATA";
+      });
+      const accountPk = (metadataPut![0] as { input: { Item: { PK: string } } })
+        .input.Item.PK;
+
       for (const tagPut of tagPuts) {
         const input = (
           tagPut[0] as { input: { Item: { PK: string; tag: string } } }
         ).input;
-        expect(input.Item.PK).toBe("ACCOUNT#001893");
+        expect(input.Item.PK).toBe(accountPk);
       }
     });
   });
@@ -383,6 +401,125 @@ describe("sync-to-shop-table", () => {
       });
       expect(tagSKs).toContain("TAG#email_notification");
       expect(tagSKs).toContain("TAG#text_notification");
+    });
+
+    it("update path does NOT overwrite immutable key fields (PK, SK, GSI1PK, GSI1SK, uuid, shopUid)", async () => {
+      const record = createImportedRecord({
+        number: "001893",
+        first_name: "Alice",
+        last_name: "Updated",
+      });
+      mockScanImportedAccounts.mockResolvedValue([record]);
+
+      mockDocClientSend.mockImplementation(
+        (cmd: { _type: string; input: Record<string, unknown> }) => {
+          if (cmd._type === "Query") {
+            const input = cmd.input as {
+              IndexName?: string;
+              ExpressionAttributeValues?: Record<string, string>;
+            };
+            if (input.IndexName === "sourceId-index") {
+              return Promise.resolve({
+                Items: [
+                  {
+                    PK: "ACCOUNT#existing-uuid-1234",
+                    SK: "METADATA",
+                    uuid: "existing-uuid-1234",
+                    shopUid: "0001893",
+                    GSI1PK: "ACCOUNT",
+                    GSI1SK: "0001893",
+                    name: "Alice Smith",
+                    company: "ACME Corp",
+                    street: "Old Street",
+                    place: "Zürich",
+                    postcode: "8001",
+                    canton: "ZH",
+                    email: "old@example.com",
+                    telephone: "0791234567",
+                    sourceId: "abc-123",
+                  },
+                ],
+              });
+            }
+            if (
+              input.ExpressionAttributeValues &&
+              ":tagPrefix" in input.ExpressionAttributeValues
+            ) {
+              return Promise.resolve({ Items: [] });
+            }
+            return Promise.resolve({ Items: [] });
+          }
+          if (cmd._type === "Get") {
+            return Promise.resolve({
+              Item: { PK: "SEQUENCE#ACCOUNT", SK: "COUNTER", value: 5000 },
+            });
+          }
+          return Promise.resolve({});
+        },
+      );
+
+      await syncToShopTable(createMockEvent());
+
+      // Find the UpdateCommand for the account metadata
+      const updateCalls = mockDocClientSend.mock.calls.filter(
+        (call: unknown[]) => (call[0] as { _type: string })._type === "Update",
+      );
+
+      const metadataUpdate = updateCalls.find((call: unknown[]) => {
+        const input = (
+          call[0] as { input: { Key?: { PK?: string; SK?: string } } }
+        ).input;
+        return (
+          input.Key?.PK === "ACCOUNT#existing-uuid-1234" &&
+          input.Key?.SK === "METADATA"
+        );
+      });
+      expect(metadataUpdate).toBeDefined();
+
+      const updateInput = (
+        metadataUpdate![0] as { input: Record<string, unknown> }
+      ).input as {
+        UpdateExpression: string;
+        ExpressionAttributeNames: Record<string, string>;
+        ExpressionAttributeValues: Record<string, unknown>;
+      };
+
+      // Verify the UpdateExpression does NOT reference immutable fields
+      const immutableFields = [
+        "PK",
+        "SK",
+        "GSI1PK",
+        "GSI1SK",
+        "uuid",
+        "shopUid",
+      ];
+      const allAttrNames = Object.values(updateInput.ExpressionAttributeNames);
+      for (const field of immutableFields) {
+        expect(allAttrNames).not.toContain(field);
+      }
+
+      // Verify ExpressionAttributeValues does not contain immutable field values
+      const allAttrValueKeys = Object.keys(
+        updateInput.ExpressionAttributeValues,
+      );
+      for (const field of immutableFields) {
+        expect(allAttrValueKeys).not.toContain(`:${field}`);
+      }
+
+      // Verify only mutable fields are in the UpdateExpression
+      const mutableFields = [
+        "name",
+        "company",
+        "street",
+        "place",
+        "postcode",
+        "canton",
+        "email",
+        "telephone",
+      ];
+      for (const field of mutableFields) {
+        expect(allAttrNames).toContain(field);
+      }
     });
 
     it("update expression includes all new fields (street, place, postcode, canton, email, telephone)", async () => {

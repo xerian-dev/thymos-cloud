@@ -34,24 +34,9 @@ describe("accountsColumns", () => {
     expect(accessorKeys).not.toContain("address");
   });
 
-  it("new columns have caseInsensitive sorting enabled", () => {
-    const newFields = [
-      "street",
-      "place",
-      "postcode",
-      "canton",
-      "email",
-      "telephone",
-    ];
-    for (const field of newFields) {
-      const col = accountsColumns.find(
-        (c) =>
-          "accessorKey" in c &&
-          (c as { accessorKey: string }).accessorKey === field,
-      );
-      expect(col).toBeDefined();
-      expect((col as { enableSorting: boolean }).enableSorting).toBe(true);
-      expect((col as { sortingFn: string }).sortingFn).toBe("caseInsensitive");
+  it("columns do not have sorting enabled", () => {
+    for (const col of accountsColumns) {
+      expect((col as { enableSorting?: boolean }).enableSorting).not.toBe(true);
     }
   });
 });
