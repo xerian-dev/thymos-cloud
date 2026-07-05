@@ -54,20 +54,20 @@ describe("authorizer handler", () => {
   it("returns deny when Authorization header is missing", async () => {
     const event = makeEvent({});
     const result = await handler(event);
-    expect(result).toEqual({ isAuthorized: false });
+    expect(result).toEqual({ isAuthorized: false, context: { groups: "" } });
   });
 
   it("returns deny when Authorization header does not use Bearer scheme", async () => {
     const event = makeEvent({ authorization: "Basic abc123" });
     const result = await handler(event);
-    expect(result).toEqual({ isAuthorized: false });
+    expect(result).toEqual({ isAuthorized: false, context: { groups: "" } });
   });
 
   it("returns deny when token is invalid", async () => {
     mockedValidateJwt.mockResolvedValue({ valid: false });
     const event = makeEvent({ authorization: "Bearer invalid-token" });
     const result = await handler(event);
-    expect(result).toEqual({ isAuthorized: false });
+    expect(result).toEqual({ isAuthorized: false, context: { groups: "" } });
     expect(mockedValidateJwt).toHaveBeenCalledWith("invalid-token");
   });
 
@@ -93,7 +93,7 @@ describe("authorizer handler", () => {
     mockedValidateJwt.mockRejectedValue(new Error("unexpected error"));
     const event = makeEvent({ authorization: "Bearer some-token" });
     const result = await handler(event);
-    expect(result).toEqual({ isAuthorized: false });
+    expect(result).toEqual({ isAuthorized: false, context: { groups: "" } });
   });
 
   it("returns deny when buildPolicy throws an error", async () => {
@@ -107,12 +107,15 @@ describe("authorizer handler", () => {
 
     const event = makeEvent({ authorization: "Bearer some-token" });
     const result = await handler(event);
-    expect(result).toEqual({ isAuthorized: false });
+    expect(result).toEqual({ isAuthorized: false, context: { groups: "" } });
   });
 
   it("extracts token correctly from Bearer prefix", async () => {
     mockedValidateJwt.mockResolvedValue({ valid: true, groups: [] });
-    mockedBuildPolicy.mockReturnValue({ isAuthorized: false });
+    mockedBuildPolicy.mockReturnValue({
+      isAuthorized: false,
+      context: { groups: "" },
+    });
 
     const event = makeEvent({ authorization: "Bearer my.jwt.token" });
     await handler(event);

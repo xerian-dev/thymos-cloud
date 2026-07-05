@@ -1,6 +1,9 @@
 import { describe, it, expect, vi, afterEach, beforeEach } from "vitest";
 import * as fc from "fast-check";
-import type { APIGatewayProxyEventV2 } from "aws-lambda";
+import type {
+  APIGatewayProxyEventV2,
+  APIGatewayProxyResultV2,
+} from "aws-lambda";
 import type { FetchResult } from "../import-table-client";
 import type { ConsignCloudAccount } from "../field-mapper";
 
@@ -12,7 +15,7 @@ describe("Property 5: Import summary counts are accurate", () => {
   let capturedSummary: FetchResult | null = null;
   let fetchFromConsignCloud: (
     event: APIGatewayProxyEventV2,
-  ) => Promise<{ statusCode: number; body: string }>;
+  ) => Promise<APIGatewayProxyResultV2>;
 
   beforeEach(() => {
     capturedSummary = null;
@@ -140,10 +143,10 @@ describe("Property 5: Import summary counts are accurate", () => {
 
           const response = await fetchFromConsignCloud(minimalEvent);
 
-          expect(response.statusCode).toBe(200);
+          expect((response as { statusCode: number }).statusCode).toBe(200);
           expect(capturedSummary).not.toBeNull();
 
-          const summary = capturedSummary as FetchResult;
+          const summary = capturedSummary!;
 
           // totalFetched = stored + skipped (N = W + S)
           expect(summary.totalFetched).toBe(storedCount + skippedCount);

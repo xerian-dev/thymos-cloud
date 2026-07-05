@@ -109,3 +109,57 @@ resource "aws_apigatewayv2_route" "delete_account" {
   authorization_type = "CUSTOM"
   authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
 }
+
+resource "aws_apigatewayv2_route" "post_items" {
+  api_id    = aws_apigatewayv2_api.shop_api.id
+  route_key = "POST /api/items"
+  target    = "integrations/${aws_apigatewayv2_integration.monolambda.id}"
+
+  authorization_type = "CUSTOM"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "put_item" {
+  api_id    = aws_apigatewayv2_api.shop_api.id
+  route_key = "PUT /api/items/{uuid}"
+  target    = "integrations/${aws_apigatewayv2_integration.monolambda.id}"
+
+  authorization_type = "CUSTOM"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "delete_item" {
+  api_id    = aws_apigatewayv2_api.shop_api.id
+  route_key = "DELETE /api/items/{uuid}"
+  target    = "integrations/${aws_apigatewayv2_integration.monolambda.id}"
+
+  authorization_type = "CUSTOM"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "get_items" {
+  api_id    = aws_apigatewayv2_api.shop_api.id
+  route_key = "GET /api/items"
+  target    = "integrations/${aws_apigatewayv2_integration.monolambda.id}"
+
+  authorization_type = "CUSTOM"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "get_next_sku" {
+  api_id    = aws_apigatewayv2_api.shop_api.id
+  route_key = "GET /api/items/next-sku"
+  target    = "integrations/${aws_apigatewayv2_integration.monolambda.id}"
+
+  authorization_type = "CUSTOM"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "post_items_upload_url" {
+  api_id    = aws_apigatewayv2_api.shop_api.id
+  route_key = "POST /api/items/upload-url"
+  target    = "integrations/${aws_apigatewayv2_integration.monolambda.id}"
+
+  authorization_type = "CUSTOM"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}

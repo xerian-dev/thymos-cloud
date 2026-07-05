@@ -1,6 +1,9 @@
 import { describe, it, expect, vi, afterEach, beforeEach } from "vitest";
 import * as fc from "fast-check";
-import type { APIGatewayProxyEventV2 } from "aws-lambda";
+import type {
+  APIGatewayProxyEventV2,
+  APIGatewayProxyResultV2,
+} from "aws-lambda";
 import type {
   ImportedAccountRecord,
   ImportReport,
@@ -14,7 +17,7 @@ describe("Property 8: Sync continues processing after individual record failures
   let capturedReport: ImportReport | null = null;
   let syncToShopTable: (
     event: APIGatewayProxyEventV2,
-  ) => Promise<{ statusCode: number; body: string }>;
+  ) => Promise<APIGatewayProxyResultV2>;
 
   beforeEach(() => {
     capturedReport = null;
@@ -170,7 +173,7 @@ describe("Property 8: Sync continues processing after individual record failures
           await syncToShopTable(minimalEvent);
 
           expect(capturedReport).not.toBeNull();
-          const report = capturedReport as ImportReport;
+          const report = capturedReport!;
 
           // errored equals K
           expect(report.errored).toBe(K);
@@ -194,7 +197,7 @@ describe("Property 9: Sync report accurately aggregates outcomes", () => {
   let capturedReport: ImportReport | null = null;
   let syncToShopTable: (
     event: APIGatewayProxyEventV2,
-  ) => Promise<{ statusCode: number; body: string }>;
+  ) => Promise<APIGatewayProxyResultV2>;
 
   beforeEach(() => {
     capturedReport = null;
@@ -445,7 +448,7 @@ describe("Property 9: Sync report accurately aggregates outcomes", () => {
           await syncToShopTable(minimalEvent);
 
           expect(capturedReport).not.toBeNull();
-          const report = capturedReport as ImportReport;
+          const report = capturedReport!;
 
           // Verify report fields match expected counts
           expect(report.added).toBe(A);

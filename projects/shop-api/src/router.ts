@@ -7,6 +7,12 @@ import { nextNumber } from "./routes/next-number.js";
 import { createAccount } from "./routes/create-account.js";
 import { updateAccount } from "./routes/update-account.js";
 import { deleteAccount } from "./routes/delete-account.js";
+import { createItem } from "./routes/create-item.js";
+import { updateItem } from "./routes/update-item.js";
+import { deleteItem } from "./routes/delete-item.js";
+import { listItems } from "./routes/list-items.js";
+import { nextItemSku } from "./routes/next-item-sku.js";
+import { presignUpload } from "./routes/presign-upload.js";
 import { jsonResponse } from "./response.js";
 
 type RouteHandler = (
@@ -19,6 +25,12 @@ const routes: Record<string, RouteHandler> = {
   "POST /api/accounts": createAccount,
   "PUT /api/accounts/{accountNumber}": updateAccount,
   "DELETE /api/accounts/{accountNumber}": deleteAccount,
+  "POST /api/items": createItem,
+  "PUT /api/items/{uuid}": updateItem,
+  "DELETE /api/items/{uuid}": deleteItem,
+  "GET /api/items": listItems,
+  "GET /api/items/next-sku": nextItemSku,
+  "POST /api/items/upload-url": presignUpload,
 };
 
 export function routeRequest(

@@ -29,12 +29,12 @@ describe("policy-builder", () => {
 
     it("returns isAuthorized false for empty groups array", () => {
       const result = buildPolicy([]);
-      expect(result).toEqual({ isAuthorized: false });
+      expect(result).toEqual({ isAuthorized: false, context: { groups: "" } });
     });
 
     it("returns isAuthorized false for unrecognized groups", () => {
       const result = buildPolicy(["editor"]);
-      expect(result).toEqual({ isAuthorized: false });
+      expect(result).toEqual({ isAuthorized: false, context: { groups: "" } });
     });
   });
 });
