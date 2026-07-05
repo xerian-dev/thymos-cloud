@@ -169,15 +169,19 @@ export async function syncToShopTable(
       }
 
       if (!existing) {
-        const paddedNumber = record.number;
+        const accountUuid = crypto.randomUUID();
+        const paddedNumber = padAccountNumber(parseInt(record.number, 10));
 
         await docClient.send(
           new PutCommand({
             TableName: TABLE_NAME,
             Item: {
-              PK: `ACCOUNT#${paddedNumber}`,
+              PK: `ACCOUNT#${accountUuid}`,
               SK: "METADATA",
-              uuid: crypto.randomUUID(),
+              uuid: accountUuid,
+              shopUid: paddedNumber,
+              GSI1PK: "ACCOUNT",
+              GSI1SK: paddedNumber,
               name: mapped.name,
               street: mapped.street,
               place: mapped.place,
@@ -197,7 +201,7 @@ export async function syncToShopTable(
             new PutCommand({
               TableName: TABLE_NAME,
               Item: {
-                PK: `ACCOUNT#${paddedNumber}`,
+                PK: `ACCOUNT#${accountUuid}`,
                 SK: `TAG#${tag}`,
                 tag,
                 createdAt: new Date().toISOString(),

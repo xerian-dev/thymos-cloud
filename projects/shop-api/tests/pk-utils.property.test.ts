@@ -1,28 +1,28 @@
 import { describe, it, expect } from "vitest";
 import fc from "fast-check";
-import { buildAccountPk, parseAccountPk } from "../src/pk-utils";
+import { buildAccountUuidPk, formatAccountNumber } from "../src/pk-utils";
 
 /**
- * Feature: accounts-api-backend, Property 1: Account PK round-trip
- *
- * Validates: Requirements 1.2, 3.3
+ * Property: buildAccountUuidPk produces ACCOUNT# prefix + uuid
  */
-describe("Feature: accounts-api-backend, Property 1: Account PK round-trip", () => {
-  it("parseAccountPk(buildAccountPk(n)) produces n for any valid account number", () => {
+describe("pk-utils properties", () => {
+  it("buildAccountUuidPk(uuid) always starts with ACCOUNT# prefix followed by the uuid", () => {
     fc.assert(
-      fc.property(fc.integer({ min: 1, max: 9999999 }), (n: number) => {
-        const pk = buildAccountPk(n);
-        const parsed = parseAccountPk(pk);
-        expect(parsed).toBe(n);
+      fc.property(fc.uuid(), (uuid: string) => {
+        const pk = buildAccountUuidPk(uuid);
+        expect(pk).toBe(`ACCOUNT#${uuid}`);
+        expect(pk).toMatch(/^ACCOUNT#.+$/);
       }),
     );
   });
 
-  it("buildAccountPk(n) matches ACCOUNT# followed by exactly 7 digits", () => {
+  it("formatAccountNumber(n) produces exactly 7 characters for any valid account number", () => {
     fc.assert(
       fc.property(fc.integer({ min: 1, max: 9999999 }), (n: number) => {
-        const pk = buildAccountPk(n);
-        expect(pk).toMatch(/^ACCOUNT#\d{7}$/);
+        const formatted = formatAccountNumber(n);
+        expect(formatted).toHaveLength(7);
+        expect(formatted).toMatch(/^\d{7}$/);
+        expect(parseInt(formatted, 10)).toBe(n);
       }),
     );
   });

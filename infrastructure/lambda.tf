@@ -68,7 +68,10 @@ resource "aws_iam_role_policy" "shop_api_dynamodb" {
           "dynamodb:Scan",
           "dynamodb:TransactWriteItems"
         ]
-        Resource = aws_dynamodb_table.shop.arn
+        Resource = [
+          aws_dynamodb_table.shop.arn,
+          "${aws_dynamodb_table.shop.arn}/index/*"
+        ]
       }
     ]
   })

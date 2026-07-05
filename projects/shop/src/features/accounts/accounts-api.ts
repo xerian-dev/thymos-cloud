@@ -6,6 +6,8 @@ import type {
   UpdateAccountRequest,
   UpdateAccountResult,
   DeleteAccountResult,
+  CursorPaginationParams,
+  CursorPaginatedResponse,
 } from "./accounts-types";
 
 export interface AccountsApiResponse {
@@ -37,6 +39,57 @@ export async function fetchAccounts(): Promise<AccountsApiResponse> {
 
   const data: AccountsApiResponse = await response.json();
   return data;
+}
+
+export async function fetchCursorPaginatedAccounts(
+  params: CursorPaginationParams,
+  options?: { signal?: AbortSignal },
+): Promise<CursorPaginatedResponse> {
+  const timeoutController = new AbortController();
+  const timeoutId = setTimeout(() => timeoutController.abort(), 30_000);
+
+  const signal = options?.signal
+    ? AbortSignal.any([options.signal, timeoutController.signal])
+    : timeoutController.signal;
+
+  try {
+    const authHeaders = await getAuthHeaders();
+
+    const url = new URL(`${API_BASE}/accounts`, window.location.origin);
+    url.searchParams.set("pageSize", String(params.pageSize));
+    if (params.cursor) {
+      url.searchParams.set("cursor", params.cursor);
+    }
+
+    const response = await fetch(url.pathname + url.search, {
+      headers: authHeaders,
+      signal,
+    });
+
+    clearTimeout(timeoutId);
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch accounts: ${response.status}`);
+    }
+
+    const data: CursorPaginatedResponse = await response.json();
+    return data;
+  } catch (error: unknown) {
+    clearTimeout(timeoutId);
+
+    if (error instanceof DOMException && error.name === "AbortError") {
+      if (options?.signal?.aborted) {
+        throw error;
+      }
+      throw new Error("Request timed out");
+    }
+
+    if (error instanceof TypeError) {
+      throw new Error("Unable to load accounts");
+    }
+
+    throw error;
+  }
 }
 
 export async function fetchNextAccountNumber(): Promise<number> {

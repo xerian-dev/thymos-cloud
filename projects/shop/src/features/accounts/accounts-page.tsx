@@ -3,12 +3,23 @@ import { Button } from "@/components/ui/button";
 import { AccountsTable } from "./accounts-table";
 import { AccountForm } from "./account-form";
 import { DeleteAccountDialog } from "./delete-account-dialog";
-import { useAccounts } from "./use-accounts";
+import { usePaginatedAccounts } from "./use-paginated-accounts";
 import { fetchNextAccountNumber } from "./accounts-api";
 import type { Account } from "./accounts-types";
 
 export function AccountsPage(): React.ReactNode {
-  const { accounts, loading, error, refresh } = useAccounts();
+  const {
+    accounts,
+    loading,
+    error,
+    hasMore,
+    hasPrevious,
+    pageSize,
+    goNext,
+    goPrevious,
+    setPageSize,
+    retry,
+  } = usePaginatedAccounts();
   const [formOpen, setFormOpen] = React.useState(false);
   const [editingAccount, setEditingAccount] = React.useState<Account | null>(
     null,
@@ -51,7 +62,7 @@ export function AccountsPage(): React.ReactNode {
   function handleFormSuccess(): void {
     setFormOpen(false);
     setEditingAccount(null);
-    refresh();
+    retry();
     addButtonRef.current?.focus();
   }
 
@@ -61,7 +72,7 @@ export function AccountsPage(): React.ReactNode {
 
   function handleDeleteSuccess(): void {
     setDeletingAccount(null);
-    refresh();
+    retry();
   }
 
   const memoizedTable = React.useMemo(
@@ -70,13 +81,30 @@ export function AccountsPage(): React.ReactNode {
         data={accounts}
         loading={loading}
         error={error}
-        onRetry={refresh}
+        onRetry={retry}
         onEdit={handleEdit}
         onDelete={handleDelete}
+        hasPrevious={hasPrevious}
+        hasMore={hasMore}
+        pageSize={pageSize}
+        onNext={goNext}
+        onPrevious={goPrevious}
+        onPageSizeChange={setPageSize}
       />
     ),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [accounts, loading, error, refresh],
+    [
+      accounts,
+      loading,
+      error,
+      retry,
+      hasPrevious,
+      hasMore,
+      pageSize,
+      goNext,
+      goPrevious,
+      setPageSize,
+    ],
   );
 
   return (

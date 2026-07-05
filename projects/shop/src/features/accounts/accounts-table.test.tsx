@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from "vitest";
-import { render, screen, within, fireEvent } from "@testing-library/react";
-import { AccountsTable } from "./accounts-table";
+import { render, screen, fireEvent } from "@testing-library/react";
+import { AccountsTable, type AccountsTableProps } from "./accounts-table";
 import type { Account } from "./accounts-types";
 
 const mockAccounts: Account[] = [
@@ -32,17 +32,37 @@ const mockAccounts: Account[] = [
   },
 ];
 
+const defaultPaginationProps: Pick<
+  AccountsTableProps,
+  | "hasPrevious"
+  | "hasMore"
+  | "pageSize"
+  | "onNext"
+  | "onPrevious"
+  | "onPageSizeChange"
+> = {
+  hasPrevious: false,
+  hasMore: true,
+  pageSize: 20,
+  onNext: vi.fn(),
+  onPrevious: vi.fn(),
+  onPageSizeChange: vi.fn(),
+};
+
 describe("AccountsTable", () => {
   describe("column order and visibility", () => {
     it("renders column headers in correct order", () => {
       render(
-        <AccountsTable data={mockAccounts} loading={false} error={null} />,
+        <AccountsTable
+          data={mockAccounts}
+          loading={false}
+          error={null}
+          {...defaultPaginationProps}
+        />,
       );
 
       const headers = screen.getAllByRole("columnheader");
-      const headerTexts = headers.map((h) =>
-        h.textContent?.replace(/[⇅▲▼]/g, "").trim(),
-      );
+      const headerTexts = headers.map((h) => h.textContent?.trim());
 
       expect(headerTexts).toEqual([
         "Account #",
@@ -59,22 +79,65 @@ describe("AccountsTable", () => {
 
     it("does NOT render a UUID column", () => {
       render(
-        <AccountsTable data={mockAccounts} loading={false} error={null} />,
+        <AccountsTable
+          data={mockAccounts}
+          loading={false}
+          error={null}
+          {...defaultPaginationProps}
+        />,
       );
 
       const headers = screen.getAllByRole("columnheader");
-      const headerTexts = headers.map((h) =>
-        h.textContent?.replace(/[⇅▲▼]/g, "").trim(),
-      );
+      const headerTexts = headers.map((h) => h.textContent?.trim());
 
       expect(headerTexts).not.toContain("UUID");
       expect(headerTexts).not.toContain("uuid");
+    });
+
+    it("does NOT render sort buttons in column headers", () => {
+      render(
+        <AccountsTable
+          data={mockAccounts}
+          loading={false}
+          error={null}
+          {...defaultPaginationProps}
+        />,
+      );
+
+      const headers = screen.getAllByRole("columnheader");
+      for (const header of headers) {
+        const button = header.querySelector("button");
+        expect(button).toBeNull();
+      }
+    });
+
+    it("does NOT render aria-sort attributes on column headers", () => {
+      render(
+        <AccountsTable
+          data={mockAccounts}
+          loading={false}
+          error={null}
+          {...defaultPaginationProps}
+        />,
+      );
+
+      const headers = screen.getAllByRole("columnheader");
+      for (const header of headers) {
+        expect(header).not.toHaveAttribute("aria-sort");
+      }
     });
   });
 
   describe("loading state", () => {
     it("shows loading indicator when loading is true", () => {
-      render(<AccountsTable data={[]} loading={true} error={null} />);
+      render(
+        <AccountsTable
+          data={[]}
+          loading={true}
+          error={null}
+          {...defaultPaginationProps}
+        />,
+      );
 
       expect(screen.getByText(/loading accounts/i)).toBeInTheDocument();
     });
@@ -87,6 +150,7 @@ describe("AccountsTable", () => {
           data={[]}
           loading={false}
           error="Unable to load accounts. Please try again."
+          {...defaultPaginationProps}
         />,
       );
 
@@ -103,6 +167,7 @@ describe("AccountsTable", () => {
           loading={false}
           error="Something went wrong."
           onRetry={onRetry}
+          {...defaultPaginationProps}
         />,
       );
 
@@ -119,6 +184,7 @@ describe("AccountsTable", () => {
           data={[]}
           loading={false}
           error="Something went wrong."
+          {...defaultPaginationProps}
         />,
       );
 
@@ -130,7 +196,14 @@ describe("AccountsTable", () => {
 
   describe("empty state", () => {
     it('shows "No accounts found." when data is empty and not loading', () => {
-      render(<AccountsTable data={[]} loading={false} error={null} />);
+      render(
+        <AccountsTable
+          data={[]}
+          loading={false}
+          error={null}
+          {...defaultPaginationProps}
+        />,
+      );
 
       expect(screen.getByText("No accounts found.")).toBeInTheDocument();
     });
@@ -139,7 +212,12 @@ describe("AccountsTable", () => {
   describe("data display", () => {
     it("displays account data correctly", () => {
       render(
-        <AccountsTable data={mockAccounts} loading={false} error={null} />,
+        <AccountsTable
+          data={mockAccounts}
+          loading={false}
+          error={null}
+          {...defaultPaginationProps}
+        />,
       );
 
       // Zero-padded account numbers
@@ -179,7 +257,12 @@ describe("AccountsTable", () => {
   describe("table semantics", () => {
     it('all th elements have scope="col"', () => {
       render(
-        <AccountsTable data={mockAccounts} loading={false} error={null} />,
+        <AccountsTable
+          data={mockAccounts}
+          loading={false}
+          error={null}
+          {...defaultPaginationProps}
+        />,
       );
 
       const headers = screen.getAllByRole("columnheader");
@@ -189,54 +272,46 @@ describe("AccountsTable", () => {
     });
   });
 
-  describe("sort indicator", () => {
-    it("shows ascending sort indicator when a column header is clicked", () => {
+  describe("pagination controls", () => {
+    it("renders pagination controls below the table", () => {
       render(
-        <AccountsTable data={mockAccounts} loading={false} error={null} />,
+        <AccountsTable
+          data={mockAccounts}
+          loading={false}
+          error={null}
+          {...defaultPaginationProps}
+        />,
       );
 
-      const nameButton = screen.getByRole("button", { name: /name/i });
-      fireEvent.click(nameButton);
-
-      const headers = screen.getAllByRole("columnheader");
-      const nameHeader = headers.find((h) => h.textContent?.includes("Name"));
-      expect(nameHeader).toHaveAttribute("aria-sort", "ascending");
+      expect(
+        screen.getByRole("navigation", { name: /pagination/i }),
+      ).toBeInTheDocument();
     });
 
-    it("toggles to descending sort indicator on second click", () => {
+    it("passes hasPrevious and hasMore to pagination controls", () => {
       render(
-        <AccountsTable data={mockAccounts} loading={false} error={null} />,
+        <AccountsTable
+          data={mockAccounts}
+          loading={false}
+          error={null}
+          hasPrevious={false}
+          hasMore={true}
+          pageSize={20}
+          onNext={vi.fn()}
+          onPrevious={vi.fn()}
+          onPageSizeChange={vi.fn()}
+        />,
       );
 
-      const nameButton = screen.getByRole("button", { name: /name/i });
-      fireEvent.click(nameButton);
-      fireEvent.click(nameButton);
+      const prevButton = screen.getByRole("button", {
+        name: /go to previous page/i,
+      });
+      const nextButton = screen.getByRole("button", {
+        name: /go to next page/i,
+      });
 
-      const headers = screen.getAllByRole("columnheader");
-      const nameHeader = headers.find((h) => h.textContent?.includes("Name"));
-      expect(nameHeader).toHaveAttribute("aria-sort", "descending");
-    });
-  });
-
-  describe("sorting behavior", () => {
-    it("clicking a sortable column header sorts the data", () => {
-      render(
-        <AccountsTable data={mockAccounts} loading={false} error={null} />,
-      );
-
-      // Click "Name" twice for descending alphabetical sort
-      const nameButton = screen.getByRole("button", { name: /name/i });
-      fireEvent.click(nameButton); // ascending
-      fireEvent.click(nameButton); // descending
-
-      // Get all rows (excluding header row)
-      const rows = screen.getAllByRole("row").slice(1);
-      const firstRowCells = within(rows[0]).getAllByRole("cell");
-      const secondRowCells = within(rows[1]).getAllByRole("cell");
-
-      // "Bob" should come before "Alice" in descending alphabetical order
-      expect(firstRowCells[1]).toHaveTextContent("Bob");
-      expect(secondRowCells[1]).toHaveTextContent("Alice");
+      expect(prevButton).toBeDisabled();
+      expect(nextButton).not.toBeDisabled();
     });
   });
 });

@@ -13,56 +13,38 @@ export const accountsColumns: ColumnDef<Account>[] = [
     accessorKey: "shopUid",
     header: "Account #",
     cell: ({ row }) => formatShopUid(row.getValue<number>("shopUid")),
-    enableSorting: true,
-    sortingFn: "basic",
-    sortDescFirst: false,
   },
   {
     accessorKey: "name",
     header: "Name",
-    enableSorting: true,
-    sortingFn: "caseInsensitive",
   },
   {
     accessorKey: "street",
     header: "Street",
-    enableSorting: true,
-    sortingFn: "caseInsensitive",
   },
   {
     accessorKey: "place",
     header: "Place",
-    enableSorting: true,
-    sortingFn: "caseInsensitive",
   },
   {
     accessorKey: "postcode",
     header: "Postcode",
-    enableSorting: true,
-    sortingFn: "caseInsensitive",
   },
   {
     accessorKey: "canton",
     header: "Canton",
-    enableSorting: true,
-    sortingFn: "caseInsensitive",
   },
   {
     accessorKey: "email",
     header: "Email",
-    enableSorting: true,
-    sortingFn: "caseInsensitive",
   },
   {
     accessorKey: "telephone",
     header: "Telephone",
-    enableSorting: true,
-    sortingFn: "caseInsensitive",
   },
   {
     id: "actions",
     header: "",
-    enableSorting: false,
     cell: ({ row, table }) => {
       const meta = table.options.meta as AccountsTableMeta | undefined;
       const account = row.original;
