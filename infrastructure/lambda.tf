@@ -77,6 +77,24 @@ resource "aws_iam_role_policy" "shop_api_dynamodb" {
   })
 }
 
+resource "aws_iam_role_policy" "shop_api_s3_items" {
+  name = "${var.project_name}-${var.environment}-shop-api-s3-items"
+  role = aws_iam_role.shop_api_lambda.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "s3:PutObject"
+        ]
+        Resource = "${aws_s3_bucket.items.arn}/items/*"
+      }
+    ]
+  })
+}
+
 resource "aws_iam_role_policy" "shop_api_logs" {
   name = "${var.project_name}-${var.environment}-shop-api-logs"
   role = aws_iam_role.shop_api_lambda.id
@@ -135,6 +153,7 @@ resource "aws_lambda_function" "shop_api" {
     variables = {
       TABLE_NAME           = aws_dynamodb_table.shop.name
       COGNITO_USER_POOL_ID = aws_cognito_user_pool.main.id
+      BUCKET_NAME          = aws_s3_bucket.items.id
     }
   }
 

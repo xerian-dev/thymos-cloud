@@ -1,8 +1,13 @@
-import type { APIGatewaySimpleAuthorizerResult } from "aws-lambda";
+import type { APIGatewaySimpleAuthorizerWithContextResult } from "aws-lambda";
 
-export function buildPolicy(
-  groups: string[],
-): APIGatewaySimpleAuthorizerResult {
+interface AuthContext {
+  groups: string;
+}
+
+type AuthorizerResult =
+  APIGatewaySimpleAuthorizerWithContextResult<AuthContext>;
+
+export function buildPolicy(groups: string[]): AuthorizerResult {
   if (groups.includes("admin")) {
     return {
       isAuthorized: true,
@@ -17,5 +22,5 @@ export function buildPolicy(
     };
   }
 
-  return { isAuthorized: false };
+  return { isAuthorized: false, context: { groups: "" } };
 }

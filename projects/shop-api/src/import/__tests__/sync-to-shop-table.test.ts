@@ -60,7 +60,10 @@ vi.mock("@aws-sdk/lib-dynamodb", () => {
 });
 
 import { syncToShopTable } from "../sync-to-shop-table";
-import type { APIGatewayProxyEventV2 } from "aws-lambda";
+import type {
+  APIGatewayProxyEventV2,
+  APIGatewayProxyStructuredResultV2,
+} from "aws-lambda";
 import type { ImportedAccountRecord } from "../import-table-client";
 
 function createMockEvent(): APIGatewayProxyEventV2 {
@@ -142,7 +145,9 @@ describe("sync-to-shop-table", () => {
         },
       );
 
-      const result = await syncToShopTable(createMockEvent());
+      const result = (await syncToShopTable(
+        createMockEvent(),
+      )) as APIGatewayProxyStructuredResultV2;
 
       expect(result.statusCode).toBe(200);
       const body = JSON.parse(result.body as string);
@@ -715,7 +720,9 @@ describe("sync-to-shop-table", () => {
         },
       );
 
-      const result = await syncToShopTable(createMockEvent());
+      const result = (await syncToShopTable(
+        createMockEvent(),
+      )) as APIGatewayProxyStructuredResultV2;
 
       expect(result.statusCode).toBe(200);
       const body = JSON.parse(result.body as string);

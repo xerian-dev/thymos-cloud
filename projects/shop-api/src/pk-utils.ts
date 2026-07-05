@@ -1,4 +1,5 @@
 const ACCOUNT_PREFIX = "ACCOUNT#";
+const ITEM_PREFIX = "ITEM#";
 const PAD_LENGTH = 7;
 
 /**
@@ -15,4 +16,20 @@ export function buildAccountUuidPk(uuid: string): string {
  */
 export function formatAccountNumber(accountNumber: number): string {
   return String(accountNumber).padStart(PAD_LENGTH, "0");
+}
+
+/**
+ * Constructs a DynamoDB PK for an item from a UUID.
+ * Example: buildItemPk("abc-123") → "ITEM#abc-123"
+ */
+export function buildItemPk(uuid: string): string {
+  return `${ITEM_PREFIX}${uuid}`;
+}
+
+/**
+ * Formats an item SKU as the GSI1SK value with a 7-digit zero-padded SKU.
+ * Example: formatSkuGsi1sk(42) → "ITEM#0000042"
+ */
+export function formatSkuGsi1sk(sku: number): string {
+  return `${ITEM_PREFIX}${String(sku).padStart(PAD_LENGTH, "0")}`;
 }

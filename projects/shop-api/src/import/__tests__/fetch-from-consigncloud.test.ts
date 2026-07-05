@@ -24,7 +24,10 @@ vi.mock("../rate-limiter", () => ({
 }));
 
 import { fetchFromConsignCloud } from "../fetch-from-consigncloud";
-import type { APIGatewayProxyEventV2 } from "aws-lambda";
+import type {
+  APIGatewayProxyEventV2,
+  APIGatewayProxyStructuredResultV2,
+} from "aws-lambda";
 
 function createMockEvent(): APIGatewayProxyEventV2 {
   return {
@@ -84,7 +87,9 @@ describe("fetch-from-consigncloud", () => {
     mockWriteImportedAccounts.mockResolvedValue(undefined);
     mockWriteSummaryRecord.mockResolvedValue(undefined);
 
-    const result = await fetchFromConsignCloud(createMockEvent());
+    const result = (await fetchFromConsignCloud(
+      createMockEvent(),
+    )) as APIGatewayProxyStructuredResultV2;
 
     expect(result.statusCode).toBe(200);
     const body = JSON.parse(result.body as string);
@@ -107,7 +112,9 @@ describe("fetch-from-consigncloud", () => {
     mockWriteImportedAccounts.mockResolvedValue(undefined);
     mockWriteSummaryRecord.mockResolvedValue(undefined);
 
-    const result = await fetchFromConsignCloud(createMockEvent());
+    const result = (await fetchFromConsignCloud(
+      createMockEvent(),
+    )) as APIGatewayProxyStructuredResultV2;
 
     expect(result.statusCode).toBe(200);
     const body = JSON.parse(result.body as string);
@@ -122,7 +129,9 @@ describe("fetch-from-consigncloud", () => {
       new Error("SSM parameter not found at path: /test/path/api-key"),
     );
 
-    const result = await fetchFromConsignCloud(createMockEvent());
+    const result = (await fetchFromConsignCloud(
+      createMockEvent(),
+    )) as APIGatewayProxyStructuredResultV2;
 
     expect(result.statusCode).toBe(500);
     const body = JSON.parse(result.body as string);

@@ -4,7 +4,7 @@ import { AuthGuard } from "@/components/auth-guard";
 import { AdminLayout } from "@/components/layout/admin-layout";
 import { LoginScreen } from "@/features/auth/login-screen";
 import { AccountsPage } from "@/features/accounts/accounts-page";
-import { InventoryPage } from "@/features/inventory/inventory-page";
+import { ItemsPage } from "@/features/inventory/items-page";
 import { HelpPage } from "@/features/help/help-page";
 
 /**
@@ -33,7 +33,7 @@ export const router = createBrowserRouter([
           },
           {
             path: "inventory",
-            Component: InventoryPage,
+            Component: ItemsPage,
           },
           {
             path: "accounts",

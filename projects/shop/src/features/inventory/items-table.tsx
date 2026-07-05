@@ -1,17 +1,17 @@
 import * as React from "react";
-import type { Account, PageSize } from "./accounts-types";
-import { accountsColumns } from "./accounts-columns";
-import type { AccountsTableMeta } from "./accounts-columns";
+import type { Item, PageSize } from "./items-types";
+import { itemsColumns } from "./items-columns";
+import type { ItemsTableMeta } from "./items-columns";
 import { DataTable } from "@/components/shared/data-table";
 import { PaginationControls } from "@/components/shared/pagination-controls";
 
-export interface AccountsTableProps {
-  data: Account[];
+export interface ItemsTableProps {
+  data: Item[];
   loading: boolean;
   error: string | null;
   onRetry?: () => void;
-  onEdit?: (account: Account) => void;
-  onDelete?: (account: Account) => void;
+  onEdit?: (item: Item) => void;
+  onDelete?: (item: Item) => void;
   hasPrevious: boolean;
   hasMore: boolean;
   pageSize: PageSize;
@@ -20,7 +20,7 @@ export interface AccountsTableProps {
   onPageSizeChange: (pageSize: PageSize) => void;
 }
 
-export function AccountsTable({
+export function ItemsTable({
   data,
   loading,
   error,
@@ -33,24 +33,24 @@ export function AccountsTable({
   onNext,
   onPrevious,
   onPageSizeChange,
-}: AccountsTableProps): React.ReactNode {
-  const meta: AccountsTableMeta = React.useMemo(
+}: ItemsTableProps): React.ReactNode {
+  const meta: ItemsTableMeta = React.useMemo(
     () => ({ onEdit, onDelete }),
     [onEdit, onDelete],
   );
 
   return (
     <>
-      <DataTable<Account>
-        columns={accountsColumns}
+      <DataTable<Item>
+        columns={itemsColumns}
         data={data}
         loading={loading}
         error={error}
         onRetry={onRetry}
-        aria-label="Accounts table"
+        aria-label="Items table"
         meta={meta}
-        emptyMessage="No accounts found."
-        loadingMessage="Loading accounts…"
+        emptyMessage="No items found."
+        loadingMessage="Loading items…"
       />
       {!loading && !error && (
         <PaginationControls
