@@ -159,6 +159,22 @@ resource "aws_iam_role_policy" "logs" {
   })
 }
 
+resource "aws_iam_role_policy" "self_invoke" {
+  name = "${var.project_name}-${var.environment}-shop-import-self-invoke"
+  role = aws_iam_role.lambda.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect   = "Allow"
+        Action   = ["lambda:InvokeFunction"]
+        Resource = aws_lambda_function.import.arn
+      }
+    ]
+  })
+}
+
 # -----------------------------------------------------------------------------
 # Lambda Function
 # -----------------------------------------------------------------------------
@@ -179,6 +195,7 @@ resource "aws_lambda_function" "import" {
       IMPORT_TABLE_NAME     = aws_dynamodb_table.import.name
       SSM_API_KEY_PATH      = aws_ssm_parameter.consigncloud_api_key.name
       CONSIGNCLOUD_BASE_URL = var.consigncloud_base_url
+      FUNCTION_NAME         = "${var.project_name}-${var.environment}-shop-import"
     }
   }
 
@@ -233,6 +250,33 @@ resource "aws_apigatewayv2_route" "post_import_fetch" {
 resource "aws_apigatewayv2_route" "post_import_sync" {
   api_id    = var.api_gateway_id
   route_key = "POST /api/import/sync"
+  target    = "integrations/${aws_apigatewayv2_integration.import.id}"
+
+  authorization_type = "CUSTOM"
+  authorizer_id      = var.authorizer_id
+}
+
+resource "aws_apigatewayv2_route" "post_import_items_start" {
+  api_id    = var.api_gateway_id
+  route_key = "POST /api/import/items/start"
+  target    = "integrations/${aws_apigatewayv2_integration.import.id}"
+
+  authorization_type = "CUSTOM"
+  authorizer_id      = var.authorizer_id
+}
+
+resource "aws_apigatewayv2_route" "post_import_items_resume" {
+  api_id    = var.api_gateway_id
+  route_key = "POST /api/import/items/resume"
+  target    = "integrations/${aws_apigatewayv2_integration.import.id}"
+
+  authorization_type = "CUSTOM"
+  authorizer_id      = var.authorizer_id
+}
+
+resource "aws_apigatewayv2_route" "post_import_items_status" {
+  api_id    = var.api_gateway_id
+  route_key = "POST /api/import/items/status"
   target    = "integrations/${aws_apigatewayv2_integration.import.id}"
 
   authorization_type = "CUSTOM"
