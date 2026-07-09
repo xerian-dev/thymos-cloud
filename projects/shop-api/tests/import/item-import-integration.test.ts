@@ -68,10 +68,10 @@ vi.mock("../../src/dynamodb-client", () => ({
 function makeConsignCloudItem(overrides: Record<string, unknown> = {}) {
   return {
     id: crypto.randomUUID(),
-    name: "Test Item",
-    price: 29.99,
+    title: "Test Item",
+    tag_price: 2999,
     quantity: 1,
-    consignor_split: 60,
+    split: 0.6,
     account_id: "cc-account-001",
     account: { id: "cc-account-001", number: "1001" },
     category: { name: "Clothing" },
@@ -248,10 +248,10 @@ describe("Item Import Integration Tests", () => {
     it("writes correct DynamoDB record with PK, SK, GSI keys, and all fields", async () => {
       const testItem = makeConsignCloudItem({
         id: "source-item-uuid",
-        name: "Vintage Jacket",
-        price: 49.99,
+        title: "Vintage Jacket",
+        tag_price: 4999,
         quantity: 2,
-        consignor_split: 70,
+        split: 0.7,
         account: { id: "cc-acc-100", number: "100" },
         category: { name: "Outerwear" },
         tags: ["vintage", "leather"],
@@ -335,9 +335,8 @@ describe("Item Import Integration Tests", () => {
       expect(itemRecord.quantity).toBe(2);
       expect(itemRecord.split).toBe(70);
       expect(itemRecord.inventoryType).toBe("Consignment");
-      expect(itemRecord.terms).toBe("Return To Consignor");
+      expect(itemRecord.terms).toBe("Donate");
       expect(itemRecord.taxExempt).toBe(true);
-      expect(itemRecord.category).toBe("Outerwear");
       expect(itemRecord.brand).toBe("LeatherCo");
       expect(itemRecord.color).toBe("Brown");
       expect(itemRecord.size).toBe("L");

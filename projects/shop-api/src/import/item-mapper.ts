@@ -1,14 +1,16 @@
 import { ConsignCloudItem } from "./item-consigncloud-client";
 
+export type InventoryType = "Consignment" | "Retail";
+export type Terms = "Return To Consignor" | "Donate" | "Discard";
+
 export interface MappedItemFields {
   title: string;
   tagPrice: number;
   quantity: number;
   split: number;
-  inventoryType: "Consignment";
-  terms: "Return To Consignor";
+  inventoryType: InventoryType;
+  terms: Terms;
   taxExempt: boolean;
-  category?: string;
   tags?: string[];
   description?: string;
   brand?: string;
@@ -22,13 +24,48 @@ export type ItemMappingResult =
   | { success: true; mapped: MappedItemFields }
   | { success: false; error: string };
 
+function mapInventoryType(value: string | undefined): InventoryType {
+  switch (value) {
+    case "consignment":
+      return "Consignment";
+    case "buy_outright":
+    case "retail":
+      return "Retail";
+    default:
+      return "Consignment";
+  }
+}
+
+function mapTerms(value: string | undefined): Terms {
+  switch (value) {
+    case "return_to_consignor":
+      return "Return To Consignor";
+    case "donate":
+      return "Donate";
+    case "discard":
+      return "Discard";
+    default:
+      return "Donate";
+  }
+}
+
 export function mapConsignCloudItem(item: ConsignCloudItem): ItemMappingResult {
   // Validate required fields
-  if (!item.name) {
+  const itemName = item.title;
+  if (!itemName) {
     return { success: false, error: "Missing or empty required field: title" };
   }
 
-  if (item.price == null || item.price < 0 || item.price > 999_999.99) {
+  // tag_price is in cents — convert to CHF (divide by 100)
+  const rawPrice = item.tag_price ?? item.price;
+  if (rawPrice == null || rawPrice < 0) {
+    return {
+      success: false,
+      error: `Invalid or missing required field: tagPrice (tag_price=${item.tag_price}, price=${item.price})`,
+    };
+  }
+  const tagPrice = rawPrice / 100;
+  if (tagPrice > 999_999.99) {
     return {
       success: false,
       error:
@@ -36,18 +73,13 @@ export function mapConsignCloudItem(item: ConsignCloudItem): ItemMappingResult {
     };
   }
 
-  if (item.quantity == null || item.quantity < 1 || item.quantity > 9999) {
-    return {
-      success: false,
-      error: "Invalid or missing required field: quantity (must be 1–9999)",
-    };
-  }
+  // quantity: allow 0 (sold items)
+  const quantity = item.quantity ?? 0;
 
-  if (
-    item.consignor_split == null ||
-    item.consignor_split < 0 ||
-    item.consignor_split > 100
-  ) {
+  // split is a decimal fraction (0.0–1.0) — convert to percentage (0–100)
+  const rawSplit = item.split ?? item.consignor_split;
+  const split = rawSplit != null ? Math.round(rawSplit * 100) : 0;
+  if (split < 0 || split > 100) {
     return {
       success: false,
       error: "Invalid or missing required field: split (must be 0–100)",
@@ -56,22 +88,23 @@ export function mapConsignCloudItem(item: ConsignCloudItem): ItemMappingResult {
 
   // Map fields
   const mapped: MappedItemFields = {
-    title: item.name.slice(0, 200),
-    tagPrice: item.price,
-    quantity: item.quantity,
-    split: item.consignor_split,
-    inventoryType: "Consignment",
-    terms: "Return To Consignor",
+    title: itemName.slice(0, 200),
+    tagPrice,
+    quantity,
+    split,
+    inventoryType: mapInventoryType(item.inventory_type),
+    terms: mapTerms(item.terms),
     taxExempt: item.tax_exempt ?? false,
   };
 
   // Optional fields — only include if present
-  if (item.category?.name) {
-    mapped.category = item.category.name;
-  }
-
-  if (item.tags && item.tags.length > 0) {
-    mapped.tags = item.tags.slice(0, 20);
+  if (item.tags && Array.isArray(item.tags) && item.tags.length > 0) {
+    const stringTags = (item.tags as unknown[])
+      .filter((t): t is string => typeof t === "string")
+      .slice(0, 20);
+    if (stringTags.length > 0) {
+      mapped.tags = stringTags;
+    }
   }
 
   if (item.description) {

@@ -421,8 +421,8 @@ interface MappedFields {
   tagPrice: number;
   quantity: number;
   split: number;
-  inventoryType: "Consignment";
-  terms: "Return To Consignor";
+  inventoryType: string;
+  terms: string;
   taxExempt: boolean;
   category?: string;
   tags?: string[];

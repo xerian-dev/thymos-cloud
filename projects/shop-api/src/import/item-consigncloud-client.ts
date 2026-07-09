@@ -2,14 +2,19 @@ import { RateLimiter } from "./rate-limiter";
 
 export interface ConsignCloudItem {
   id: string;
-  name: string;
-  price: number;
+  title?: string;
+  tag_price?: number;
+  price?: number;
   quantity: number;
-  consignor_split: number;
+  split?: number;
+  consignor_split?: number;
+  inventory_type?: string;
+  terms?: string;
   account_id?: string;
   account?: { id: string; number: string } | null;
-  category?: { name: string } | null;
-  tags?: string[];
+  created_by?: { id: string; name: string; user_type?: string } | null;
+  category?: { id: string; name: string } | null;
+  tags?: string[] | Array<unknown>;
   description?: string;
   brand?: string;
   color?: string;
@@ -20,6 +25,7 @@ export interface ConsignCloudItem {
   images?: Array<{ url: string }>;
   created: string;
   deleted?: string | null;
+  sku?: string;
 }
 
 export interface FetchItemPageResult {

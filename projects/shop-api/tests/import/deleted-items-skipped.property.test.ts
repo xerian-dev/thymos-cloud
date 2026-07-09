@@ -31,7 +31,7 @@ function consignCloudItemArb(
 ): fc.Arbitrary<ConsignCloudItem> {
   return fc.record({
     id: fc.uuid(),
-    name: fc.oneof(
+    title: fc.oneof(
       fc.string({ minLength: 0, maxLength: 300 }),
       fc.constant(""),
     ),
@@ -162,7 +162,7 @@ describe("Property 3: Deleted items are always skipped", () => {
   it("deleted check is independent of other fields validity", () => {
     const itemWithInvalidFieldsButDeleted = fc.record({
       id: fc.uuid(),
-      name: fc.constant(""),
+      title: fc.constant(""),
       price: fc.constant(-1),
       quantity: fc.constant(0),
       consignor_split: fc.constant(-5),

@@ -28,10 +28,28 @@ erDiagram
         string updatedAt "ISO 8601 UTC"
     }
 
+    EMPLOYEE {
+        string uuid PK "v4 UUID (synthetic key)"
+        string name "Required"
+        string sourceId "External system ID (ConsignCloud employee UUID)"
+        string createdAt "ISO 8601 UTC"
+        string updatedAt "ISO 8601 UTC"
+    }
+
+    CATEGORY {
+        string uuid PK "v4 UUID (synthetic key)"
+        string name "Required"
+        string sourceId "External system ID (ConsignCloud category UUID)"
+        string createdAt "ISO 8601 UTC"
+        string updatedAt "ISO 8601 UTC"
+    }
+
     ITEM {
         string uuid PK "v4 UUID (synthetic key)"
         number sku "Sequential number (shopUid), auto-generated from counter"
         string accountId FK "UUID of owning Account"
+        string createdBy FK "UUID of Employee who created the item"
+        string categoryId FK "UUID of Category"
         string title "Required, max 200 chars"
         number tagPrice "CHF, 0-999999.99"
         number quantity "1-9999"
@@ -59,6 +77,7 @@ erDiagram
     }
 
     ACCOUNT ||--o{ ITEM : "owns"
+    EMPLOYEE ||--o{ ITEM : "created"
     SEQUENCE_COUNTER ||--|| ACCOUNT : "generates shopUid"
     SEQUENCE_COUNTER ||--|| ITEM : "generates SKU"
 ```
@@ -70,6 +89,8 @@ Both entities live in the same DynamoDB table (`thymos-{environment}-shop`). The
 | Entity           | PK                    | SK         | GSI1PK     | GSI1SK                  |
 |------------------|-----------------------|------------|------------|-------------------------|
 | Account          | `ACCOUNT#<uuid>`      | `METADATA` | `ACCOUNTS` | `ACCOUNT#<shopUid>`     |
+| Employee         | `EMPLOYEE#<uuid>`     | `METADATA` | —          | —                       |
+| Category         | `CATEGORY#<uuid>`     | `METADATA` | —          | —                       |
 | Item             | `ITEM#<uuid>`         | `METADATA` | `ITEMS`    | `ITEM#<sku>`            |
 | Account Counter  | `SEQUENCE#ACCOUNT`    | `COUNTER`  | —          | —                       |
 | Item Counter     | `SEQUENCE#ITEM`       | `COUNTER`  | —          | —                       |
@@ -79,7 +100,8 @@ Both entities live in the same DynamoDB table (`thymos-{environment}-shop`). The
 - **Synthetic keys only**: UUIDs for identity, never business values (shopUid, SKU) as partition keys
 - **Business identifiers as attributes**: shopUid and SKU are queryable via GSI1 but never used as primary keys
 - **SKU is the item's shopUid**: The SKU is a sequential number (e.g., `42`) auto-generated from the item sequence counter — the same concept as `shopUid` for accounts. It is the operator-facing identifier for items, labelled "SKU" in the UI.
-- **Relationship via attribute**: Items reference their owning Account by storing `accountId` (the Account's UUID)
+- **Relationship via attribute**: Items reference their owning Account by storing `accountId` (the Account's UUID), and their creator by storing `createdBy` (the Employee's UUID)
+- **Employee lookup**: Employees are looked up by `sourceId` via the `sourceId-index` GSI (same as accounts). No sequential numbering — they're referenced, not browsed.
 - **Sequence counters**: Separate counter records for each entity type, atomically incremented via DynamoDB conditional expressions
 
 ## Enumerations

@@ -322,8 +322,8 @@ describe("item-consigncloud-client", () => {
     it("parses items from data field and next_cursor", async () => {
       const mockFetch = vi.mocked(fetch);
       const items = [
-        { id: "item-1", name: "Widget" },
-        { id: "item-2", name: "Gadget" },
+        { id: "item-1", title: "Widget" },
+        { id: "item-2", title: "Gadget" },
       ];
       mockFetch.mockResolvedValueOnce(
         jsonResponse({ data: items, next_cursor: "cursor-xyz" }),
@@ -348,7 +348,7 @@ describe("item-consigncloud-client", () => {
 
     it("handles items field as fallback when data field is missing", async () => {
       const mockFetch = vi.mocked(fetch);
-      const items = [{ id: "item-1", name: "Fallback" }];
+      const items = [{ id: "item-1", title: "Fallback" }];
       mockFetch.mockResolvedValueOnce(
         jsonResponse({ items, next_cursor: null }),
       );

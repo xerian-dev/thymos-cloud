@@ -10,10 +10,10 @@ function baseValidItem(
 ): ConsignCloudItem {
   return {
     id: "cc-item-001",
-    name: "Test Item",
-    price: 29.99,
+    title: "Test Item",
+    tag_price: 2999,
     quantity: 1,
-    consignor_split: 50,
+    split: 0.5,
     account_id: "acc-001",
     created: "2026-01-15T10:00:00.000Z",
     ...overrides,
@@ -24,7 +24,7 @@ describe("item-mapper edge cases", () => {
   describe("title truncation", () => {
     it("does not truncate a title exactly 200 characters long", () => {
       const title200 = "a".repeat(200);
-      const result = mapConsignCloudItem(baseValidItem({ name: title200 }));
+      const result = mapConsignCloudItem(baseValidItem({ title: title200 }));
 
       expect(result.success).toBe(true);
       if (result.success) {
@@ -35,7 +35,7 @@ describe("item-mapper edge cases", () => {
 
     it("truncates a title of 201 characters to 200", () => {
       const title201 = "b".repeat(201);
-      const result = mapConsignCloudItem(baseValidItem({ name: title201 }));
+      const result = mapConsignCloudItem(baseValidItem({ title: title201 }));
 
       expect(result.success).toBe(true);
       if (result.success) {
@@ -45,7 +45,7 @@ describe("item-mapper edge cases", () => {
     });
 
     it("accepts a title of 1 character (shortest valid)", () => {
-      const result = mapConsignCloudItem(baseValidItem({ name: "x" }));
+      const result = mapConsignCloudItem(baseValidItem({ title: "x" }));
 
       expect(result.success).toBe(true);
       if (result.success) {
@@ -55,8 +55,8 @@ describe("item-mapper edge cases", () => {
   });
 
   describe("price boundaries", () => {
-    it("accepts price 0.00 (lower boundary)", () => {
-      const result = mapConsignCloudItem(baseValidItem({ price: 0.0 }));
+    it("accepts tag_price 0 (lower boundary, maps to 0.00)", () => {
+      const result = mapConsignCloudItem(baseValidItem({ tag_price: 0 }));
 
       expect(result.success).toBe(true);
       if (result.success) {
@@ -64,8 +64,10 @@ describe("item-mapper edge cases", () => {
       }
     });
 
-    it("accepts price 999,999.99 (upper boundary)", () => {
-      const result = mapConsignCloudItem(baseValidItem({ price: 999_999.99 }));
+    it("accepts tag_price 99999999 (upper boundary, maps to 999,999.99)", () => {
+      const result = mapConsignCloudItem(
+        baseValidItem({ tag_price: 99999999 }),
+      );
 
       expect(result.success).toBe(true);
       if (result.success) {
@@ -73,8 +75,8 @@ describe("item-mapper edge cases", () => {
       }
     });
 
-    it("rejects price -0.01 (below lower boundary)", () => {
-      const result = mapConsignCloudItem(baseValidItem({ price: -0.01 }));
+    it("rejects tag_price -1 (below lower boundary)", () => {
+      const result = mapConsignCloudItem(baseValidItem({ tag_price: -1 }));
 
       expect(result.success).toBe(false);
       if (!result.success) {
@@ -82,8 +84,10 @@ describe("item-mapper edge cases", () => {
       }
     });
 
-    it("rejects price 1,000,000.00 (above upper boundary)", () => {
-      const result = mapConsignCloudItem(baseValidItem({ price: 1_000_000.0 }));
+    it("rejects tag_price 100000000 (above upper boundary, maps to 1,000,000.00)", () => {
+      const result = mapConsignCloudItem(
+        baseValidItem({ tag_price: 100000000 }),
+      );
 
       expect(result.success).toBe(false);
       if (!result.success) {
@@ -111,28 +115,19 @@ describe("item-mapper edge cases", () => {
       }
     });
 
-    it("rejects quantity 0 (below lower boundary)", () => {
+    it("accepts quantity 0 (sold items)", () => {
       const result = mapConsignCloudItem(baseValidItem({ quantity: 0 }));
 
-      expect(result.success).toBe(false);
-      if (!result.success) {
-        expect(result.error).toContain("quantity");
-      }
-    });
-
-    it("rejects quantity 10000 (above upper boundary)", () => {
-      const result = mapConsignCloudItem(baseValidItem({ quantity: 10000 }));
-
-      expect(result.success).toBe(false);
-      if (!result.success) {
-        expect(result.error).toContain("quantity");
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.mapped.quantity).toBe(0);
       }
     });
   });
 
   describe("split boundaries", () => {
-    it("accepts split 0 (lower boundary)", () => {
-      const result = mapConsignCloudItem(baseValidItem({ consignor_split: 0 }));
+    it("accepts split 0 (lower boundary, maps to 0%)", () => {
+      const result = mapConsignCloudItem(baseValidItem({ split: 0 }));
 
       expect(result.success).toBe(true);
       if (result.success) {
@@ -140,10 +135,8 @@ describe("item-mapper edge cases", () => {
       }
     });
 
-    it("accepts split 100 (upper boundary)", () => {
-      const result = mapConsignCloudItem(
-        baseValidItem({ consignor_split: 100 }),
-      );
+    it("accepts split 1 (upper boundary, maps to 100%)", () => {
+      const result = mapConsignCloudItem(baseValidItem({ split: 1 }));
 
       expect(result.success).toBe(true);
       if (result.success) {
@@ -151,10 +144,8 @@ describe("item-mapper edge cases", () => {
       }
     });
 
-    it("rejects split -1 (below lower boundary)", () => {
-      const result = mapConsignCloudItem(
-        baseValidItem({ consignor_split: -1 }),
-      );
+    it("rejects split -0.01 (below lower boundary)", () => {
+      const result = mapConsignCloudItem(baseValidItem({ split: -0.01 }));
 
       expect(result.success).toBe(false);
       if (!result.success) {
@@ -162,10 +153,8 @@ describe("item-mapper edge cases", () => {
       }
     });
 
-    it("rejects split 101 (above upper boundary)", () => {
-      const result = mapConsignCloudItem(
-        baseValidItem({ consignor_split: 101 }),
-      );
+    it("rejects split 1.01 (above upper boundary)", () => {
+      const result = mapConsignCloudItem(baseValidItem({ split: 1.01 }));
 
       expect(result.success).toBe(false);
       if (!result.success) {

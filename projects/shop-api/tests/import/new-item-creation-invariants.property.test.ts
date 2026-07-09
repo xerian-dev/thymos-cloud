@@ -25,8 +25,8 @@ interface ItemRecord {
   tagPrice: number;
   quantity: number;
   split: number;
-  inventoryType: "Consignment";
-  terms: "Return To Consignor";
+  inventoryType: "Consignment" | "Retail";
+  terms: string;
   taxExempt: boolean;
   category?: string;
   brand?: string;
@@ -79,10 +79,10 @@ function buildItemRecord(
 describe("Property 11: New item creation invariants", () => {
   const validConsignCloudItemArb: fc.Arbitrary<ConsignCloudItem> = fc.record({
     id: fc.uuid(),
-    name: fc.string({ minLength: 1, maxLength: 300 }),
-    price: fc.integer({ min: 0, max: 99999999 }).map((n) => n / 100),
-    quantity: fc.integer({ min: 1, max: 9999 }),
-    consignor_split: fc.integer({ min: 0, max: 100 }),
+    title: fc.string({ minLength: 1, maxLength: 300 }),
+    tag_price: fc.integer({ min: 0, max: 99999999 }),
+    quantity: fc.integer({ min: 0, max: 9999 }),
+    split: fc.double({ min: 0, max: 1, noNaN: true }),
     account_id: fc.uuid(),
     created: fc
       .integer({ min: 946684800000, max: 1924905600000 })
@@ -144,7 +144,7 @@ describe("Property 11: New item creation invariants", () => {
   /**
    * Validates: Requirements 5.10
    */
-  it("terms is always Return To Consignor", () => {
+  it("terms defaults to Donate when not specified", () => {
     fc.assert(
       fc.property(
         validConsignCloudItemArb,
@@ -160,7 +160,7 @@ describe("Property 11: New item creation invariants", () => {
             sku,
             accountId,
           );
-          expect(record.terms).toBe("Return To Consignor");
+          expect(record.terms).toBe("Donate");
         },
       ),
       { numRuns: 100 },
@@ -241,7 +241,7 @@ describe("Property 11: New item creation invariants", () => {
           // inventoryType is always Consignment
           expect(record.inventoryType).toBe("Consignment");
           // terms is always Return To Consignor
-          expect(record.terms).toBe("Return To Consignor");
+          expect(record.terms).toBe("Donate");
           // SKU is embedded in GSI1SK
           expect(record.GSI1SK).toBe(`ITEM#${sku}`);
           // accountId is stored

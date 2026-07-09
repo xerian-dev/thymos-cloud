@@ -73,8 +73,10 @@ export async function runSyncLoop(
   };
   const failures: FailureEntry[] = syncCheckpoint?.failures ?? [];
 
-  // 3. Initialize in-memory account cache
+  // 3. Initialize in-memory caches
   const accountCache = new Map<string, string>();
+  const employeeCache = new Map<string, string>();
+  const categoryCache = new Map<string, string>();
 
   // Log start
   console.info(
@@ -120,28 +122,35 @@ export async function runSyncLoop(
         continue;
       }
 
-      // Resolve account by ConsignCloud account number
+      // Resolve account by ConsignCloud account number (non-fatal if not found)
       const accountNumber = item.account?.number;
       const accountUuid = await resolveAccountByNumber(
         accountNumber,
         accountCache,
       );
-      if (!accountUuid) {
-        const errorMsg = `Account not found for ConsignCloud account number: ${accountNumber}`;
-        recordFailure(failures, item.id, errorMsg);
-        progress.failed++;
-        progress.processed++;
+      if (!accountUuid && accountNumber) {
         console.info(
           JSON.stringify({
-            level: "WARN",
-            message: "Item sync failed: account not found",
+            level: "INFO",
+            message: "Item imported without account (account not found)",
             jobId,
             itemId: item.id,
             accountNumber,
           }),
         );
-        continue;
       }
+
+      // Resolve or create employee from created_by
+      const createdByUuid = await resolveOrCreateEmployee(
+        item.created_by,
+        employeeCache,
+      );
+
+      // Resolve or create category
+      const categoryId = await resolveOrCreateCategory(
+        item.category,
+        categoryCache,
+      );
 
       // Map item
       const mappingResult = mapConsignCloudItem(item);
@@ -179,7 +188,14 @@ export async function runSyncLoop(
 
       // Write item to Shop_Table with conditional expression
       try {
-        await writeItem(item, mappingResult.mapped, accountUuid, sku);
+        await writeItem(
+          item,
+          mappingResult.mapped,
+          accountUuid ?? undefined,
+          sku,
+          createdByUuid,
+          categoryId,
+        );
         progress.imported++;
         progress.processed++;
       } catch (error: unknown) {
@@ -309,6 +325,123 @@ async function loadSyncCheckpoint(
 
 // --- Helper functions (same as item-import-orchestrator) ---
 
+async function resolveOrCreateEmployee(
+  createdBy:
+    | { id: string; name: string; user_type?: string }
+    | null
+    | undefined,
+  cache: Map<string, string>,
+): Promise<string | undefined> {
+  if (!createdBy?.id) {
+    return undefined;
+  }
+
+  // Check cache first
+  const cached = cache.get(createdBy.id);
+  if (cached) {
+    return cached;
+  }
+
+  // Look up by sourceId in Shop_Table
+  const result = await docClient.send(
+    new QueryCommand({
+      TableName: TABLE_NAME,
+      IndexName: "sourceId-index",
+      KeyConditionExpression: "#sid = :sourceId",
+      ExpressionAttributeNames: { "#sid": "sourceId", "#uuid": "uuid" },
+      ExpressionAttributeValues: { ":sourceId": createdBy.id },
+      Limit: 1,
+      ProjectionExpression: "#uuid",
+    }),
+  );
+
+  if (result.Items && result.Items.length > 0) {
+    const uuid = result.Items[0].uuid as string;
+    cache.set(createdBy.id, uuid);
+    return uuid;
+  }
+
+  // Employee doesn't exist — create on the fly
+  const employeeUuid = randomUUID();
+  const now = new Date().toISOString();
+
+  await docClient.send(
+    new PutCommand({
+      TableName: TABLE_NAME,
+      Item: {
+        PK: `EMPLOYEE#${employeeUuid}`,
+        SK: "METADATA",
+        uuid: employeeUuid,
+        name: createdBy.name,
+        sourceId: createdBy.id,
+        createdAt: now,
+        updatedAt: now,
+      },
+      ConditionExpression: "attribute_not_exists(PK)",
+    }),
+  );
+
+  cache.set(createdBy.id, employeeUuid);
+  return employeeUuid;
+}
+
+async function resolveOrCreateCategory(
+  category: { id: string; name: string } | null | undefined,
+  cache: Map<string, string>,
+): Promise<string | undefined> {
+  if (!category?.id) {
+    return undefined;
+  }
+
+  // Check cache first
+  const cached = cache.get(category.id);
+  if (cached) {
+    return cached;
+  }
+
+  // Look up by sourceId in Shop_Table
+  const result = await docClient.send(
+    new QueryCommand({
+      TableName: TABLE_NAME,
+      IndexName: "sourceId-index",
+      KeyConditionExpression: "#sid = :sourceId",
+      ExpressionAttributeNames: { "#sid": "sourceId", "#uuid": "uuid" },
+      ExpressionAttributeValues: { ":sourceId": category.id },
+      Limit: 1,
+      ProjectionExpression: "#uuid",
+    }),
+  );
+
+  if (result.Items && result.Items.length > 0) {
+    const uuid = result.Items[0].uuid as string;
+    cache.set(category.id, uuid);
+    return uuid;
+  }
+
+  // Category doesn't exist — create on the fly
+  const categoryUuid = randomUUID();
+  const now = new Date().toISOString();
+
+  await docClient.send(
+    new PutCommand({
+      TableName: TABLE_NAME,
+      Item: {
+        PK: `CATEGORY#${categoryUuid}`,
+        SK: "METADATA",
+        uuid: categoryUuid,
+        name: category.name,
+        sourceId: category.id,
+        createdAt: now,
+        updatedAt: now,
+      },
+      ConditionExpression: "attribute_not_exists(PK)",
+    }),
+  );
+
+  cache.set(category.id, categoryUuid);
+  return categoryUuid;
+}
+
 async function checkSourceIdExists(sourceId: string): Promise<boolean> {
   if (!sourceId) {
     return false;
@@ -434,10 +567,9 @@ interface MappedFields {
   tagPrice: number;
   quantity: number;
   split: number;
-  inventoryType: "Consignment";
-  terms: "Return To Consignor";
+  inventoryType: string;
+  terms: string;
   taxExempt: boolean;
-  category?: string;
   tags?: string[];
   description?: string;
   brand?: string;
@@ -450,8 +582,10 @@ interface MappedFields {
 async function writeItem(
   item: ConsignCloudItem,
   mapped: MappedFields,
-  accountUuid: string,
+  accountUuid: string | undefined,
   sku: number,
+  createdByUuid?: string,
+  categoryId?: string,
 ): Promise<void> {
   const uuid = randomUUID();
   const now = new Date().toISOString();
@@ -477,7 +611,8 @@ async function writeItem(
     updatedAt: now,
   };
 
-  if (mapped.category) record.category = mapped.category;
+  if (createdByUuid) record.createdBy = createdByUuid;
+  if (categoryId) record.categoryId = categoryId;
   if (mapped.brand) record.brand = mapped.brand;
   if (mapped.color) record.color = mapped.color;
   if (mapped.size) record.size = mapped.size;
