@@ -1,4 +1,11 @@
 # -----------------------------------------------------------------------------
+# Data Sources
+# -----------------------------------------------------------------------------
+
+data "aws_caller_identity" "current" {}
+data "aws_region" "current" {}
+
+# -----------------------------------------------------------------------------
 # DynamoDB Import Table
 # -----------------------------------------------------------------------------
 
@@ -159,8 +166,8 @@ resource "aws_iam_role_policy" "logs" {
   })
 }
 
-resource "aws_iam_role_policy" "self_invoke" {
-  name = "${var.project_name}-${var.environment}-shop-import-self-invoke"
+resource "aws_iam_role_policy" "start_step_function" {
+  name = "${var.project_name}-${var.environment}-shop-import-start-sfn"
   role = aws_iam_role.lambda.id
 
   policy = jsonencode({
@@ -168,8 +175,8 @@ resource "aws_iam_role_policy" "self_invoke" {
     Statement = [
       {
         Effect   = "Allow"
-        Action   = ["lambda:InvokeFunction"]
-        Resource = aws_lambda_function.import.arn
+        Action   = ["states:StartExecution"]
+        Resource = "arn:aws:states:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:stateMachine:${var.project_name}-${var.environment}-shop-import-loop"
       }
     ]
   })
@@ -195,7 +202,7 @@ resource "aws_lambda_function" "import" {
       IMPORT_TABLE_NAME     = aws_dynamodb_table.import.name
       SSM_API_KEY_PATH      = aws_ssm_parameter.consigncloud_api_key.name
       CONSIGNCLOUD_BASE_URL = var.consigncloud_base_url
-      FUNCTION_NAME         = "${var.project_name}-${var.environment}-shop-import"
+      STATE_MACHINE_ARN     = "arn:aws:states:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:stateMachine:${var.project_name}-${var.environment}-shop-import-loop"
     }
   }
 
@@ -208,6 +215,119 @@ resource "aws_lambda_function" "import" {
 resource "aws_lambda_function_event_invoke_config" "import_no_retry" {
   function_name          = aws_lambda_function.import.function_name
   maximum_retry_attempts = 0
+}
+
+# -----------------------------------------------------------------------------
+# Step Functions State Machine
+# -----------------------------------------------------------------------------
+
+resource "aws_iam_role" "step_function" {
+  name = "${var.project_name}-${var.environment}-shop-import-sfn-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Principal = {
+          Service = "states.amazonaws.com"
+        }
+        Action = "sts:AssumeRole"
+      }
+    ]
+  })
+
+  tags = {
+    Environment = var.environment
+    Project     = var.project_name
+  }
+}
+
+resource "aws_iam_role_policy" "step_function_invoke_lambda" {
+  name = "${var.project_name}-${var.environment}-shop-import-sfn-invoke-lambda"
+  role = aws_iam_role.step_function.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect   = "Allow"
+        Action   = ["lambda:InvokeFunction"]
+        Resource = aws_lambda_function.import.arn
+      }
+    ]
+  })
+}
+
+resource "aws_sfn_state_machine" "import_loop" {
+  name     = "${var.project_name}-${var.environment}-shop-import-loop"
+  role_arn = aws_iam_role.step_function.arn
+
+  definition = jsonencode({
+    Comment = "Item import processing loop — invokes Lambda repeatedly until work is complete"
+    StartAt = "ProcessBatch"
+    States = {
+      ProcessBatch = {
+        Type     = "Task"
+        Resource = "arn:aws:states:::lambda:invoke"
+        Parameters = {
+          FunctionName = aws_lambda_function.import.arn
+          Payload = {
+            "action"  = "resume-internal"
+            "jobId.$" = "$.jobId"
+            "phase.$" = "$.phase"
+          }
+        }
+        ResultSelector = {
+          "result.$" = "States.StringToJson($.Payload.body)"
+        }
+        ResultPath     = "$.taskResult"
+        TimeoutSeconds = 310
+        Retry = [
+          {
+            ErrorEquals     = ["Lambda.ServiceException", "Lambda.AWSLambdaException", "Lambda.SdkClientException", "Lambda.TooManyRequestsException"]
+            IntervalSeconds = 5
+            MaxAttempts     = 3
+            BackoffRate     = 2
+          }
+        ]
+        Next = "CheckStatus"
+      }
+      CheckStatus = {
+        Type = "Choice"
+        Choices = [
+          {
+            Variable     = "$.taskResult.result.status"
+            StringEquals = "continue"
+            Next         = "PrepareNextIteration"
+          }
+        ]
+        Default = "Done"
+      }
+      PrepareNextIteration = {
+        Type = "Pass"
+        Parameters = {
+          "action"  = "resume-internal"
+          "jobId.$" = "$.taskResult.result.jobId"
+          "phase.$" = "$.taskResult.result.phase"
+        }
+        Next = "WaitBeforeNext"
+      }
+      WaitBeforeNext = {
+        Type    = "Wait"
+        Seconds = 2
+        Next    = "ProcessBatch"
+      }
+      Done = {
+        Type = "Succeed"
+      }
+    }
+  })
+
+  tags = {
+    Environment = var.environment
+    Project     = var.project_name
+  }
 }
 
 # -----------------------------------------------------------------------------
@@ -277,6 +397,15 @@ resource "aws_apigatewayv2_route" "post_import_items_resume" {
 resource "aws_apigatewayv2_route" "post_import_items_status" {
   api_id    = var.api_gateway_id
   route_key = "POST /api/import/items/status"
+  target    = "integrations/${aws_apigatewayv2_integration.import.id}"
+
+  authorization_type = "CUSTOM"
+  authorizer_id      = var.authorizer_id
+}
+
+resource "aws_apigatewayv2_route" "post_import_items_sync" {
+  api_id    = var.api_gateway_id
+  route_key = "POST /api/import/items/sync"
   target    = "integrations/${aws_apigatewayv2_integration.import.id}"
 
   authorization_type = "CUSTOM"

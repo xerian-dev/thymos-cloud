@@ -2,7 +2,7 @@
 
 When adding or modifying features that involve entities, database records, or enumerations, always consult the canonical data model document first:
 
-# [[file:../../docs/data-model.md]]
+[[file:../../docs/data-model.md]]
 
 This document defines:
 

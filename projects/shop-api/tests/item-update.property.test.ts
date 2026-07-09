@@ -27,11 +27,11 @@ describe("Property 8: Update immutability of identity fields", () => {
     uuid: fc.uuid(),
     sku: fc.integer({ min: 1, max: 9999999 }),
     createdAt: fc
-      .date({
-        min: new Date("2020-01-01T00:00:00Z"),
-        max: new Date("2024-12-31T23:59:59Z"),
+      .integer({
+        min: new Date("2020-01-01T00:00:00Z").getTime(),
+        max: new Date("2024-12-31T23:59:59Z").getTime(),
       })
-      .map((d) => d.toISOString()),
+      .map((ts) => new Date(ts).toISOString()),
   });
 
   /** Generates a valid ValidatedItemInput for the update */
