@@ -518,6 +518,38 @@ describe("import-handler routing (resume-internal and HTTP routes)", () => {
     expect(mockGetJob).toHaveBeenCalledWith("internal-job-id");
   });
 
+  it("regression: handleResumeInternal always returns type 'item' so the router does not accidentally dispatch item jobs to the sale code path", async () => {
+    mockRunFetchLoop.mockResolvedValue({
+      status: "continue",
+      jobId: "internal-job-id",
+    });
+
+    const { handleResumeInternal } =
+      await import("../../src/import/item-import-handler");
+
+    const result = await handleResumeInternal("internal-job-id", "fetch");
+
+    expect(result.type).toBe("item");
+  });
+
+  it("regression: handleItemImportStart calls startStepFunction with jobId and 'fetch' (type defaults to 'item')", async () => {
+    // item-import-handler.ts relies on startStepFunction's default third
+    // argument to send type: "item". This test locks in that call shape;
+    // the default-value behavior itself is verified separately against the
+    // real (unmocked) step-function-starter module below.
+    const { handleItemImportStart } =
+      await import("../../src/import/item-import-handler");
+
+    await handleItemImportStart(
+      buildApiEvent({ method: "POST", path: "/api/import/items/start" }),
+    );
+
+    expect(mockStartStepFunction).toHaveBeenCalledWith(
+      expect.any(String),
+      "fetch",
+    );
+  });
+
   it("skips resume-internal for normal API events and routes correctly", async () => {
     const { handler } = await import("../../src/import-handler");
 

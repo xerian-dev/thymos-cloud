@@ -13,6 +13,11 @@ set -euo pipefail
 #   ./scripts/import-consigncloud.sh items status <job-id>
 #   ./scripts/import-consigncloud.sh items resume <job-id>
 #   ./scripts/import-consigncloud.sh items cancel <job-id>
+#   ./scripts/import-consigncloud.sh sales fetch [--created-after=YYYY-MM-DD]
+#   ./scripts/import-consigncloud.sh sales sync <job-id>
+#   ./scripts/import-consigncloud.sh sales status <job-id>
+#   ./scripts/import-consigncloud.sh sales resume <job-id>
+#   ./scripts/import-consigncloud.sh sales cancel <job-id>
 
 ENVIRONMENT="${ENVIRONMENT:-dev}"
 PROJECT_NAME="${PROJECT_NAME:-thymos}"
@@ -237,6 +242,146 @@ cmd_items_cancel() {
   echo "Done. Job ${job_id} has been cancelled."
 }
 
+cmd_sales_fetch() {
+  local created_after=""
+  for arg in "$@"; do
+    case "$arg" in
+      --created-after=*)
+        created_after="${arg#--created-after=}"
+        ;;
+    esac
+  done
+
+  local body="{}"
+  if [[ -n "$created_after" ]]; then
+    body="{\"createdAfter\":\"${created_after}T00:00:00.000Z\"}"
+  fi
+
+  local payload
+  payload=$(printf '{"rawPath":"/api/import/sales/start","requestContext":{"http":{"method":"POST","path":"/api/import/sales/start"}},"body":"%s"}' "$(echo "$body" | sed 's/"/\\"/g')")
+
+  echo "Starting sale fetch phase..."
+  if [[ -n "$created_after" ]]; then
+    echo "  Filter: created after ${created_after}"
+  fi
+
+  if ! aws lambda invoke \
+    --function-name "$LAMBDA_NAME" \
+    --payload "$payload" \
+    --cli-binary-format raw-in-base64-out \
+    /tmp/sales-fetch-response.json; then
+    echo "ERROR: Lambda invocation failed."
+    exit 1
+  fi
+  echo ""
+  echo "Response:"
+  parse_response /tmp/sales-fetch-response.json
+}
+
+cmd_sales_sync() {
+  local job_id="${1:-}"
+  if [[ -z "$job_id" ]]; then
+    echo "Usage: $0 sales sync <job-id>"
+    exit 1
+  fi
+
+  local body="{\"jobId\":\"${job_id}\"}"
+  local payload
+  payload=$(printf '{"rawPath":"/api/import/sales/sync","requestContext":{"http":{"method":"POST","path":"/api/import/sales/sync"}},"body":"%s"}' "$(echo "$body" | sed 's/"/\\"/g')")
+
+  echo "Starting sale sync phase for job: ${job_id}..."
+  if ! aws lambda invoke \
+    --function-name "$LAMBDA_NAME" \
+    --payload "$payload" \
+    --cli-binary-format raw-in-base64-out \
+    /tmp/sales-sync-response.json; then
+    echo "ERROR: Lambda invocation failed."
+    exit 1
+  fi
+  echo ""
+  echo "Response:"
+  parse_response /tmp/sales-sync-response.json
+}
+
+cmd_sales_status() {
+  local job_id="${1:-}"
+  if [[ -z "$job_id" ]]; then
+    echo "Usage: $0 sales status <job-id>"
+    exit 1
+  fi
+
+  local body="{\"jobId\":\"${job_id}\"}"
+  local payload
+  payload=$(printf '{"rawPath":"/api/import/sales/status","requestContext":{"http":{"method":"POST","path":"/api/import/sales/status"}},"body":"%s"}' "$(echo "$body" | sed 's/"/\\"/g')")
+
+  echo "Checking sale import status for job: ${job_id}..."
+  if ! aws lambda invoke \
+    --function-name "$LAMBDA_NAME" \
+    --payload "$payload" \
+    --cli-binary-format raw-in-base64-out \
+    /tmp/sales-status-response.json; then
+    echo "ERROR: Lambda invocation failed."
+    exit 1
+  fi
+  echo ""
+  echo "Response:"
+  parse_response /tmp/sales-status-response.json
+}
+
+cmd_sales_resume() {
+  local job_id="${1:-}"
+  if [[ -z "$job_id" ]]; then
+    echo "Usage: $0 sales resume <job-id>"
+    exit 1
+  fi
+
+  local body="{\"jobId\":\"${job_id}\"}"
+  local payload
+  payload=$(printf '{"rawPath":"/api/import/sales/resume","requestContext":{"http":{"method":"POST","path":"/api/import/sales/resume"}},"body":"%s"}' "$(echo "$body" | sed 's/"/\\"/g')")
+
+  echo "Resuming sale import for job: ${job_id}..."
+  if ! aws lambda invoke \
+    --function-name "$LAMBDA_NAME" \
+    --payload "$payload" \
+    --cli-binary-format raw-in-base64-out \
+    /tmp/sales-resume-response.json; then
+    echo "ERROR: Lambda invocation failed."
+    exit 1
+  fi
+  echo ""
+  echo "Response:"
+  parse_response /tmp/sales-resume-response.json
+}
+
+cmd_sales_cancel() {
+  local job_id="${1:-}"
+  if [[ -z "$job_id" ]]; then
+    echo "Usage: $0 sales cancel <job-id>"
+    exit 1
+  fi
+
+  local table_name="${PROJECT_NAME}-${ENVIRONMENT}-import"
+
+  echo "Cancelling sale import job: ${job_id}..."
+  echo "  Deleting job record from ${table_name}..."
+
+  aws dynamodb delete-item \
+    --table-name "$table_name" \
+    --key "{\"PK\": {\"S\": \"SALE_IMPORT#${job_id}\"}, \"SK\": {\"S\": \"METADATA\"}}"
+
+  echo "  Deleting checkpoint (if exists)..."
+  aws dynamodb delete-item \
+    --table-name "$table_name" \
+    --key "{\"PK\": {\"S\": \"SALE_IMPORT#${job_id}\"}, \"SK\": {\"S\": \"CHECKPOINT\"}}"
+
+  echo "  Deleting sync checkpoint (if exists)..."
+  aws dynamodb delete-item \
+    --table-name "$table_name" \
+    --key "{\"PK\": {\"S\": \"SALE_IMPORT#${job_id}\"}, \"SK\": {\"S\": \"SYNC_CHECKPOINT\"}}"
+
+  echo "Done. Job ${job_id} has been cancelled."
+}
+
 show_help() {
   echo "ConsignCloud Import Script"
   echo ""
@@ -253,6 +398,12 @@ show_help() {
   echo "  $0 items status <job-id>                      Check status of an item import job"
   echo "  $0 items resume <job-id>                      Resume a paused/failed item import job"
   echo "  $0 items cancel <job-id>                      Cancel a paused/failed job (deletes from DB)"
+  echo ""
+  echo "  $0 sales fetch [--created-after=YYYY-MM-DD]   Fetch sales from ConsignCloud into staging"
+  echo "  $0 sales sync <job-id>                        Sync staged sales into the Shop table"
+  echo "  $0 sales status <job-id>                      Check status of a sale import job"
+  echo "  $0 sales resume <job-id>                      Resume a paused/failed sale import job"
+  echo "  $0 sales cancel <job-id>                      Cancel a paused/failed job (deletes from DB)"
   echo ""
   echo "Environment variables:"
   echo "  ENVIRONMENT   Target environment (default: dev)"
@@ -305,6 +456,32 @@ case "${1:-help}" in
         ;;
       *)
         echo "Usage: $0 items {fetch|sync|run|status|resume|cancel}"
+        exit 1
+        ;;
+    esac
+    ;;
+
+  sales)
+    subcmd="${2:-help}"
+    case "$subcmd" in
+      fetch)
+        shift 2
+        cmd_sales_fetch "$@"
+        ;;
+      sync)
+        cmd_sales_sync "${3:-}"
+        ;;
+      status)
+        cmd_sales_status "${3:-}"
+        ;;
+      resume)
+        cmd_sales_resume "${3:-}"
+        ;;
+      cancel)
+        cmd_sales_cancel "${3:-}"
+        ;;
+      *)
+        echo "Usage: $0 sales {fetch|sync|status|resume|cancel}"
         exit 1
         ;;
     esac

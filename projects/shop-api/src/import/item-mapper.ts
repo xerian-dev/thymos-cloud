@@ -50,10 +50,10 @@ function mapTerms(value: string | undefined): Terms {
 }
 
 export function mapConsignCloudItem(item: ConsignCloudItem): ItemMappingResult {
-  // Validate required fields
-  const itemName = item.title;
+  // Validate required fields — use fallback title if missing
+  const itemName = item.title || (item.sku ? `Untitled (${item.sku})` : null);
   if (!itemName) {
-    return { success: false, error: "Missing or empty required field: title" };
+    return { success: false, error: "Missing required fields: title and sku" };
   }
 
   // tag_price is in cents — convert to CHF (divide by 100)

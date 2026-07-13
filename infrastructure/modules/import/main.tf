@@ -276,6 +276,7 @@ resource "aws_sfn_state_machine" "import_loop" {
             "action"  = "resume-internal"
             "jobId.$" = "$.jobId"
             "phase.$" = "$.phase"
+            "type.$"  = "$.type"
           }
         }
         ResultSelector = {
@@ -310,6 +311,7 @@ resource "aws_sfn_state_machine" "import_loop" {
           "action"  = "resume-internal"
           "jobId.$" = "$.taskResult.result.jobId"
           "phase.$" = "$.taskResult.result.phase"
+          "type.$"  = "$.taskResult.result.type"
         }
         Next = "WaitBeforeNext"
       }
@@ -406,6 +408,51 @@ resource "aws_apigatewayv2_route" "post_import_items_status" {
 resource "aws_apigatewayv2_route" "post_import_items_sync" {
   api_id    = var.api_gateway_id
   route_key = "POST /api/import/items/sync"
+  target    = "integrations/${aws_apigatewayv2_integration.import.id}"
+
+  authorization_type = "CUSTOM"
+  authorizer_id      = var.authorizer_id
+}
+
+resource "aws_apigatewayv2_route" "post_import_sales_start" {
+  api_id    = var.api_gateway_id
+  route_key = "POST /api/import/sales/start"
+  target    = "integrations/${aws_apigatewayv2_integration.import.id}"
+
+  authorization_type = "CUSTOM"
+  authorizer_id      = var.authorizer_id
+}
+
+resource "aws_apigatewayv2_route" "post_import_sales_sync" {
+  api_id    = var.api_gateway_id
+  route_key = "POST /api/import/sales/sync"
+  target    = "integrations/${aws_apigatewayv2_integration.import.id}"
+
+  authorization_type = "CUSTOM"
+  authorizer_id      = var.authorizer_id
+}
+
+resource "aws_apigatewayv2_route" "post_import_sales_resume" {
+  api_id    = var.api_gateway_id
+  route_key = "POST /api/import/sales/resume"
+  target    = "integrations/${aws_apigatewayv2_integration.import.id}"
+
+  authorization_type = "CUSTOM"
+  authorizer_id      = var.authorizer_id
+}
+
+resource "aws_apigatewayv2_route" "post_import_sales_status" {
+  api_id    = var.api_gateway_id
+  route_key = "POST /api/import/sales/status"
+  target    = "integrations/${aws_apigatewayv2_integration.import.id}"
+
+  authorization_type = "CUSTOM"
+  authorizer_id      = var.authorizer_id
+}
+
+resource "aws_apigatewayv2_route" "post_import_sales_cancel" {
+  api_id    = var.api_gateway_id
+  route_key = "POST /api/import/sales/cancel"
   target    = "integrations/${aws_apigatewayv2_integration.import.id}"
 
   authorization_type = "CUSTOM"

@@ -4,9 +4,12 @@ import type { ImportPhase } from "./self-invoker";
 const sfnClient = new SFNClient({});
 const STATE_MACHINE_ARN: string = process.env.STATE_MACHINE_ARN ?? "";
 
+export type ImportJobType = "item" | "sale";
+
 export async function startStepFunction(
   jobId: string,
   phase: ImportPhase,
+  type: ImportJobType = "item",
 ): Promise<void> {
   if (!STATE_MACHINE_ARN) {
     throw new Error(
@@ -20,6 +23,7 @@ export async function startStepFunction(
       message: "Starting Step Function execution",
       jobId,
       phase,
+      type,
       stateMachineArn: STATE_MACHINE_ARN,
     }),
   );
@@ -32,6 +36,7 @@ export async function startStepFunction(
         action: "resume-internal",
         jobId,
         phase,
+        type,
       }),
     }),
   );
