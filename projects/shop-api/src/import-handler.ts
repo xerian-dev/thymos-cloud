@@ -11,6 +11,14 @@ import {
   handleItemImportStatus,
   handleResumeInternal,
 } from "./import/item-import-handler";
+import {
+  handleSaleImportStart,
+  handleSaleImportSync,
+  handleSaleImportResume,
+  handleSaleImportStatus,
+  handleSaleImportCancel,
+  handleSaleResumeInternal,
+} from "./import/sale-import-handler";
 import type { ImportPhase } from "./import/self-invoker";
 
 declare const __BUILD_TIMESTAMP__: string;
@@ -28,8 +36,20 @@ export async function handler(
     action?: string;
     jobId?: string;
     phase?: ImportPhase;
+    type?: string;
   };
   if (rawEvent.action === "resume-internal" && rawEvent.jobId) {
+    if (rawEvent.type === "sale") {
+      const result = await handleSaleResumeInternal(
+        rawEvent.jobId,
+        rawEvent.phase ?? "fetch",
+      );
+      return {
+        statusCode: 200,
+        body: JSON.stringify(result),
+      };
+    }
+
     const result = await handleResumeInternal(
       rawEvent.jobId,
       rawEvent.phase ?? "fetch",
@@ -106,6 +126,56 @@ export async function handler(
       };
     }
     return handleItemImportStatus(event);
+  }
+
+  if (path === "/api/import/sales/start") {
+    if (method !== "POST") {
+      return {
+        statusCode: 405,
+        body: JSON.stringify({ message: "Method Not Allowed" }),
+      };
+    }
+    return handleSaleImportStart(event);
+  }
+
+  if (path === "/api/import/sales/sync") {
+    if (method !== "POST") {
+      return {
+        statusCode: 405,
+        body: JSON.stringify({ message: "Method Not Allowed" }),
+      };
+    }
+    return handleSaleImportSync(event);
+  }
+
+  if (path === "/api/import/sales/resume") {
+    if (method !== "POST") {
+      return {
+        statusCode: 405,
+        body: JSON.stringify({ message: "Method Not Allowed" }),
+      };
+    }
+    return handleSaleImportResume(event);
+  }
+
+  if (path === "/api/import/sales/status") {
+    if (method !== "POST") {
+      return {
+        statusCode: 405,
+        body: JSON.stringify({ message: "Method Not Allowed" }),
+      };
+    }
+    return handleSaleImportStatus(event);
+  }
+
+  if (path === "/api/import/sales/cancel") {
+    if (method !== "POST") {
+      return {
+        statusCode: 405,
+        body: JSON.stringify({ message: "Method Not Allowed" }),
+      };
+    }
+    return handleSaleImportCancel(event);
   }
 
   return {
