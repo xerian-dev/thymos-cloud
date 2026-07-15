@@ -19,6 +19,7 @@ import {
   handleSaleImportCancel,
   handleSaleResumeInternal,
 } from "./import/sale-import-handler";
+import { handleScheduledSync } from "./import/sync-orchestrator";
 import type { ImportPhase } from "./import/self-invoker";
 
 declare const __BUILD_TIMESTAMP__: string;
@@ -56,6 +57,15 @@ export async function handler(
     );
     return {
       statusCode: 200,
+      body: JSON.stringify(result),
+    };
+  }
+
+  if (rawEvent.action === "scheduled-sync") {
+    const result = await handleScheduledSync();
+    return {
+      statusCode: 200,
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(result),
     };
   }

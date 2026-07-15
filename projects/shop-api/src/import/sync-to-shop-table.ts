@@ -17,6 +17,12 @@ import {
 
 export type { ImportReport, ImportError } from "./import-table-client";
 
+export interface SyncAccountsInternalResult {
+  success: boolean;
+  report?: { added: number; updated: number; skipped: number; errored: number };
+  error?: string;
+}
+
 interface ShopTableAccount {
   PK: string;
   SK: string;
@@ -92,9 +98,7 @@ function padAccountNumber(num: number): string {
   return String(num).padStart(7, "0");
 }
 
-export async function syncToShopTable(
-  _event: APIGatewayProxyEventV2,
-): Promise<APIGatewayProxyResultV2> {
+export async function syncAccountsInternal(): Promise<SyncAccountsInternalResult> {
   const startedAt: string = new Date().toISOString();
   let added = 0;
   let updated = 0;
@@ -132,11 +136,7 @@ export async function syncToShopTable(
       });
     }
 
-    return {
-      statusCode: 500,
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...report, error: message }),
-    };
+    return { success: false, error: message };
   }
 
   console.info("Sync started", { recordCount: records.length });
@@ -353,17 +353,41 @@ export async function syncToShopTable(
     totalProcessed: records.length,
   });
 
-  return {
-    statusCode: 200,
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      added,
-      updated,
-      skipped,
-      errored,
-      errors: errors.slice(0, 20),
-      startedAt,
-      completedAt,
-    }),
-  };
+  return { success: true, report: { added, updated, skipped, errored } };
+}
+
+export async function syncToShopTable(
+  _event: APIGatewayProxyEventV2,
+): Promise<APIGatewayProxyResultV2> {
+  try {
+    const result = await syncAccountsInternal();
+
+    if (!result.success) {
+      return {
+        statusCode: 500,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ error: result.error }),
+      };
+    }
+
+    return {
+      statusCode: 200,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        added: result.report?.added ?? 0,
+        updated: result.report?.updated ?? 0,
+        skipped: result.report?.skipped ?? 0,
+        errored: result.report?.errored ?? 0,
+      }),
+    };
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Unknown error";
+    console.error("syncToShopTable: unexpected error", { error: message });
+
+    return {
+      statusCode: 500,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ error: message }),
+    };
+  }
 }

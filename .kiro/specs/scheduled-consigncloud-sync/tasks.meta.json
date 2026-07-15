@@ -1,0 +1,400 @@
+{
+  "pbtResults": {
+    "3.2 Write property test for sync state manager": {
+      "status": "passed",
+      "lastRunTimestamp": 1784100667542
+    },
+    "2.2 Write property tests for sync lock manager": {
+      "status": "passed",
+      "lastRunTimestamp": 1784100680015
+    },
+    "6.3 Write property tests for sync orchestrator": {
+      "status": "passed",
+      "lastRunTimestamp": 1784101753275
+    }
+  },
+  "executionHistory": {
+    "1.1 Add EventBridge scheduled sync resources to Terraform": [
+      {
+        "executionId": "f133be3e-ec62-4c2d-b9af-2d369ef1b10e",
+        "chatSessionId": "sess_d7c85508-deff-41e1-b37e-2b85347f9215",
+        "timestamp": 1784099631174
+      },
+      {
+        "executionId": "f133be3e-ec62-4c2d-b9af-2d369ef1b10e",
+        "chatSessionId": "sess_d7c85508-deff-41e1-b37e-2b85347f9215",
+        "timestamp": 1784099641454
+      },
+      {
+        "executionId": "f133be3e-ec62-4c2d-b9af-2d369ef1b10e",
+        "chatSessionId": "sess_d7c85508-deff-41e1-b37e-2b85347f9215",
+        "timestamp": 1784100376757
+      }
+    ],
+    "2.1 Create `sync-lock-manager.ts` with lock acquisition, force-acquire, and release": [
+      {
+        "executionId": "f133be3e-ec62-4c2d-b9af-2d369ef1b10e",
+        "chatSessionId": "sess_d7c85508-deff-41e1-b37e-2b85347f9215",
+        "timestamp": 1784099631295
+      },
+      {
+        "executionId": "f133be3e-ec62-4c2d-b9af-2d369ef1b10e",
+        "chatSessionId": "sess_d7c85508-deff-41e1-b37e-2b85347f9215",
+        "timestamp": 1784099641517
+      },
+      {
+        "executionId": "f133be3e-ec62-4c2d-b9af-2d369ef1b10e",
+        "chatSessionId": "sess_d7c85508-deff-41e1-b37e-2b85347f9215",
+        "timestamp": 1784100378737
+      }
+    ],
+    "2.2 Write property tests for sync lock manager": [
+      {
+        "executionId": "f133be3e-ec62-4c2d-b9af-2d369ef1b10e",
+        "chatSessionId": "sess_d7c85508-deff-41e1-b37e-2b85347f9215",
+        "timestamp": 1784099631382
+      },
+      {
+        "executionId": "f133be3e-ec62-4c2d-b9af-2d369ef1b10e",
+        "chatSessionId": "sess_d7c85508-deff-41e1-b37e-2b85347f9215",
+        "timestamp": 1784100389402
+      },
+      {
+        "executionId": "f133be3e-ec62-4c2d-b9af-2d369ef1b10e",
+        "chatSessionId": "sess_d7c85508-deff-41e1-b37e-2b85347f9215",
+        "timestamp": 1784100769994
+      }
+    ],
+    "2.3 Write unit tests for sync lock manager": [
+      {
+        "executionId": "f133be3e-ec62-4c2d-b9af-2d369ef1b10e",
+        "chatSessionId": "sess_d7c85508-deff-41e1-b37e-2b85347f9215",
+        "timestamp": 1784099631454
+      },
+      {
+        "executionId": "f133be3e-ec62-4c2d-b9af-2d369ef1b10e",
+        "chatSessionId": "sess_d7c85508-deff-41e1-b37e-2b85347f9215",
+        "timestamp": 1784100390156
+      },
+      {
+        "executionId": "f133be3e-ec62-4c2d-b9af-2d369ef1b10e",
+        "chatSessionId": "sess_d7c85508-deff-41e1-b37e-2b85347f9215",
+        "timestamp": 1784100770587
+      }
+    ],
+    "3.1 Create `sync-state-manager.ts` with state read and field update": [
+      {
+        "executionId": "f133be3e-ec62-4c2d-b9af-2d369ef1b10e",
+        "chatSessionId": "sess_d7c85508-deff-41e1-b37e-2b85347f9215",
+        "timestamp": 1784099631507
+      },
+      {
+        "executionId": "f133be3e-ec62-4c2d-b9af-2d369ef1b10e",
+        "chatSessionId": "sess_d7c85508-deff-41e1-b37e-2b85347f9215",
+        "timestamp": 1784099642329
+      },
+      {
+        "executionId": "f133be3e-ec62-4c2d-b9af-2d369ef1b10e",
+        "chatSessionId": "sess_d7c85508-deff-41e1-b37e-2b85347f9215",
+        "timestamp": 1784100377801
+      }
+    ],
+    "3.2 Write property test for sync state manager": [
+      {
+        "executionId": "f133be3e-ec62-4c2d-b9af-2d369ef1b10e",
+        "chatSessionId": "sess_d7c85508-deff-41e1-b37e-2b85347f9215",
+        "timestamp": 1784099631565
+      },
+      {
+        "executionId": "f133be3e-ec62-4c2d-b9af-2d369ef1b10e",
+        "chatSessionId": "sess_d7c85508-deff-41e1-b37e-2b85347f9215",
+        "timestamp": 1784100390896
+      },
+      {
+        "executionId": "f133be3e-ec62-4c2d-b9af-2d369ef1b10e",
+        "chatSessionId": "sess_d7c85508-deff-41e1-b37e-2b85347f9215",
+        "timestamp": 1784100771468
+      }
+    ],
+    "3.3 Write unit tests for sync state manager": [
+      {
+        "executionId": "f133be3e-ec62-4c2d-b9af-2d369ef1b10e",
+        "chatSessionId": "sess_d7c85508-deff-41e1-b37e-2b85347f9215",
+        "timestamp": 1784099631620
+      },
+      {
+        "executionId": "f133be3e-ec62-4c2d-b9af-2d369ef1b10e",
+        "chatSessionId": "sess_d7c85508-deff-41e1-b37e-2b85347f9215",
+        "timestamp": 1784100392450
+      },
+      {
+        "executionId": "f133be3e-ec62-4c2d-b9af-2d369ef1b10e",
+        "chatSessionId": "sess_d7c85508-deff-41e1-b37e-2b85347f9215",
+        "timestamp": 1784100772249
+      }
+    ],
+    "4. Checkpoint - Ensure all tests pass": [
+      {
+        "executionId": "f133be3e-ec62-4c2d-b9af-2d369ef1b10e",
+        "chatSessionId": "sess_d7c85508-deff-41e1-b37e-2b85347f9215",
+        "timestamp": 1784099631688
+      },
+      {
+        "executionId": "f133be3e-ec62-4c2d-b9af-2d369ef1b10e",
+        "chatSessionId": "sess_d7c85508-deff-41e1-b37e-2b85347f9215",
+        "timestamp": 1784102003664
+      },
+      {
+        "executionId": "f133be3e-ec62-4c2d-b9af-2d369ef1b10e",
+        "chatSessionId": "sess_d7c85508-deff-41e1-b37e-2b85347f9215",
+        "timestamp": 1784102033434
+      }
+    ],
+    "5.1 Add `fetchAccountsInternal()` to `fetch-from-consigncloud.ts`": [
+      {
+        "executionId": "f133be3e-ec62-4c2d-b9af-2d369ef1b10e",
+        "chatSessionId": "sess_d7c85508-deff-41e1-b37e-2b85347f9215",
+        "timestamp": 1784099631740
+      },
+      {
+        "executionId": "f133be3e-ec62-4c2d-b9af-2d369ef1b10e",
+        "chatSessionId": "sess_d7c85508-deff-41e1-b37e-2b85347f9215",
+        "timestamp": 1784100392806
+      },
+      {
+        "executionId": "f133be3e-ec62-4c2d-b9af-2d369ef1b10e",
+        "chatSessionId": "sess_d7c85508-deff-41e1-b37e-2b85347f9215",
+        "timestamp": 1784100773237
+      }
+    ],
+    "5.2 Add `syncAccountsInternal()` to `sync-to-shop-table.ts`": [
+      {
+        "executionId": "f133be3e-ec62-4c2d-b9af-2d369ef1b10e",
+        "chatSessionId": "sess_d7c85508-deff-41e1-b37e-2b85347f9215",
+        "timestamp": 1784099631805
+      },
+      {
+        "executionId": "f133be3e-ec62-4c2d-b9af-2d369ef1b10e",
+        "chatSessionId": "sess_d7c85508-deff-41e1-b37e-2b85347f9215",
+        "timestamp": 1784100777953
+      },
+      {
+        "executionId": "f133be3e-ec62-4c2d-b9af-2d369ef1b10e",
+        "chatSessionId": "sess_d7c85508-deff-41e1-b37e-2b85347f9215",
+        "timestamp": 1784100981137
+      }
+    ],
+    "5.3 Extend `step-function-starter.ts` with `createdAfter` support": [
+      {
+        "executionId": "f133be3e-ec62-4c2d-b9af-2d369ef1b10e",
+        "chatSessionId": "sess_d7c85508-deff-41e1-b37e-2b85347f9215",
+        "timestamp": 1784099631861
+      },
+      {
+        "executionId": "f133be3e-ec62-4c2d-b9af-2d369ef1b10e",
+        "chatSessionId": "sess_d7c85508-deff-41e1-b37e-2b85347f9215",
+        "timestamp": 1784100778784
+      },
+      {
+        "executionId": "f133be3e-ec62-4c2d-b9af-2d369ef1b10e",
+        "chatSessionId": "sess_d7c85508-deff-41e1-b37e-2b85347f9215",
+        "timestamp": 1784100982154
+      }
+    ],
+    "5.4 Write unit tests for internal account functions and extended starter": [
+      {
+        "executionId": "f133be3e-ec62-4c2d-b9af-2d369ef1b10e",
+        "chatSessionId": "sess_d7c85508-deff-41e1-b37e-2b85347f9215",
+        "timestamp": 1784099631913
+      },
+      {
+        "executionId": "f133be3e-ec62-4c2d-b9af-2d369ef1b10e",
+        "chatSessionId": "sess_d7c85508-deff-41e1-b37e-2b85347f9215",
+        "timestamp": 1784100991481
+      },
+      {
+        "executionId": "f133be3e-ec62-4c2d-b9af-2d369ef1b10e",
+        "chatSessionId": "sess_d7c85508-deff-41e1-b37e-2b85347f9215",
+        "timestamp": 1784101130962
+      }
+    ],
+    "6.1 Create `sync-orchestrator.ts` with main `handleScheduledSync` function": [
+      {
+        "executionId": "f133be3e-ec62-4c2d-b9af-2d369ef1b10e",
+        "chatSessionId": "sess_d7c85508-deff-41e1-b37e-2b85347f9215",
+        "timestamp": 1784099631971
+      },
+      {
+        "executionId": "f133be3e-ec62-4c2d-b9af-2d369ef1b10e",
+        "chatSessionId": "sess_d7c85508-deff-41e1-b37e-2b85347f9215",
+        "timestamp": 1784100992251
+      },
+      {
+        "executionId": "f133be3e-ec62-4c2d-b9af-2d369ef1b10e",
+        "chatSessionId": "sess_d7c85508-deff-41e1-b37e-2b85347f9215",
+        "timestamp": 1784101131931
+      }
+    ],
+    "6.2 Implement sequential phase execution in sync orchestrator": [
+      {
+        "executionId": "f133be3e-ec62-4c2d-b9af-2d369ef1b10e",
+        "chatSessionId": "sess_d7c85508-deff-41e1-b37e-2b85347f9215",
+        "timestamp": 1784099632023
+      },
+      {
+        "executionId": "f133be3e-ec62-4c2d-b9af-2d369ef1b10e",
+        "chatSessionId": "sess_d7c85508-deff-41e1-b37e-2b85347f9215",
+        "timestamp": 1784101136178
+      },
+      {
+        "executionId": "f133be3e-ec62-4c2d-b9af-2d369ef1b10e",
+        "chatSessionId": "sess_d7c85508-deff-41e1-b37e-2b85347f9215",
+        "timestamp": 1784101294898
+      }
+    ],
+    "6.3 Write property tests for sync orchestrator": [
+      {
+        "executionId": "f133be3e-ec62-4c2d-b9af-2d369ef1b10e",
+        "chatSessionId": "sess_d7c85508-deff-41e1-b37e-2b85347f9215",
+        "timestamp": 1784099632079
+      },
+      {
+        "executionId": "f133be3e-ec62-4c2d-b9af-2d369ef1b10e",
+        "chatSessionId": "sess_d7c85508-deff-41e1-b37e-2b85347f9215",
+        "timestamp": 1784101298724
+      },
+      {
+        "executionId": "f133be3e-ec62-4c2d-b9af-2d369ef1b10e",
+        "chatSessionId": "sess_d7c85508-deff-41e1-b37e-2b85347f9215",
+        "timestamp": 1784101780073
+      }
+    ],
+    "6.4 Write unit tests for sync orchestrator": [
+      {
+        "executionId": "f133be3e-ec62-4c2d-b9af-2d369ef1b10e",
+        "chatSessionId": "sess_d7c85508-deff-41e1-b37e-2b85347f9215",
+        "timestamp": 1784099632145
+      },
+      {
+        "executionId": "f133be3e-ec62-4c2d-b9af-2d369ef1b10e",
+        "chatSessionId": "sess_d7c85508-deff-41e1-b37e-2b85347f9215",
+        "timestamp": 1784101299600
+      },
+      {
+        "executionId": "f133be3e-ec62-4c2d-b9af-2d369ef1b10e",
+        "chatSessionId": "sess_d7c85508-deff-41e1-b37e-2b85347f9215",
+        "timestamp": 1784101779345
+      }
+    ],
+    "7. Checkpoint - Ensure all tests pass": [
+      {
+        "executionId": "f133be3e-ec62-4c2d-b9af-2d369ef1b10e",
+        "chatSessionId": "sess_d7c85508-deff-41e1-b37e-2b85347f9215",
+        "timestamp": 1784099632199
+      },
+      {
+        "executionId": "f133be3e-ec62-4c2d-b9af-2d369ef1b10e",
+        "chatSessionId": "sess_d7c85508-deff-41e1-b37e-2b85347f9215",
+        "timestamp": 1784102037944
+      },
+      {
+        "executionId": "f133be3e-ec62-4c2d-b9af-2d369ef1b10e",
+        "chatSessionId": "sess_d7c85508-deff-41e1-b37e-2b85347f9215",
+        "timestamp": 1784102063103
+      }
+    ],
+    "8.1 Update `import-handler.ts` to detect `scheduled-sync` action": [
+      {
+        "executionId": "f133be3e-ec62-4c2d-b9af-2d369ef1b10e",
+        "chatSessionId": "sess_d7c85508-deff-41e1-b37e-2b85347f9215",
+        "timestamp": 1784099632253
+      },
+      {
+        "executionId": "f133be3e-ec62-4c2d-b9af-2d369ef1b10e",
+        "chatSessionId": "sess_d7c85508-deff-41e1-b37e-2b85347f9215",
+        "timestamp": 1784101784941
+      },
+      {
+        "executionId": "f133be3e-ec62-4c2d-b9af-2d369ef1b10e",
+        "chatSessionId": "sess_d7c85508-deff-41e1-b37e-2b85347f9215",
+        "timestamp": 1784101874979
+      }
+    ],
+    "8.2 Write unit tests for handler routing": [
+      {
+        "executionId": "f133be3e-ec62-4c2d-b9af-2d369ef1b10e",
+        "chatSessionId": "sess_d7c85508-deff-41e1-b37e-2b85347f9215",
+        "timestamp": 1784099632306
+      },
+      {
+        "executionId": "f133be3e-ec62-4c2d-b9af-2d369ef1b10e",
+        "chatSessionId": "sess_d7c85508-deff-41e1-b37e-2b85347f9215",
+        "timestamp": 1784101879282
+      },
+      {
+        "executionId": "f133be3e-ec62-4c2d-b9af-2d369ef1b10e",
+        "chatSessionId": "sess_d7c85508-deff-41e1-b37e-2b85347f9215",
+        "timestamp": 1784101998909
+      }
+    ],
+    "9. Final checkpoint - Ensure all tests pass": [
+      {
+        "executionId": "f133be3e-ec62-4c2d-b9af-2d369ef1b10e",
+        "chatSessionId": "sess_d7c85508-deff-41e1-b37e-2b85347f9215",
+        "timestamp": 1784099632362
+      },
+      {
+        "executionId": "f133be3e-ec62-4c2d-b9af-2d369ef1b10e",
+        "chatSessionId": "sess_d7c85508-deff-41e1-b37e-2b85347f9215",
+        "timestamp": 1784102067126
+      },
+      {
+        "executionId": "f133be3e-ec62-4c2d-b9af-2d369ef1b10e",
+        "chatSessionId": "sess_d7c85508-deff-41e1-b37e-2b85347f9215",
+        "timestamp": 1784102277248
+      }
+    ],
+    "1. Infrastructure: EventBridge rule, target, Lambda permission, and DynamoDB TTL": [
+      {
+        "executionId": "f133be3e-ec62-4c2d-b9af-2d369ef1b10e",
+        "chatSessionId": "sess_d7c85508-deff-41e1-b37e-2b85347f9215",
+        "timestamp": 1784100376838
+      }
+    ],
+    "2. Implement sync lock manager": [
+      {
+        "executionId": "f133be3e-ec62-4c2d-b9af-2d369ef1b10e",
+        "chatSessionId": "sess_d7c85508-deff-41e1-b37e-2b85347f9215",
+        "timestamp": 1784100770644
+      }
+    ],
+    "3. Implement sync state manager": [
+      {
+        "executionId": "f133be3e-ec62-4c2d-b9af-2d369ef1b10e",
+        "chatSessionId": "sess_d7c85508-deff-41e1-b37e-2b85347f9215",
+        "timestamp": 1784100772309
+      }
+    ],
+    "5. Refactor account import for internal use and extend Step Function starter": [
+      {
+        "executionId": "f133be3e-ec62-4c2d-b9af-2d369ef1b10e",
+        "chatSessionId": "sess_d7c85508-deff-41e1-b37e-2b85347f9215",
+        "timestamp": 1784101131048
+      }
+    ],
+    "6. Implement sync orchestrator": [
+      {
+        "executionId": "f133be3e-ec62-4c2d-b9af-2d369ef1b10e",
+        "chatSessionId": "sess_d7c85508-deff-41e1-b37e-2b85347f9215",
+        "timestamp": 1784101780154
+      }
+    ],
+    "8. Wire handler routing and integration": [
+      {
+        "executionId": "f133be3e-ec62-4c2d-b9af-2d369ef1b10e",
+        "chatSessionId": "sess_d7c85508-deff-41e1-b37e-2b85347f9215",
+        "timestamp": 1784101999005
+      }
+    ]
+  }
+}
