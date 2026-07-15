@@ -25,6 +25,11 @@ resource "aws_dynamodb_table" "import" {
     type = "S"
   }
 
+  ttl {
+    attribute_name = "ttl"
+    enabled        = true
+  }
+
   tags = {
     Environment = var.environment
     Project     = var.project_name
@@ -191,7 +196,7 @@ resource "aws_lambda_function" "import" {
   role             = aws_iam_role.lambda.arn
   handler          = "import-handler.handler"
   runtime          = "nodejs20.x"
-  memory_size      = 256
+  memory_size      = 512
   timeout          = 300
   filename         = "../projects/shop-api/dist/import-handler.zip"
   source_code_hash = filebase64sha256("../projects/shop-api/dist/import-handler.zip")
@@ -330,6 +335,45 @@ resource "aws_sfn_state_machine" "import_loop" {
     Environment = var.environment
     Project     = var.project_name
   }
+}
+
+# -----------------------------------------------------------------------------
+# EventBridge Scheduled Sync
+# -----------------------------------------------------------------------------
+
+resource "aws_cloudwatch_event_rule" "scheduled_sync" {
+  name                = "${var.project_name}-${var.environment}-scheduled-sync"
+  description         = "Triggers ConsignCloud import every 15 minutes"
+  schedule_expression = "rate(15 minutes)"
+  state               = "ENABLED"
+
+  tags = {
+    Environment = var.environment
+    Project     = var.project_name
+  }
+}
+
+resource "aws_cloudwatch_event_target" "scheduled_sync" {
+  rule      = aws_cloudwatch_event_rule.scheduled_sync.name
+  target_id = "${var.project_name}-${var.environment}-sync-target"
+  arn       = aws_lambda_function.import.arn
+
+  input = jsonencode({
+    action = "scheduled-sync"
+  })
+
+  retry_policy {
+    maximum_retry_attempts       = 0
+    maximum_event_age_in_seconds = 60
+  }
+}
+
+resource "aws_lambda_permission" "eventbridge_invoke" {
+  statement_id  = "AllowEventBridgeInvoke"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.import.function_name
+  principal     = "events.amazonaws.com"
+  source_arn    = aws_cloudwatch_event_rule.scheduled_sync.arn
 }
 
 # -----------------------------------------------------------------------------

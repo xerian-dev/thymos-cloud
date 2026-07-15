@@ -13,43 +13,78 @@ import type { FetchResult } from "./import-table-client";
 
 export type { FetchResult } from "./import-table-client";
 
-export async function fetchFromConsignCloud(
-  event: APIGatewayProxyEventV2,
-): Promise<APIGatewayProxyResultV2> {
+export interface FetchAccountsInternalResult {
+  success: boolean;
+  report?: {
+    added: number;
+    skipped: number;
+    stored: number;
+    timestamp: string;
+  };
+  error?: string;
+}
+
+export async function fetchAccountsInternal(): Promise<FetchAccountsInternalResult> {
   console.info("ConsignCloud import: starting fetch operation");
 
-  try {
-    const apiKey: string = await getConsignCloudApiKey();
+  const apiKey: string = await getConsignCloudApiKey();
 
-    const rateLimiter = createRateLimiter({ capacity: 100, drainRate: 10 });
+  const rateLimiter = createRateLimiter({ capacity: 100, drainRate: 10 });
 
-    const baseUrl: string = process.env.CONSIGNCLOUD_BASE_URL ?? "";
+  const baseUrl: string = process.env.CONSIGNCLOUD_BASE_URL ?? "";
 
-    const { accounts, skipped } = await fetchAllAccounts({
-      apiKey,
-      baseUrl,
-      rateLimiter,
-    });
+  const { accounts, skipped } = await fetchAllAccounts({
+    apiKey,
+    baseUrl,
+    rateLimiter,
+  });
 
-    const timestamp: string = new Date().toISOString();
+  const timestamp: string = new Date().toISOString();
 
-    await writeImportedAccounts(accounts, timestamp);
+  await writeImportedAccounts(accounts, timestamp);
 
-    const result: FetchResult = {
-      status: "success",
-      totalFetched: accounts.length + skipped,
+  const result: FetchResult = {
+    status: "success",
+    totalFetched: accounts.length + skipped,
+    skipped,
+    stored: accounts.length,
+    timestamp,
+  };
+
+  await writeSummaryRecord(result);
+
+  console.info("ConsignCloud import: fetch operation completed", {
+    totalFetched: result.totalFetched,
+    skipped: result.skipped,
+    stored: result.stored,
+  });
+
+  return {
+    success: true,
+    report: {
+      added: accounts.length,
       skipped,
       stored: accounts.length,
       timestamp,
+    },
+  };
+}
+
+export async function fetchFromConsignCloud(
+  _event: APIGatewayProxyEventV2,
+): Promise<APIGatewayProxyResultV2> {
+  try {
+    const internalResult = await fetchAccountsInternal();
+
+    const result: FetchResult = {
+      status: "success",
+      totalFetched:
+        (internalResult.report?.added ?? 0) +
+        (internalResult.report?.skipped ?? 0),
+      skipped: internalResult.report?.skipped ?? 0,
+      stored: internalResult.report?.stored ?? 0,
+      timestamp: internalResult.report?.timestamp ?? new Date().toISOString(),
     };
-
-    await writeSummaryRecord(result);
-
-    console.info("ConsignCloud import: fetch operation completed", {
-      totalFetched: result.totalFetched,
-      skipped: result.skipped,
-      stored: result.stored,
-    });
 
     return {
       statusCode: 200,
