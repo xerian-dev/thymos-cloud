@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { ItemsTable } from "./items-table";
 import { ItemForm } from "./item-form";
 import { DeleteItemDialog } from "./delete-item-dialog";
+import { UserDetailPanel } from "@/components/shared/user-detail-panel";
 import { usePaginatedItems } from "./use-paginated-items";
 import { fetchNextSku } from "./items-api";
 import type { Item } from "./items-types";
@@ -27,6 +28,11 @@ export function ItemsPage(): React.ReactNode {
   const [nextSku, setNextSku] = React.useState<number | undefined>(undefined);
   const [deleteItem, setDeleteItem] = React.useState<Item | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = React.useState(false);
+
+  const [userPanelOpen, setUserPanelOpen] = React.useState(false);
+  const [selectedEmployeeId, setSelectedEmployeeId] = React.useState<
+    string | null
+  >(null);
 
   const addButtonRef = React.useRef<HTMLButtonElement>(null);
 
@@ -78,6 +84,16 @@ export function ItemsPage(): React.ReactNode {
     retry();
   }
 
+  function handleViewUser(employeeId: string): void {
+    setSelectedEmployeeId(employeeId);
+    setUserPanelOpen(true);
+  }
+
+  function handleCloseUserPanel(): void {
+    setUserPanelOpen(false);
+    setSelectedEmployeeId(null);
+  }
+
   const memoizedTable = React.useMemo(
     () => (
       <ItemsTable
@@ -87,6 +103,7 @@ export function ItemsPage(): React.ReactNode {
         onRetry={retry}
         onEdit={handleEdit}
         onDelete={handleDelete}
+        onViewUser={handleViewUser}
         hasPrevious={hasPrevious}
         hasMore={hasMore}
         pageSize={pageSize}
@@ -135,6 +152,12 @@ export function ItemsPage(): React.ReactNode {
         item={deleteItem}
         onClose={handleCloseDelete}
         onSuccess={handleDeleteSuccess}
+      />
+
+      <UserDetailPanel
+        open={userPanelOpen}
+        onClose={handleCloseUserPanel}
+        employeeId={selectedEmployeeId}
       />
     </div>
   );

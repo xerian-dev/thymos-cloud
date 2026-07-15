@@ -6,6 +6,7 @@ import { formatChf } from "./items-utils";
 export interface ItemsTableMeta {
   onEdit?: (item: Item) => void;
   onDelete?: (item: Item) => void;
+  onViewUser?: (employeeId: string) => void;
 }
 
 export const itemsColumns: ColumnDef<Item, unknown>[] = [
@@ -38,6 +39,29 @@ export const itemsColumns: ColumnDef<Item, unknown>[] = [
   {
     accessorKey: "inventoryType",
     header: "Inventory Type",
+  },
+  {
+    accessorKey: "createdBy",
+    header: "Created By",
+    cell: ({ row, table }) => {
+      const meta = table.options.meta as ItemsTableMeta | undefined;
+      const createdBy = row.getValue<string | undefined>("createdBy");
+
+      if (!createdBy) {
+        return <span className="text-muted-foreground">Unknown</span>;
+      }
+
+      return (
+        <button
+          type="button"
+          onClick={() => meta?.onViewUser?.(createdBy)}
+          className="text-primary underline-offset-4 hover:underline cursor-pointer focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none rounded"
+          aria-label="View details for creator"
+        >
+          {createdBy}
+        </button>
+      );
+    },
   },
   {
     id: "actions",

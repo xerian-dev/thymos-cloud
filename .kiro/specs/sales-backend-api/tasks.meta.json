@@ -1,0 +1,457 @@
+{
+  "pbtResults": {
+    "8.1 Write property test for sale validation completeness": {
+      "status": "passed",
+      "lastRunTimestamp": 1784123790942
+    },
+    "8.3 Write property test for sale key construction round-trip": {
+      "status": "passed",
+      "lastRunTimestamp": 1784123792147
+    },
+    "8.4 Write property test for next sale number monotonicity": {
+      "status": "passed",
+      "lastRunTimestamp": 1784123794148
+    },
+    "8.2 Write property test for page size validation": {
+      "status": "passed",
+      "lastRunTimestamp": 1784123847204
+    },
+    "8.5 Write property test for update merge preserves identity": {
+      "status": "passed",
+      "lastRunTimestamp": 1784123941107
+    },
+    "8.7 Write property test for batch request validation": {
+      "status": "passed",
+      "lastRunTimestamp": 1784123960017
+    },
+    "8.6 Write property test for employee response mapping": {
+      "status": "passed",
+      "lastRunTimestamp": 1784123983028
+    }
+  },
+  "executionHistory": {
+    "1.1 Add sale and employee key construction helpers to pk-utils.ts": [
+      {
+        "executionId": "42e9fca6-f0c4-4698-befb-694c0ab4809c",
+        "chatSessionId": "sess_14ff567e-7a3b-4423-a0dc-ba6b0780a445",
+        "timestamp": 1784123166209
+      },
+      {
+        "executionId": "42e9fca6-f0c4-4698-befb-694c0ab4809c",
+        "chatSessionId": "sess_14ff567e-7a3b-4423-a0dc-ba6b0780a445",
+        "timestamp": 1784123200044
+      },
+      {
+        "executionId": "42e9fca6-f0c4-4698-befb-694c0ab4809c",
+        "chatSessionId": "sess_14ff567e-7a3b-4423-a0dc-ba6b0780a445",
+        "timestamp": 1784123349024
+      }
+    ],
+    "1.2 Create sale-validation.ts module": [
+      {
+        "executionId": "42e9fca6-f0c4-4698-befb-694c0ab4809c",
+        "chatSessionId": "sess_14ff567e-7a3b-4423-a0dc-ba6b0780a445",
+        "timestamp": 1784123166280
+      },
+      {
+        "executionId": "42e9fca6-f0c4-4698-befb-694c0ab4809c",
+        "chatSessionId": "sess_14ff567e-7a3b-4423-a0dc-ba6b0780a445",
+        "timestamp": 1784123200997
+      },
+      {
+        "executionId": "42e9fca6-f0c4-4698-befb-694c0ab4809c",
+        "chatSessionId": "sess_14ff567e-7a3b-4423-a0dc-ba6b0780a445",
+        "timestamp": 1784123349738
+      }
+    ],
+    "1.3 Create sale-update-validation.ts module": [
+      {
+        "executionId": "42e9fca6-f0c4-4698-befb-694c0ab4809c",
+        "chatSessionId": "sess_14ff567e-7a3b-4423-a0dc-ba6b0780a445",
+        "timestamp": 1784123166354
+      },
+      {
+        "executionId": "42e9fca6-f0c4-4698-befb-694c0ab4809c",
+        "chatSessionId": "sess_14ff567e-7a3b-4423-a0dc-ba6b0780a445",
+        "timestamp": 1784123201934
+      },
+      {
+        "executionId": "42e9fca6-f0c4-4698-befb-694c0ab4809c",
+        "chatSessionId": "sess_14ff567e-7a3b-4423-a0dc-ba6b0780a445",
+        "timestamp": 1784123350476
+      }
+    ],
+    "2.1 Implement list-sales.ts route handler": [
+      {
+        "executionId": "42e9fca6-f0c4-4698-befb-694c0ab4809c",
+        "chatSessionId": "sess_14ff567e-7a3b-4423-a0dc-ba6b0780a445",
+        "timestamp": 1784123166418
+      },
+      {
+        "executionId": "42e9fca6-f0c4-4698-befb-694c0ab4809c",
+        "chatSessionId": "sess_14ff567e-7a3b-4423-a0dc-ba6b0780a445",
+        "timestamp": 1784123355386
+      },
+      {
+        "executionId": "42e9fca6-f0c4-4698-befb-694c0ab4809c",
+        "chatSessionId": "sess_14ff567e-7a3b-4423-a0dc-ba6b0780a445",
+        "timestamp": 1784123521572
+      }
+    ],
+    "2.2 Implement next-sale-number.ts route handler": [
+      {
+        "executionId": "42e9fca6-f0c4-4698-befb-694c0ab4809c",
+        "chatSessionId": "sess_14ff567e-7a3b-4423-a0dc-ba6b0780a445",
+        "timestamp": 1784123166495
+      },
+      {
+        "executionId": "42e9fca6-f0c4-4698-befb-694c0ab4809c",
+        "chatSessionId": "sess_14ff567e-7a3b-4423-a0dc-ba6b0780a445",
+        "timestamp": 1784123356175
+      },
+      {
+        "executionId": "42e9fca6-f0c4-4698-befb-694c0ab4809c",
+        "chatSessionId": "sess_14ff567e-7a3b-4423-a0dc-ba6b0780a445",
+        "timestamp": 1784123522374
+      }
+    ],
+    "3.1 Implement create-sale.ts route handler": [
+      {
+        "executionId": "42e9fca6-f0c4-4698-befb-694c0ab4809c",
+        "chatSessionId": "sess_14ff567e-7a3b-4423-a0dc-ba6b0780a445",
+        "timestamp": 1784123166553
+      },
+      {
+        "executionId": "42e9fca6-f0c4-4698-befb-694c0ab4809c",
+        "chatSessionId": "sess_14ff567e-7a3b-4423-a0dc-ba6b0780a445",
+        "timestamp": 1784123356908
+      },
+      {
+        "executionId": "42e9fca6-f0c4-4698-befb-694c0ab4809c",
+        "chatSessionId": "sess_14ff567e-7a3b-4423-a0dc-ba6b0780a445",
+        "timestamp": 1784123523232
+      }
+    ],
+    "4.1 Implement update-sale.ts route handler": [
+      {
+        "executionId": "42e9fca6-f0c4-4698-befb-694c0ab4809c",
+        "chatSessionId": "sess_14ff567e-7a3b-4423-a0dc-ba6b0780a445",
+        "timestamp": 1784123166613
+      },
+      {
+        "executionId": "42e9fca6-f0c4-4698-befb-694c0ab4809c",
+        "chatSessionId": "sess_14ff567e-7a3b-4423-a0dc-ba6b0780a445",
+        "timestamp": 1784123529951
+      },
+      {
+        "executionId": "42e9fca6-f0c4-4698-befb-694c0ab4809c",
+        "chatSessionId": "sess_14ff567e-7a3b-4423-a0dc-ba6b0780a445",
+        "timestamp": 1784123621034
+      }
+    ],
+    "4.2 Implement delete-sale.ts route handler": [
+      {
+        "executionId": "42e9fca6-f0c4-4698-befb-694c0ab4809c",
+        "chatSessionId": "sess_14ff567e-7a3b-4423-a0dc-ba6b0780a445",
+        "timestamp": 1784123166668
+      },
+      {
+        "executionId": "42e9fca6-f0c4-4698-befb-694c0ab4809c",
+        "chatSessionId": "sess_14ff567e-7a3b-4423-a0dc-ba6b0780a445",
+        "timestamp": 1784123530642
+      },
+      {
+        "executionId": "42e9fca6-f0c4-4698-befb-694c0ab4809c",
+        "chatSessionId": "sess_14ff567e-7a3b-4423-a0dc-ba6b0780a445",
+        "timestamp": 1784123621178
+      }
+    ],
+    "5.1 Implement get-employee.ts route handler": [
+      {
+        "executionId": "42e9fca6-f0c4-4698-befb-694c0ab4809c",
+        "chatSessionId": "sess_14ff567e-7a3b-4423-a0dc-ba6b0780a445",
+        "timestamp": 1784123166726
+      },
+      {
+        "executionId": "42e9fca6-f0c4-4698-befb-694c0ab4809c",
+        "chatSessionId": "sess_14ff567e-7a3b-4423-a0dc-ba6b0780a445",
+        "timestamp": 1784123357647
+      },
+      {
+        "executionId": "42e9fca6-f0c4-4698-befb-694c0ab4809c",
+        "chatSessionId": "sess_14ff567e-7a3b-4423-a0dc-ba6b0780a445",
+        "timestamp": 1784123523983
+      }
+    ],
+    "5.2 Implement batch-get-employees.ts route handler": [
+      {
+        "executionId": "42e9fca6-f0c4-4698-befb-694c0ab4809c",
+        "chatSessionId": "sess_14ff567e-7a3b-4423-a0dc-ba6b0780a445",
+        "timestamp": 1784123166779
+      },
+      {
+        "executionId": "42e9fca6-f0c4-4698-befb-694c0ab4809c",
+        "chatSessionId": "sess_14ff567e-7a3b-4423-a0dc-ba6b0780a445",
+        "timestamp": 1784123358499
+      },
+      {
+        "executionId": "42e9fca6-f0c4-4698-befb-694c0ab4809c",
+        "chatSessionId": "sess_14ff567e-7a3b-4423-a0dc-ba6b0780a445",
+        "timestamp": 1784123524824
+      }
+    ],
+    "6.1 Register all new routes in router.ts": [
+      {
+        "executionId": "42e9fca6-f0c4-4698-befb-694c0ab4809c",
+        "chatSessionId": "sess_14ff567e-7a3b-4423-a0dc-ba6b0780a445",
+        "timestamp": 1784123166837
+      },
+      {
+        "executionId": "42e9fca6-f0c4-4698-befb-694c0ab4809c",
+        "chatSessionId": "sess_14ff567e-7a3b-4423-a0dc-ba6b0780a445",
+        "timestamp": 1784123626035
+      },
+      {
+        "executionId": "42e9fca6-f0c4-4698-befb-694c0ab4809c",
+        "chatSessionId": "sess_14ff567e-7a3b-4423-a0dc-ba6b0780a445",
+        "timestamp": 1784123682050
+      }
+    ],
+    "7. Checkpoint - Verify build and existing tests pass": [
+      {
+        "executionId": "42e9fca6-f0c4-4698-befb-694c0ab4809c",
+        "chatSessionId": "sess_14ff567e-7a3b-4423-a0dc-ba6b0780a445",
+        "timestamp": 1784123166919
+      },
+      {
+        "executionId": "42e9fca6-f0c4-4698-befb-694c0ab4809c",
+        "chatSessionId": "sess_14ff567e-7a3b-4423-a0dc-ba6b0780a445",
+        "timestamp": 1784123696939
+      },
+      {
+        "executionId": "42e9fca6-f0c4-4698-befb-694c0ab4809c",
+        "chatSessionId": "sess_14ff567e-7a3b-4423-a0dc-ba6b0780a445",
+        "timestamp": 1784123861190
+      }
+    ],
+    "8.1 Write property test for sale validation completeness": [
+      {
+        "executionId": "42e9fca6-f0c4-4698-befb-694c0ab4809c",
+        "chatSessionId": "sess_14ff567e-7a3b-4423-a0dc-ba6b0780a445",
+        "timestamp": 1784123166969
+      },
+      {
+        "executionId": "42e9fca6-f0c4-4698-befb-694c0ab4809c",
+        "chatSessionId": "sess_14ff567e-7a3b-4423-a0dc-ba6b0780a445",
+        "timestamp": 1784123697846
+      },
+      {
+        "executionId": "42e9fca6-f0c4-4698-befb-694c0ab4809c",
+        "chatSessionId": "sess_14ff567e-7a3b-4423-a0dc-ba6b0780a445",
+        "timestamp": 1784123862273
+      }
+    ],
+    "8.2 Write property test for page size validation": [
+      {
+        "executionId": "42e9fca6-f0c4-4698-befb-694c0ab4809c",
+        "chatSessionId": "sess_14ff567e-7a3b-4423-a0dc-ba6b0780a445",
+        "timestamp": 1784123167033
+      },
+      {
+        "executionId": "42e9fca6-f0c4-4698-befb-694c0ab4809c",
+        "chatSessionId": "sess_14ff567e-7a3b-4423-a0dc-ba6b0780a445",
+        "timestamp": 1784123698607
+      },
+      {
+        "executionId": "42e9fca6-f0c4-4698-befb-694c0ab4809c",
+        "chatSessionId": "sess_14ff567e-7a3b-4423-a0dc-ba6b0780a445",
+        "timestamp": 1784123863002
+      }
+    ],
+    "8.3 Write property test for sale key construction round-trip": [
+      {
+        "executionId": "42e9fca6-f0c4-4698-befb-694c0ab4809c",
+        "chatSessionId": "sess_14ff567e-7a3b-4423-a0dc-ba6b0780a445",
+        "timestamp": 1784123167087
+      },
+      {
+        "executionId": "42e9fca6-f0c4-4698-befb-694c0ab4809c",
+        "chatSessionId": "sess_14ff567e-7a3b-4423-a0dc-ba6b0780a445",
+        "timestamp": 1784123699376
+      },
+      {
+        "executionId": "42e9fca6-f0c4-4698-befb-694c0ab4809c",
+        "chatSessionId": "sess_14ff567e-7a3b-4423-a0dc-ba6b0780a445",
+        "timestamp": 1784123863760
+      }
+    ],
+    "8.4 Write property test for next sale number monotonicity": [
+      {
+        "executionId": "42e9fca6-f0c4-4698-befb-694c0ab4809c",
+        "chatSessionId": "sess_14ff567e-7a3b-4423-a0dc-ba6b0780a445",
+        "timestamp": 1784123167143
+      },
+      {
+        "executionId": "42e9fca6-f0c4-4698-befb-694c0ab4809c",
+        "chatSessionId": "sess_14ff567e-7a3b-4423-a0dc-ba6b0780a445",
+        "timestamp": 1784123700183
+      },
+      {
+        "executionId": "42e9fca6-f0c4-4698-befb-694c0ab4809c",
+        "chatSessionId": "sess_14ff567e-7a3b-4423-a0dc-ba6b0780a445",
+        "timestamp": 1784123864413
+      }
+    ],
+    "8.5 Write property test for update merge preserves identity": [
+      {
+        "executionId": "42e9fca6-f0c4-4698-befb-694c0ab4809c",
+        "chatSessionId": "sess_14ff567e-7a3b-4423-a0dc-ba6b0780a445",
+        "timestamp": 1784123167201
+      },
+      {
+        "executionId": "42e9fca6-f0c4-4698-befb-694c0ab4809c",
+        "chatSessionId": "sess_14ff567e-7a3b-4423-a0dc-ba6b0780a445",
+        "timestamp": 1784123870453
+      },
+      {
+        "executionId": "42e9fca6-f0c4-4698-befb-694c0ab4809c",
+        "chatSessionId": "sess_14ff567e-7a3b-4423-a0dc-ba6b0780a445",
+        "timestamp": 1784124018474
+      }
+    ],
+    "8.6 Write property test for employee response mapping": [
+      {
+        "executionId": "42e9fca6-f0c4-4698-befb-694c0ab4809c",
+        "chatSessionId": "sess_14ff567e-7a3b-4423-a0dc-ba6b0780a445",
+        "timestamp": 1784123167264
+      },
+      {
+        "executionId": "42e9fca6-f0c4-4698-befb-694c0ab4809c",
+        "chatSessionId": "sess_14ff567e-7a3b-4423-a0dc-ba6b0780a445",
+        "timestamp": 1784123871134
+      },
+      {
+        "executionId": "42e9fca6-f0c4-4698-befb-694c0ab4809c",
+        "chatSessionId": "sess_14ff567e-7a3b-4423-a0dc-ba6b0780a445",
+        "timestamp": 1784124019255
+      }
+    ],
+    "8.7 Write property test for batch request validation": [
+      {
+        "executionId": "42e9fca6-f0c4-4698-befb-694c0ab4809c",
+        "chatSessionId": "sess_14ff567e-7a3b-4423-a0dc-ba6b0780a445",
+        "timestamp": 1784123167332
+      },
+      {
+        "executionId": "42e9fca6-f0c4-4698-befb-694c0ab4809c",
+        "chatSessionId": "sess_14ff567e-7a3b-4423-a0dc-ba6b0780a445",
+        "timestamp": 1784123871948
+      },
+      {
+        "executionId": "42e9fca6-f0c4-4698-befb-694c0ab4809c",
+        "chatSessionId": "sess_14ff567e-7a3b-4423-a0dc-ba6b0780a445",
+        "timestamp": 1784124020137
+      }
+    ],
+    "8.8 Write unit tests for sales handlers": [
+      {
+        "executionId": "42e9fca6-f0c4-4698-befb-694c0ab4809c",
+        "chatSessionId": "sess_14ff567e-7a3b-4423-a0dc-ba6b0780a445",
+        "timestamp": 1784123167385
+      },
+      {
+        "executionId": "42e9fca6-f0c4-4698-befb-694c0ab4809c",
+        "chatSessionId": "sess_14ff567e-7a3b-4423-a0dc-ba6b0780a445",
+        "timestamp": 1784123872662
+      },
+      {
+        "executionId": "42e9fca6-f0c4-4698-befb-694c0ab4809c",
+        "chatSessionId": "sess_14ff567e-7a3b-4423-a0dc-ba6b0780a445",
+        "timestamp": 1784124020763
+      }
+    ],
+    "8.9 Write unit tests for employee handlers": [
+      {
+        "executionId": "42e9fca6-f0c4-4698-befb-694c0ab4809c",
+        "chatSessionId": "sess_14ff567e-7a3b-4423-a0dc-ba6b0780a445",
+        "timestamp": 1784123167438
+      },
+      {
+        "executionId": "42e9fca6-f0c4-4698-befb-694c0ab4809c",
+        "chatSessionId": "sess_14ff567e-7a3b-4423-a0dc-ba6b0780a445",
+        "timestamp": 1784123873440
+      },
+      {
+        "executionId": "42e9fca6-f0c4-4698-befb-694c0ab4809c",
+        "chatSessionId": "sess_14ff567e-7a3b-4423-a0dc-ba6b0780a445",
+        "timestamp": 1784124021735
+      }
+    ],
+    "9. Final checkpoint - Ensure all tests pass": [
+      {
+        "executionId": "42e9fca6-f0c4-4698-befb-694c0ab4809c",
+        "chatSessionId": "sess_14ff567e-7a3b-4423-a0dc-ba6b0780a445",
+        "timestamp": 1784123167517
+      },
+      {
+        "executionId": "42e9fca6-f0c4-4698-befb-694c0ab4809c",
+        "chatSessionId": "sess_14ff567e-7a3b-4423-a0dc-ba6b0780a445",
+        "timestamp": 1784124027676
+      },
+      {
+        "executionId": "42e9fca6-f0c4-4698-befb-694c0ab4809c",
+        "chatSessionId": "sess_14ff567e-7a3b-4423-a0dc-ba6b0780a445",
+        "timestamp": 1784124166843
+      }
+    ],
+    "1. Add pk-utils helpers and sale validation modules": [
+      {
+        "executionId": "42e9fca6-f0c4-4698-befb-694c0ab4809c",
+        "chatSessionId": "sess_14ff567e-7a3b-4423-a0dc-ba6b0780a445",
+        "timestamp": 1784123350570
+      }
+    ],
+    "2. Implement list-sales and next-sale-number handlers": [
+      {
+        "executionId": "42e9fca6-f0c4-4698-befb-694c0ab4809c",
+        "chatSessionId": "sess_14ff567e-7a3b-4423-a0dc-ba6b0780a445",
+        "timestamp": 1784123522437
+      }
+    ],
+    "3. Implement create-sale handler": [
+      {
+        "executionId": "42e9fca6-f0c4-4698-befb-694c0ab4809c",
+        "chatSessionId": "sess_14ff567e-7a3b-4423-a0dc-ba6b0780a445",
+        "timestamp": 1784123523312
+      }
+    ],
+    "5. Implement employee handlers": [
+      {
+        "executionId": "42e9fca6-f0c4-4698-befb-694c0ab4809c",
+        "chatSessionId": "sess_14ff567e-7a3b-4423-a0dc-ba6b0780a445",
+        "timestamp": 1784123524901
+      }
+    ],
+    "4. Implement update-sale and delete-sale handlers": [
+      {
+        "executionId": "42e9fca6-f0c4-4698-befb-694c0ab4809c",
+        "chatSessionId": "sess_14ff567e-7a3b-4423-a0dc-ba6b0780a445",
+        "timestamp": 1784123621249
+      }
+    ],
+    "6. Register routes and wire handlers": [
+      {
+        "executionId": "42e9fca6-f0c4-4698-befb-694c0ab4809c",
+        "chatSessionId": "sess_14ff567e-7a3b-4423-a0dc-ba6b0780a445",
+        "timestamp": 1784123682176
+      }
+    ],
+    "8. Add unit and property tests": [
+      {
+        "executionId": "42e9fca6-f0c4-4698-befb-694c0ab4809c",
+        "chatSessionId": "sess_14ff567e-7a3b-4423-a0dc-ba6b0780a445",
+        "timestamp": 1784124021807
+      }
+    ]
+  }
+}

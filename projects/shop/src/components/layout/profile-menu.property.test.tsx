@@ -1,7 +1,10 @@
-import { describe, it, expect, vi, afterEach, beforeAll } from "vitest"
-import * as fc from "fast-check"
-import { render, screen, cleanup, waitFor, act } from "@testing-library/react"
-import type { AuthContextValue, AuthState } from "../../providers/auth-provider"
+import { describe, it, expect, vi, afterEach, beforeAll } from "vitest";
+import * as fc from "fast-check";
+import { render, screen, cleanup, waitFor, act } from "@testing-library/react";
+import type {
+  AuthContextValue,
+  AuthState,
+} from "../../providers/auth-provider";
 
 /**
  * Feature: shop-monorepo, Property 5: Roles display completeness
@@ -16,26 +19,26 @@ import type { AuthContextValue, AuthState } from "../../providers/auth-provider"
 // Radix UI requires PointerEvent to be available in the test environment
 beforeAll(() => {
   class MockPointerEvent extends Event {
-    button: number
-    ctrlKey: boolean
-    pointerType: string
+    button: number;
+    ctrlKey: boolean;
+    pointerType: string;
 
     constructor(type: string, props: PointerEventInit = {}) {
-      super(type, props)
-      this.button = props.button ?? 0
-      this.ctrlKey = props.ctrlKey ?? false
-      this.pointerType = props.pointerType ?? "mouse"
+      super(type, props);
+      this.button = props.button ?? 0;
+      this.ctrlKey = props.ctrlKey ?? false;
+      this.pointerType = props.pointerType ?? "mouse";
     }
   }
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  window.PointerEvent = MockPointerEvent as any
-  window.HTMLElement.prototype.scrollIntoView = vi.fn()
-  window.HTMLElement.prototype.hasPointerCapture = vi.fn()
-  window.HTMLElement.prototype.releasePointerCapture = vi.fn()
-  window.HTMLElement.prototype.setPointerCapture = vi.fn()
-})
+  window.PointerEvent = MockPointerEvent as any;
+  window.HTMLElement.prototype.scrollIntoView = vi.fn();
+  window.HTMLElement.prototype.hasPointerCapture = vi.fn();
+  window.HTMLElement.prototype.releasePointerCapture = vi.fn();
+  window.HTMLElement.prototype.setPointerCapture = vi.fn();
+});
 
-const mockSignOut = vi.fn()
+const mockSignOut = vi.fn();
 
 function createMockAuthValue(groups: string[]): AuthContextValue {
   const state: AuthState = {
@@ -46,26 +49,27 @@ function createMockAuthValue(groups: string[]): AuthContextValue {
       groups,
     },
     error: null,
-  }
+  };
   return {
     state,
     signIn: vi.fn(),
     signOut: mockSignOut,
-  }
+    confirmNewPassword: vi.fn(),
+  };
 }
 
-let mockAuthValue: AuthContextValue = createMockAuthValue([])
+let mockAuthValue: AuthContextValue = createMockAuthValue([]);
 
 vi.mock("../../providers/auth-provider", () => ({
   useAuth: () => mockAuthValue,
-}))
+}));
 
 afterEach(() => {
-  cleanup()
-})
+  cleanup();
+});
 
 async function openDropdown(): Promise<void> {
-  const trigger = screen.getByRole("button", { name: /open profile menu/i })
+  const trigger = screen.getByRole("button", { name: /open profile menu/i });
   await act(async () => {
     trigger.dispatchEvent(
       new PointerEvent("pointerdown", {
@@ -73,20 +77,20 @@ async function openDropdown(): Promise<void> {
         cancelable: true,
         button: 0,
         pointerType: "mouse",
-      })
-    )
+      }),
+    );
     trigger.dispatchEvent(
       new PointerEvent("pointerup", {
         bubbles: true,
         cancelable: true,
         button: 0,
         pointerType: "mouse",
-      })
-    )
+      }),
+    );
     trigger.dispatchEvent(
-      new MouseEvent("click", { bubbles: true, cancelable: true, button: 0 })
-    )
-  })
+      new MouseEvent("click", { bubbles: true, cancelable: true, button: 0 }),
+    );
+  });
 }
 
 describe("Feature: shop-monorepo, Property 5: Roles display completeness", () => {
@@ -99,64 +103,64 @@ describe("Feature: shop-monorepo, Property 5: Roles display completeness", () =>
         }),
         async (groups) => {
           // Use unique groups to avoid key collision issues in React
-          const uniqueGroups = [...new Set(groups)]
-          if (uniqueGroups.length === 0) return
+          const uniqueGroups = [...new Set(groups)];
+          if (uniqueGroups.length === 0) return;
 
           // Clean up before each property iteration
-          cleanup()
+          cleanup();
 
-          mockAuthValue = createMockAuthValue(uniqueGroups)
+          mockAuthValue = createMockAuthValue(uniqueGroups);
 
-          const { ProfileMenu } = await import("./profile-menu")
-          render(<ProfileMenu />)
+          const { ProfileMenu } = await import("./profile-menu");
+          render(<ProfileMenu />);
 
-          await openDropdown()
+          await openDropdown();
 
           // Wait for the dropdown content to appear (Radix portal)
           await waitFor(() => {
-            expect(screen.getByText("Roles")).toBeInTheDocument()
-          })
+            expect(screen.getByText("Roles")).toBeInTheDocument();
+          });
 
           // Get all menu items in the roles group
-          const menuItems = screen.getAllByRole("menuitem")
+          const menuItems = screen.getAllByRole("menuitem");
 
           // Filter out "Log out" item — remaining are role items
           const roleItems = menuItems.filter(
-            (item) => item.textContent !== "Log out"
-          )
+            (item) => item.textContent !== "Log out",
+          );
 
           // Verify all group names are present among role items
           const renderedRoles = roleItems.map((item) =>
-            (item.textContent ?? "").trim()
-          )
+            (item.textContent ?? "").trim(),
+          );
           for (const group of uniqueGroups) {
-            expect(renderedRoles).toContain(group)
+            expect(renderedRoles).toContain(group);
           }
 
           // "No roles assigned" should NOT be shown
           expect(
-            screen.queryByText(/no roles assigned/i)
-          ).not.toBeInTheDocument()
-        }
+            screen.queryByText(/no roles assigned/i),
+          ).not.toBeInTheDocument();
+        },
       ),
-      { numRuns: 100 }
-    )
-  }, 60000)
+      { numRuns: 100 },
+    );
+  }, 60000);
 
   it("'No roles assigned' is shown when groups array is empty", async () => {
-    mockAuthValue = createMockAuthValue([])
+    mockAuthValue = createMockAuthValue([]);
 
-    const { ProfileMenu } = await import("./profile-menu")
-    render(<ProfileMenu />)
+    const { ProfileMenu } = await import("./profile-menu");
+    render(<ProfileMenu />);
 
-    await openDropdown()
+    await openDropdown();
 
     // Wait for the dropdown content to appear (Radix portal)
     await waitFor(() => {
-      expect(screen.getByText("Roles")).toBeInTheDocument()
-    })
+      expect(screen.getByText("Roles")).toBeInTheDocument();
+    });
 
     // Verify "No roles assigned" is displayed
-    expect(screen.getByText(/no roles assigned/i)).toBeInTheDocument()
-  })
-})
+    expect(screen.getByText(/no roles assigned/i)).toBeInTheDocument();
+  });
+});

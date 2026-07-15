@@ -1,8 +1,9 @@
 import * as React from "react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import type { PageSize } from "@/lib/pagination-types";
 
-export type PageSize = 20 | 50 | 100;
+export type { PageSize } from "@/lib/pagination-types";
 
 export interface PaginationControlsProps {
   hasPrevious: boolean;

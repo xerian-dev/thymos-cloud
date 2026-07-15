@@ -38,7 +38,7 @@ import {
 
 const mockSignIn = vi.mocked(amplifySignIn);
 const mockConfirmSignIn = vi.mocked(amplifyConfirmSignIn);
-const mockSignOut = vi.mocked(amplifySignOut);
+vi.mocked(amplifySignOut);
 const mockFetchAuthSession = vi.mocked(fetchAuthSession);
 const mockGetCurrentUser = vi.mocked(getCurrentUser);
 

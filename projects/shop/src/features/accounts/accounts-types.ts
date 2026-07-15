@@ -1,3 +1,6 @@
+import type { PageSize } from "@/lib/pagination-types";
+export type { PageSize, CursorPaginationParams } from "@/lib/pagination-types";
+
 export interface Account {
   uuid: string;
   shopUid: number;
@@ -53,13 +56,6 @@ export type DeleteAccountResult =
       success: false;
       error: "not_found" | "network" | "server" | "timeout";
     };
-
-export type PageSize = 20 | 50 | 100;
-
-export interface CursorPaginationParams {
-  pageSize: PageSize;
-  cursor?: string;
-}
 
 export interface CursorPaginatedResponse {
   accounts: Account[];

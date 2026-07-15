@@ -167,16 +167,6 @@ describe("Feature: accounts-page, Property 10: Error messages use accessible att
     const { createAccount } = await import("./accounts-api");
     const mockedCreateAccount = vi.mocked(createAccount);
 
-    const errorTypeArb = fc.constantFrom(
-      "duplicate",
-      "network",
-      "server",
-      "timeout",
-      "max_reached",
-    ) as fc.Arbitrary<
-      "duplicate" | "network" | "server" | "timeout" | "max_reached"
-    >;
-
     // Cannot use fc.assert with async property easily, so test each error type
     const errorTypes = [
       "duplicate",

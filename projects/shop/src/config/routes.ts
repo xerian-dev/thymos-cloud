@@ -6,6 +6,7 @@ import { LoginScreen } from "@/features/auth/login-screen";
 import { AccountsPage } from "@/features/accounts/accounts-page";
 import { ItemsPage } from "@/features/inventory/items-page";
 import { HelpPage } from "@/features/help/help-page";
+import { SalesPage } from "@/features/sales/sales-page";
 
 /**
  * Application route configuration.
@@ -38,6 +39,10 @@ export const router = createBrowserRouter([
           {
             path: "accounts",
             Component: AccountsPage,
+          },
+          {
+            path: "sales",
+            Component: SalesPage,
           },
           {
             path: "help",
