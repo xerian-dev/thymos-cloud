@@ -1,3 +1,6 @@
+import type { PageSize } from "@/lib/pagination-types";
+export type { PageSize, CursorPaginationParams } from "@/lib/pagination-types";
+
 export interface Item {
   uuid: string;
   sku: number;
@@ -21,6 +24,8 @@ export interface Item {
   tags?: string[];
   expirationDate?: string;
   imageKeys?: string[];
+  createdBy?: string;
+  categoryId?: string;
 }
 
 export interface CreateItemRequest {
@@ -97,13 +102,6 @@ export interface CursorPaginatedItemsResponse {
   items: Item[];
   nextCursor: string | null;
   hasMore: boolean;
-}
-
-export type PageSize = 20 | 50 | 100;
-
-export interface CursorPaginationParams {
-  pageSize: PageSize;
-  cursor?: string;
 }
 
 export interface CachedPage {

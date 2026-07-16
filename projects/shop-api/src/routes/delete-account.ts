@@ -30,7 +30,7 @@ export async function deleteAccount(
         KeyConditionExpression: "GSI1PK = :gsi1pk AND GSI1SK = :gsi1sk",
         ExpressionAttributeValues: {
           ":gsi1pk": "ACCOUNT",
-          ":gsi1sk": paddedAccountNumber,
+          ":gsi1sk": `ACCOUNT#${paddedAccountNumber}`,
         },
         Limit: 1,
       }),

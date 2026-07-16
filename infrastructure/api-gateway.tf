@@ -163,3 +163,113 @@ resource "aws_apigatewayv2_route" "post_items_upload_url" {
   authorization_type = "CUSTOM"
   authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
 }
+# -----------------------------------------------------------------------------
+# Sales Routes
+# -----------------------------------------------------------------------------
+
+resource "aws_apigatewayv2_route" "get_sales" {
+  api_id    = aws_apigatewayv2_api.shop_api.id
+  route_key = "GET /api/sales"
+  target    = "integrations/${aws_apigatewayv2_integration.monolambda.id}"
+
+  authorization_type = "CUSTOM"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "get_next_sale_number" {
+  api_id    = aws_apigatewayv2_api.shop_api.id
+  route_key = "GET /api/sales/next-number"
+  target    = "integrations/${aws_apigatewayv2_integration.monolambda.id}"
+
+  authorization_type = "CUSTOM"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "post_sales" {
+  api_id    = aws_apigatewayv2_api.shop_api.id
+  route_key = "POST /api/sales"
+  target    = "integrations/${aws_apigatewayv2_integration.monolambda.id}"
+
+  authorization_type = "CUSTOM"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "put_sale" {
+  api_id    = aws_apigatewayv2_api.shop_api.id
+  route_key = "PUT /api/sales/{uuid}"
+  target    = "integrations/${aws_apigatewayv2_integration.monolambda.id}"
+
+  authorization_type = "CUSTOM"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "delete_sale" {
+  api_id    = aws_apigatewayv2_api.shop_api.id
+  route_key = "DELETE /api/sales/{uuid}"
+  target    = "integrations/${aws_apigatewayv2_integration.monolambda.id}"
+
+  authorization_type = "CUSTOM"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+# -----------------------------------------------------------------------------
+# Employee Routes
+# -----------------------------------------------------------------------------
+
+resource "aws_apigatewayv2_route" "get_employee" {
+  api_id    = aws_apigatewayv2_api.shop_api.id
+  route_key = "GET /api/employees/{uuid}"
+  target    = "integrations/${aws_apigatewayv2_integration.monolambda.id}"
+
+  authorization_type = "CUSTOM"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "post_employees_batch" {
+  api_id    = aws_apigatewayv2_api.shop_api.id
+  route_key = "POST /api/employees/batch"
+  target    = "integrations/${aws_apigatewayv2_integration.monolambda.id}"
+
+  authorization_type = "CUSTOM"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+# -----------------------------------------------------------------------------
+# Import Account Routes
+# -----------------------------------------------------------------------------
+
+resource "aws_apigatewayv2_route" "post_import_accounts_start" {
+  api_id    = aws_apigatewayv2_api.shop_api.id
+  route_key = "POST /api/import/accounts/start"
+  target    = "integrations/${aws_apigatewayv2_integration.monolambda.id}"
+
+  authorization_type = "CUSTOM"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "post_import_accounts_status" {
+  api_id    = aws_apigatewayv2_api.shop_api.id
+  route_key = "POST /api/import/accounts/status"
+  target    = "integrations/${aws_apigatewayv2_integration.monolambda.id}"
+
+  authorization_type = "CUSTOM"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "post_import_accounts_resume" {
+  api_id    = aws_apigatewayv2_api.shop_api.id
+  route_key = "POST /api/import/accounts/resume"
+  target    = "integrations/${aws_apigatewayv2_integration.monolambda.id}"
+
+  authorization_type = "CUSTOM"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "post_import_accounts_cancel" {
+  api_id    = aws_apigatewayv2_api.shop_api.id
+  route_key = "POST /api/import/accounts/cancel"
+  target    = "integrations/${aws_apigatewayv2_integration.monolambda.id}"
+
+  authorization_type = "CUSTOM"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}

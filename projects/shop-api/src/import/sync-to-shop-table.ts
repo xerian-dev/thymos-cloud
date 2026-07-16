@@ -181,7 +181,7 @@ export async function syncAccountsInternal(): Promise<SyncAccountsInternalResult
               uuid: accountUuid,
               shopUid: paddedNumber,
               GSI1PK: "ACCOUNT",
-              GSI1SK: paddedNumber,
+              GSI1SK: `ACCOUNT#${paddedNumber}`,
               name: mapped.name,
               street: mapped.street,
               place: mapped.place,

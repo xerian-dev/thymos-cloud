@@ -1,7 +1,7 @@
-import { describe, it, expect, vi, beforeEach } from "vitest"
-import * as fc from "fast-check"
-import { render, screen, fireEvent, waitFor } from "@testing-library/react"
-import { LoginScreen } from "./login-screen"
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import * as fc from "fast-check";
+import { render, screen, fireEvent } from "@testing-library/react";
+import { LoginScreen } from "./login-screen";
 
 /**
  * Feature: shop-monorepo, Property 2: Empty field submission prevention
@@ -14,7 +14,7 @@ import { LoginScreen } from "./login-screen"
  * Validates: Requirements 5.4
  */
 
-const mockSignIn = vi.fn()
+const mockSignIn = vi.fn();
 
 vi.mock("@/providers/auth-provider", () => ({
   useAuth: () => ({
@@ -22,11 +22,11 @@ vi.mock("@/providers/auth-provider", () => ({
     signIn: mockSignIn,
     signOut: vi.fn(),
   }),
-}))
+}));
 
 vi.mock("react-router", () => ({
   useNavigate: () => vi.fn(),
-}))
+}));
 
 /** Arbitrary generating empty or whitespace-only strings */
 const emptyOrWhitespaceArb: fc.Arbitrary<string> = fc.oneof(
@@ -46,18 +46,18 @@ const emptyOrWhitespaceArb: fc.Arbitrary<string> = fc.oneof(
       minLength: 1,
       maxLength: 10,
     })
-    .map((chars) => chars.join(""))
-)
+    .map((chars) => chars.join("")),
+);
 
 /** Arbitrary generating non-empty, non-whitespace strings (valid input) */
 const nonEmptyStringArb: fc.Arbitrary<string> = fc
   .string({ minLength: 1, maxLength: 50 })
-  .filter((s) => s.trim().length > 0)
+  .filter((s) => s.trim().length > 0);
 
 describe("Feature: shop-monorepo, Property 2: Empty field submission prevention", () => {
   beforeEach(() => {
-    mockSignIn.mockReset()
-  })
+    mockSignIn.mockReset();
+  });
 
   it("shows email validation error and does not call signIn when email is empty/whitespace", () => {
     fc.assert(
@@ -65,27 +65,27 @@ describe("Feature: shop-monorepo, Property 2: Empty field submission prevention"
         emptyOrWhitespaceArb,
         nonEmptyStringArb,
         (email, password) => {
-          mockSignIn.mockReset()
+          mockSignIn.mockReset();
 
-          const { unmount } = render(<LoginScreen />)
+          const { unmount } = render(<LoginScreen />);
 
-          const emailInput = screen.getByLabelText("Email")
-          const passwordInput = screen.getByLabelText("Password")
-          const submitButton = screen.getByRole("button", { name: /sign in/i })
+          const emailInput = screen.getByLabelText("Email");
+          const passwordInput = screen.getByLabelText("Password");
+          const submitButton = screen.getByRole("button", { name: /sign in/i });
 
-          fireEvent.change(emailInput, { target: { value: email } })
-          fireEvent.change(passwordInput, { target: { value: password } })
-          fireEvent.click(submitButton)
+          fireEvent.change(emailInput, { target: { value: email } });
+          fireEvent.change(passwordInput, { target: { value: password } });
+          fireEvent.click(submitButton);
 
-          expect(screen.getByText("Email is required")).toBeInTheDocument()
-          expect(mockSignIn).not.toHaveBeenCalled()
+          expect(screen.getByText("Email is required")).toBeInTheDocument();
+          expect(mockSignIn).not.toHaveBeenCalled();
 
-          unmount()
-        }
+          unmount();
+        },
       ),
-      { numRuns: 100 }
-    )
-  })
+      { numRuns: 100 },
+    );
+  });
 
   it("shows password validation error and does not call signIn when password is empty/whitespace", () => {
     fc.assert(
@@ -93,27 +93,27 @@ describe("Feature: shop-monorepo, Property 2: Empty field submission prevention"
         nonEmptyStringArb,
         emptyOrWhitespaceArb,
         (email, password) => {
-          mockSignIn.mockReset()
+          mockSignIn.mockReset();
 
-          const { unmount } = render(<LoginScreen />)
+          const { unmount } = render(<LoginScreen />);
 
-          const emailInput = screen.getByLabelText("Email")
-          const passwordInput = screen.getByLabelText("Password")
-          const submitButton = screen.getByRole("button", { name: /sign in/i })
+          const emailInput = screen.getByLabelText("Email");
+          const passwordInput = screen.getByLabelText("Password");
+          const submitButton = screen.getByRole("button", { name: /sign in/i });
 
-          fireEvent.change(emailInput, { target: { value: email } })
-          fireEvent.change(passwordInput, { target: { value: password } })
-          fireEvent.click(submitButton)
+          fireEvent.change(emailInput, { target: { value: email } });
+          fireEvent.change(passwordInput, { target: { value: password } });
+          fireEvent.click(submitButton);
 
-          expect(screen.getByText("Password is required")).toBeInTheDocument()
-          expect(mockSignIn).not.toHaveBeenCalled()
+          expect(screen.getByText("Password is required")).toBeInTheDocument();
+          expect(mockSignIn).not.toHaveBeenCalled();
 
-          unmount()
-        }
+          unmount();
+        },
       ),
-      { numRuns: 100 }
-    )
-  })
+      { numRuns: 100 },
+    );
+  });
 
   it("shows both validation errors and does not call signIn when both fields are empty/whitespace", () => {
     fc.assert(
@@ -121,26 +121,26 @@ describe("Feature: shop-monorepo, Property 2: Empty field submission prevention"
         emptyOrWhitespaceArb,
         emptyOrWhitespaceArb,
         (email, password) => {
-          mockSignIn.mockReset()
+          mockSignIn.mockReset();
 
-          const { unmount } = render(<LoginScreen />)
+          const { unmount } = render(<LoginScreen />);
 
-          const emailInput = screen.getByLabelText("Email")
-          const passwordInput = screen.getByLabelText("Password")
-          const submitButton = screen.getByRole("button", { name: /sign in/i })
+          const emailInput = screen.getByLabelText("Email");
+          const passwordInput = screen.getByLabelText("Password");
+          const submitButton = screen.getByRole("button", { name: /sign in/i });
 
-          fireEvent.change(emailInput, { target: { value: email } })
-          fireEvent.change(passwordInput, { target: { value: password } })
-          fireEvent.click(submitButton)
+          fireEvent.change(emailInput, { target: { value: email } });
+          fireEvent.change(passwordInput, { target: { value: password } });
+          fireEvent.click(submitButton);
 
-          expect(screen.getByText("Email is required")).toBeInTheDocument()
-          expect(screen.getByText("Password is required")).toBeInTheDocument()
-          expect(mockSignIn).not.toHaveBeenCalled()
+          expect(screen.getByText("Email is required")).toBeInTheDocument();
+          expect(screen.getByText("Password is required")).toBeInTheDocument();
+          expect(mockSignIn).not.toHaveBeenCalled();
 
-          unmount()
-        }
+          unmount();
+        },
       ),
-      { numRuns: 100 }
-    )
-  })
-})
+      { numRuns: 100 },
+    );
+  });
+});

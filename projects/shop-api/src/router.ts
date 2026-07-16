@@ -13,6 +13,13 @@ import { deleteItem } from "./routes/delete-item.js";
 import { listItems } from "./routes/list-items.js";
 import { nextItemSku } from "./routes/next-item-sku.js";
 import { presignUpload } from "./routes/presign-upload.js";
+import { listSales } from "./routes/list-sales.js";
+import { nextSaleNumber } from "./routes/next-sale-number.js";
+import { createSale } from "./routes/create-sale.js";
+import { updateSale } from "./routes/update-sale.js";
+import { deleteSale } from "./routes/delete-sale.js";
+import { getEmployee } from "./routes/get-employee.js";
+import { batchGetEmployees } from "./routes/batch-get-employees.js";
 import { jsonResponse } from "./response.js";
 
 type RouteHandler = (
@@ -31,6 +38,13 @@ const routes: Record<string, RouteHandler> = {
   "GET /api/items": listItems,
   "GET /api/items/next-sku": nextItemSku,
   "POST /api/items/upload-url": presignUpload,
+  "GET /api/sales": listSales,
+  "GET /api/sales/next-number": nextSaleNumber,
+  "POST /api/sales": createSale,
+  "PUT /api/sales/{uuid}": updateSale,
+  "DELETE /api/sales/{uuid}": deleteSale,
+  "GET /api/employees/{uuid}": getEmployee,
+  "POST /api/employees/batch": batchGetEmployees,
 };
 
 export function routeRequest(

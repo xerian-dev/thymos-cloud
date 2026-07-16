@@ -4,7 +4,7 @@ import type { ImportPhase } from "./self-invoker";
 const sfnClient = new SFNClient({});
 const STATE_MACHINE_ARN: string = process.env.STATE_MACHINE_ARN ?? "";
 
-export type ImportJobType = "item" | "sale";
+export type ImportJobType = "item" | "sale" | "account";
 
 export interface StartStepFunctionOptions {
   jobId: string;
