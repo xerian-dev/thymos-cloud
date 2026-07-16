@@ -338,14 +338,52 @@ resource "aws_sfn_state_machine" "import_loop" {
 }
 
 # -----------------------------------------------------------------------------
-# EventBridge Scheduled Sync
+# EventBridge Scheduler — Scheduled Sync
 # -----------------------------------------------------------------------------
 
-resource "aws_cloudwatch_event_rule" "scheduled_sync" {
-  name                = "${var.project_name}-${var.environment}-scheduled-sync"
-  description         = "Triggers ConsignCloud import every 15 minutes"
-  schedule_expression = "rate(15 minutes)"
-  state               = "ENABLED"
+resource "aws_scheduler_schedule" "scheduled_sync" {
+  name        = "${var.project_name}-${var.environment}-scheduled-sync"
+  description = "Triggers ConsignCloud import every 15 minutes"
+
+  schedule_expression          = "rate(15 minutes)"
+  schedule_expression_timezone = "UTC"
+  state                        = "ENABLED"
+
+  flexible_time_window {
+    mode = "OFF"
+  }
+
+  target {
+    arn      = aws_lambda_function.import.arn
+    role_arn = aws_iam_role.scheduler_role.arn
+
+    input = jsonencode({
+      action = "scheduled-sync"
+    })
+
+    retry_policy {
+      maximum_retry_attempts       = 0
+      maximum_event_age_in_seconds = 60
+    }
+  }
+
+}
+
+resource "aws_iam_role" "scheduler_role" {
+  name = "${var.project_name}-${var.environment}-scheduler-sync-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Principal = {
+          Service = "scheduler.amazonaws.com"
+        }
+        Action = "sts:AssumeRole"
+      }
+    ]
+  })
 
   tags = {
     Environment = var.environment
@@ -353,27 +391,20 @@ resource "aws_cloudwatch_event_rule" "scheduled_sync" {
   }
 }
 
-resource "aws_cloudwatch_event_target" "scheduled_sync" {
-  rule      = aws_cloudwatch_event_rule.scheduled_sync.name
-  target_id = "${var.project_name}-${var.environment}-sync-target"
-  arn       = aws_lambda_function.import.arn
+resource "aws_iam_role_policy" "scheduler_invoke_lambda" {
+  name = "${var.project_name}-${var.environment}-scheduler-invoke-lambda"
+  role = aws_iam_role.scheduler_role.id
 
-  input = jsonencode({
-    action = "scheduled-sync"
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect   = "Allow"
+        Action   = "lambda:InvokeFunction"
+        Resource = aws_lambda_function.import.arn
+      }
+    ]
   })
-
-  retry_policy {
-    maximum_retry_attempts       = 0
-    maximum_event_age_in_seconds = 60
-  }
-}
-
-resource "aws_lambda_permission" "eventbridge_invoke" {
-  statement_id  = "AllowEventBridgeInvoke"
-  action        = "lambda:InvokeFunction"
-  function_name = aws_lambda_function.import.function_name
-  principal     = "events.amazonaws.com"
-  source_arn    = aws_cloudwatch_event_rule.scheduled_sync.arn
 }
 
 # -----------------------------------------------------------------------------
