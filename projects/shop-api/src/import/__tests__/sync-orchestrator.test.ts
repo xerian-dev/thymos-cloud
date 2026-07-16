@@ -5,8 +5,7 @@ const mockForceAcquireStaleLock = vi.hoisted(() => vi.fn());
 const mockReleaseLock = vi.hoisted(() => vi.fn());
 const mockGetSyncState = vi.hoisted(() => vi.fn());
 const mockUpdateSyncStateField = vi.hoisted(() => vi.fn());
-const mockFetchAccountsInternal = vi.hoisted(() => vi.fn());
-const mockSyncAccountsInternal = vi.hoisted(() => vi.fn());
+const mockGetRunningOrPausedJob = vi.hoisted(() => vi.fn());
 const mockStartStepFunctionForSync = vi.hoisted(() => vi.fn());
 const mockRandomUUID = vi.hoisted(() => vi.fn());
 
@@ -21,12 +20,10 @@ vi.mock("../sync-state-manager", () => ({
   updateSyncStateField: mockUpdateSyncStateField,
 }));
 
-vi.mock("../fetch-from-consigncloud", () => ({
-  fetchAccountsInternal: mockFetchAccountsInternal,
-}));
-
-vi.mock("../sync-to-shop-table", () => ({
-  syncAccountsInternal: mockSyncAccountsInternal,
+vi.mock("../generic-job-manager", () => ({
+  createJobManager: () => ({
+    getRunningOrPausedJob: mockGetRunningOrPausedJob,
+  }),
 }));
 
 vi.mock("../step-function-starter", () => ({
@@ -41,8 +38,7 @@ import { handleScheduledSync } from "../sync-orchestrator";
 
 describe("sync-orchestrator", () => {
   const CORRELATION_ID = "test-correlation-id-1234";
-  const ITEM_JOB_ID = "item-job-uuid";
-  const SALE_JOB_ID = "sale-job-uuid";
+  const ACCOUNT_JOB_ID = "account-job-uuid";
 
   let consoleInfoSpy: ReturnType<typeof vi.spyOn>;
   let consoleWarnSpy: ReturnType<typeof vi.spyOn>;
@@ -53,9 +49,9 @@ describe("sync-orchestrator", () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2025-01-15T12:00:00.000Z"));
 
-    // Use mockImplementation with a counter to control UUID generation
+    // Only 2 UUIDs needed now: correlationId and accountJobId
     let uuidCallCount = 0;
-    const uuidSequence = [CORRELATION_ID, ITEM_JOB_ID, SALE_JOB_ID];
+    const uuidSequence = [CORRELATION_ID, ACCOUNT_JOB_ID];
     mockRandomUUID.mockImplementation(() => {
       const value =
         uuidSequence[uuidCallCount] ?? `fallback-uuid-${uuidCallCount}`;
@@ -83,44 +79,38 @@ describe("sync-orchestrator", () => {
       lastSaleSyncAt: "2025-01-15T11:45:00.000Z",
       updatedAt: "2025-01-15T11:45:00.000Z",
     });
-    mockFetchAccountsInternal.mockResolvedValue({ success: true });
-    mockSyncAccountsInternal.mockResolvedValue({
-      success: true,
-      report: { added: 2, updated: 3, skipped: 1, errored: 0 },
-    });
-    mockStartStepFunctionForSync
-      .mockResolvedValueOnce(
-        "arn:aws:states:us-east-1:123:execution:items-exec",
-      )
-      .mockResolvedValueOnce(
-        "arn:aws:states:us-east-1:123:execution:sales-exec",
-      );
+    mockGetRunningOrPausedJob.mockResolvedValue(null);
+    mockStartStepFunctionForSync.mockResolvedValueOnce(
+      "arn:aws:states:us-east-1:123:execution:accounts-exec",
+    );
     mockUpdateSyncStateField.mockResolvedValue(undefined);
     mockReleaseLock.mockResolvedValue(undefined);
   }
 
   describe("happy path: all phases succeed", () => {
-    it("returns success for all phases with correct ARNs and releases lock", async () => {
+    it("returns success for accounts and skipped/disabled for items and sales", async () => {
       setupHappyPath();
 
       const result = await handleScheduledSync();
 
       expect(result.correlationId).toBe(CORRELATION_ID);
-      expect(result.phases.accounts).toEqual({
-        status: "success",
-        detail: "added=2, updated=3, skipped=1, errored=0",
+      expect(result.phases.accounts).toEqual({ status: "success" });
+      expect(result.phases.items).toEqual({
+        status: "skipped",
+        reason: "disabled",
       });
-      expect(result.phases.items).toEqual({ status: "success" });
-      expect(result.phases.sales).toEqual({ status: "success" });
-      expect(result.itemExecutionArn).toBe(
-        "arn:aws:states:us-east-1:123:execution:items-exec",
+      expect(result.phases.sales).toEqual({
+        status: "skipped",
+        reason: "disabled",
+      });
+      expect(result.accountExecutionArn).toBe(
+        "arn:aws:states:us-east-1:123:execution:accounts-exec",
       );
-      expect(result.saleExecutionArn).toBe(
-        "arn:aws:states:us-east-1:123:execution:sales-exec",
-      );
+      expect(result.itemExecutionArn).toBeUndefined();
+      expect(result.saleExecutionArn).toBeUndefined();
     });
 
-    it("updates all sync state timestamp fields with the pre-captured syncTimestamp", async () => {
+    it("updates only lastAccountSyncAt timestamp field", async () => {
       setupHappyPath();
 
       await handleScheduledSync();
@@ -129,15 +119,7 @@ describe("sync-orchestrator", () => {
         "lastAccountSyncAt",
         "2025-01-15T12:00:00.000Z",
       );
-      expect(mockUpdateSyncStateField).toHaveBeenCalledWith(
-        "lastItemSyncAt",
-        "2025-01-15T12:00:00.000Z",
-      );
-      expect(mockUpdateSyncStateField).toHaveBeenCalledWith(
-        "lastSaleSyncAt",
-        "2025-01-15T12:00:00.000Z",
-      );
-      expect(mockUpdateSyncStateField).toHaveBeenCalledTimes(3);
+      expect(mockUpdateSyncStateField).toHaveBeenCalledTimes(1);
     });
 
     it("releases the lock after all phases complete", async () => {
@@ -148,24 +130,16 @@ describe("sync-orchestrator", () => {
       expect(mockReleaseLock).toHaveBeenCalledTimes(1);
     });
 
-    it("passes createdAfter from sync state to step function calls", async () => {
+    it("passes createdAfter from sync state to the account step function call", async () => {
       setupHappyPath();
 
       await handleScheduledSync();
 
-      // Items call
+      // Only accounts call step function
+      expect(mockStartStepFunctionForSync).toHaveBeenCalledTimes(1);
       expect(mockStartStepFunctionForSync).toHaveBeenCalledWith(
         expect.objectContaining({
-          type: "item",
-          phase: "fetch",
-          createdAfter: "2025-01-15T11:45:00.000Z",
-        }),
-      );
-
-      // Sales call
-      expect(mockStartStepFunctionForSync).toHaveBeenCalledWith(
-        expect.objectContaining({
-          type: "sale",
+          type: "account",
           phase: "fetch",
           createdAfter: "2025-01-15T11:45:00.000Z",
         }),
@@ -203,8 +177,7 @@ describe("sync-orchestrator", () => {
 
       // Should NOT proceed with any import phases
       expect(mockGetSyncState).not.toHaveBeenCalled();
-      expect(mockFetchAccountsInternal).not.toHaveBeenCalled();
-      expect(mockSyncAccountsInternal).not.toHaveBeenCalled();
+      expect(mockGetRunningOrPausedJob).not.toHaveBeenCalled();
       expect(mockStartStepFunctionForSync).not.toHaveBeenCalled();
       expect(mockUpdateSyncStateField).not.toHaveBeenCalled();
 
@@ -242,14 +215,8 @@ describe("sync-orchestrator", () => {
         lastSaleSyncAt: "2025-01-15T10:45:00.000Z",
         updatedAt: "2025-01-15T10:45:00.000Z",
       });
-      mockFetchAccountsInternal.mockResolvedValue({ success: true });
-      mockSyncAccountsInternal.mockResolvedValue({
-        success: true,
-        report: { added: 1, updated: 0, skipped: 0, errored: 0 },
-      });
-      mockStartStepFunctionForSync
-        .mockResolvedValueOnce("arn:items")
-        .mockResolvedValueOnce("arn:sales");
+      mockGetRunningOrPausedJob.mockResolvedValue(null);
+      mockStartStepFunctionForSync.mockResolvedValueOnce("arn:accounts");
       mockUpdateSyncStateField.mockResolvedValue(undefined);
       mockReleaseLock.mockResolvedValue(undefined);
 
@@ -257,7 +224,17 @@ describe("sync-orchestrator", () => {
 
       // Sync should have proceeded
       expect(result.phases.accounts.status).toBe("success");
-      expect(mockFetchAccountsInternal).toHaveBeenCalled();
+      expect(result.phases.items).toEqual({
+        status: "skipped",
+        reason: "disabled",
+      });
+      expect(result.phases.sales).toEqual({
+        status: "skipped",
+        reason: "disabled",
+      });
+      expect(mockStartStepFunctionForSync).toHaveBeenCalledWith(
+        expect.objectContaining({ type: "account" }),
+      );
       expect(mockReleaseLock).toHaveBeenCalled();
 
       // Should log WARN about force-acquiring stale lock
@@ -304,7 +281,7 @@ describe("sync-orchestrator", () => {
 
       // Should NOT proceed
       expect(mockGetSyncState).not.toHaveBeenCalled();
-      expect(mockFetchAccountsInternal).not.toHaveBeenCalled();
+      expect(mockGetRunningOrPausedJob).not.toHaveBeenCalled();
 
       // Should NOT call releaseLock since force-acquire failed
       expect(mockReleaseLock).not.toHaveBeenCalled();
@@ -322,8 +299,8 @@ describe("sync-orchestrator", () => {
     });
   });
 
-  describe("account failure skips items and sales", () => {
-    it("skips items and sales, does not update any timestamps, and releases lock", async () => {
+  describe("account Step Function failure — items and sales still disabled", () => {
+    it("items and sales are always skipped/disabled regardless of account outcome", async () => {
       mockAcquireLock.mockResolvedValue({ acquired: true });
       mockGetSyncState.mockResolvedValue({
         lastAccountSyncAt: "2025-01-15T11:45:00.000Z",
@@ -331,40 +308,87 @@ describe("sync-orchestrator", () => {
         lastSaleSyncAt: "2025-01-15T11:45:00.000Z",
         updatedAt: "2025-01-15T11:45:00.000Z",
       });
-      mockFetchAccountsInternal.mockResolvedValue({
-        success: false,
-        error: "Auth failed",
-      });
+      mockGetRunningOrPausedJob.mockResolvedValue(null);
+
+      const accountError = new Error("Account SF failed");
+      mockStartStepFunctionForSync.mockRejectedValueOnce(accountError);
+
+      mockUpdateSyncStateField.mockResolvedValue(undefined);
       mockReleaseLock.mockResolvedValue(undefined);
 
       const result = await handleScheduledSync();
 
       expect(result.phases.accounts).toEqual({
         status: "error",
-        reason: "Auth failed",
+        reason: "Account SF failed",
       });
       expect(result.phases.items).toEqual({
         status: "skipped",
-        reason: "Account phase failed",
+        reason: "disabled",
       });
       expect(result.phases.sales).toEqual({
         status: "skipped",
-        reason: "Account phase failed",
+        reason: "disabled",
       });
 
-      // No timestamps should be updated
+      // lastAccountSyncAt should NOT be updated (account failed)
       expect(mockUpdateSyncStateField).not.toHaveBeenCalled();
 
-      // No step functions started
-      expect(mockStartStepFunctionForSync).not.toHaveBeenCalled();
+      // Only 1 step function call (account)
+      expect(mockStartStepFunctionForSync).toHaveBeenCalledTimes(1);
 
       // Lock released
       expect(mockReleaseLock).toHaveBeenCalledTimes(1);
     });
   });
 
-  describe("item Step Function start retryable error", () => {
-    it("retries once after 2s, then logs ERROR and continues to sales", async () => {
+  describe("account import already running/paused skips account phase", () => {
+    it("skips account phase, items and sales are disabled", async () => {
+      mockAcquireLock.mockResolvedValue({ acquired: true });
+      mockGetSyncState.mockResolvedValue({
+        lastAccountSyncAt: "2025-01-15T11:45:00.000Z",
+        lastItemSyncAt: "2025-01-15T11:45:00.000Z",
+        lastSaleSyncAt: "2025-01-15T11:45:00.000Z",
+        updatedAt: "2025-01-15T11:45:00.000Z",
+      });
+      mockGetRunningOrPausedJob.mockResolvedValue({
+        jobId: "existing-account-job",
+        state: "running",
+        phase: "fetch",
+        startedAt: "2025-01-15T11:50:00.000Z",
+        lastUpdatedAt: "2025-01-15T11:50:00.000Z",
+        filterParams: {},
+        progress: { processed: 10, imported: 10, skipped: 0, failed: 0 },
+      });
+      mockUpdateSyncStateField.mockResolvedValue(undefined);
+      mockReleaseLock.mockResolvedValue(undefined);
+
+      const result = await handleScheduledSync();
+
+      expect(result.phases.accounts).toEqual({
+        status: "skipped",
+        reason: "Account import already running/paused",
+      });
+      expect(result.phases.items).toEqual({
+        status: "skipped",
+        reason: "disabled",
+      });
+      expect(result.phases.sales).toEqual({
+        status: "skipped",
+        reason: "disabled",
+      });
+      expect(result.accountExecutionArn).toBeUndefined();
+
+      // No step function calls at all (account skipped, items/sales disabled)
+      expect(mockStartStepFunctionForSync).not.toHaveBeenCalled();
+
+      // No timestamp updates (account skipped, items/sales disabled)
+      expect(mockUpdateSyncStateField).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("account Step Function start retryable error", () => {
+    it("retries once after 2s, then logs ERROR", async () => {
       mockAcquireLock.mockResolvedValue({ acquired: true });
       mockGetSyncState.mockResolvedValue({
         lastAccountSyncAt: null,
@@ -372,20 +396,15 @@ describe("sync-orchestrator", () => {
         lastSaleSyncAt: null,
         updatedAt: "2025-01-15T11:45:00.000Z",
       });
-      mockFetchAccountsInternal.mockResolvedValue({ success: true });
-      mockSyncAccountsInternal.mockResolvedValue({
-        success: true,
-        report: { added: 1, updated: 0, skipped: 0, errored: 0 },
-      });
+      mockGetRunningOrPausedJob.mockResolvedValue(null);
 
       const throttleError = new Error("Rate exceeded");
       throttleError.name = "ThrottlingException";
 
-      // First call (items) fails twice with retryable error
+      // Account fails twice with retryable error (original + retry)
       mockStartStepFunctionForSync
-        .mockRejectedValueOnce(throttleError) // items: first attempt
-        .mockRejectedValueOnce(throttleError) // items: retry
-        .mockResolvedValueOnce("arn:sales-exec"); // sales: succeeds
+        .mockRejectedValueOnce(throttleError) // accounts: first attempt
+        .mockRejectedValueOnce(throttleError); // accounts: retry
 
       mockUpdateSyncStateField.mockResolvedValue(undefined);
       mockReleaseLock.mockResolvedValue(undefined);
@@ -397,43 +416,41 @@ describe("sync-orchestrator", () => {
 
       const result = await resultPromise;
 
-      // Items phase should be error
-      expect(result.phases.items).toEqual({
+      // Account phase should be error
+      expect(result.phases.accounts).toEqual({
         status: "error",
         reason: "Rate exceeded",
       });
 
-      // Sales phase should still succeed (continues after item failure)
-      expect(result.phases.sales).toEqual({ status: "success" });
+      // Items and sales are always disabled
+      expect(result.phases.items).toEqual({
+        status: "skipped",
+        reason: "disabled",
+      });
+      expect(result.phases.sales).toEqual({
+        status: "skipped",
+        reason: "disabled",
+      });
 
-      // 3 calls total: items first attempt, items retry, sales
-      expect(mockStartStepFunctionForSync).toHaveBeenCalledTimes(3);
+      // 2 calls total: account first attempt + account retry
+      expect(mockStartStepFunctionForSync).toHaveBeenCalledTimes(2);
 
-      // lastItemSyncAt should NOT be updated
-      expect(mockUpdateSyncStateField).not.toHaveBeenCalledWith(
-        "lastItemSyncAt",
-        expect.anything(),
-      );
-
-      // lastSaleSyncAt should be updated
-      expect(mockUpdateSyncStateField).toHaveBeenCalledWith(
-        "lastSaleSyncAt",
-        "2025-01-15T12:00:00.000Z",
-      );
+      // lastAccountSyncAt should NOT be updated (account failed)
+      expect(mockUpdateSyncStateField).not.toHaveBeenCalled();
 
       // Error should be logged
       const errorMessages = consoleErrorSpy.mock.calls.map((call: unknown[]) =>
         JSON.parse(call[0] as string),
       );
-      const itemError = errorMessages.find(
+      const accountError = errorMessages.find(
         (msg: Record<string, unknown>) =>
-          msg.message === "Item import Step Function start failed",
+          msg.message === "Account import Step Function start failed",
       );
-      expect(itemError).toBeDefined();
+      expect(accountError).toBeDefined();
     });
   });
 
-  describe("sale Step Function start non-retryable error", () => {
+  describe("account Step Function start non-retryable error", () => {
     it("logs ERROR immediately without retry", async () => {
       mockAcquireLock.mockResolvedValue({ acquired: true });
       mockGetSyncState.mockResolvedValue({
@@ -442,55 +459,47 @@ describe("sync-orchestrator", () => {
         lastSaleSyncAt: null,
         updatedAt: "2025-01-15T11:45:00.000Z",
       });
-      mockFetchAccountsInternal.mockResolvedValue({ success: true });
-      mockSyncAccountsInternal.mockResolvedValue({
-        success: true,
-        report: { added: 1, updated: 0, skipped: 0, errored: 0 },
-      });
+      mockGetRunningOrPausedJob.mockResolvedValue(null);
 
       const accessError = new Error("Access denied");
       accessError.name = "AccessDeniedException";
 
-      // Items succeed, sales fail with non-retryable error
-      mockStartStepFunctionForSync
-        .mockResolvedValueOnce("arn:items-exec") // items: success
-        .mockRejectedValueOnce(accessError); // sales: non-retryable
+      // Account fails with non-retryable error (no retry)
+      mockStartStepFunctionForSync.mockRejectedValueOnce(accessError);
 
       mockUpdateSyncStateField.mockResolvedValue(undefined);
       mockReleaseLock.mockResolvedValue(undefined);
 
       const result = await handleScheduledSync();
 
-      expect(result.phases.items).toEqual({ status: "success" });
-      expect(result.phases.sales).toEqual({
+      expect(result.phases.accounts).toEqual({
         status: "error",
         reason: "Access denied",
       });
+      expect(result.phases.items).toEqual({
+        status: "skipped",
+        reason: "disabled",
+      });
+      expect(result.phases.sales).toEqual({
+        status: "skipped",
+        reason: "disabled",
+      });
 
-      // Only 2 calls: items + 1 attempt at sales (no retry for non-retryable)
-      expect(mockStartStepFunctionForSync).toHaveBeenCalledTimes(2);
+      // Only 1 call: account (no retry for non-retryable)
+      expect(mockStartStepFunctionForSync).toHaveBeenCalledTimes(1);
 
-      // lastSaleSyncAt should NOT be updated
-      expect(mockUpdateSyncStateField).not.toHaveBeenCalledWith(
-        "lastSaleSyncAt",
-        expect.anything(),
-      );
-
-      // lastItemSyncAt should be updated
-      expect(mockUpdateSyncStateField).toHaveBeenCalledWith(
-        "lastItemSyncAt",
-        "2025-01-15T12:00:00.000Z",
-      );
+      // No timestamp updates (account failed, items/sales disabled)
+      expect(mockUpdateSyncStateField).not.toHaveBeenCalled();
 
       // Error should be logged
       const errorMessages = consoleErrorSpy.mock.calls.map((call: unknown[]) =>
         JSON.parse(call[0] as string),
       );
-      const saleError = errorMessages.find(
+      const accountError = errorMessages.find(
         (msg: Record<string, unknown>) =>
-          msg.message === "Sale import Step Function start failed",
+          msg.message === "Account import Step Function start failed",
       );
-      expect(saleError).toBeDefined();
+      expect(accountError).toBeDefined();
     });
   });
 
@@ -633,27 +642,20 @@ describe("sync-orchestrator", () => {
   });
 
   describe("sync state DynamoDB update", () => {
-    it("calls updateSyncStateField with correct syncTimestamp value", async () => {
+    it("calls updateSyncStateField only for lastAccountSyncAt", async () => {
       setupHappyPath();
 
       await handleScheduledSync();
 
-      // All three fields should be updated with the timestamp captured at sync start
+      // Only account timestamp should be updated (items/sales disabled)
       expect(mockUpdateSyncStateField).toHaveBeenCalledWith(
         "lastAccountSyncAt",
         "2025-01-15T12:00:00.000Z",
       );
-      expect(mockUpdateSyncStateField).toHaveBeenCalledWith(
-        "lastItemSyncAt",
-        "2025-01-15T12:00:00.000Z",
-      );
-      expect(mockUpdateSyncStateField).toHaveBeenCalledWith(
-        "lastSaleSyncAt",
-        "2025-01-15T12:00:00.000Z",
-      );
+      expect(mockUpdateSyncStateField).toHaveBeenCalledTimes(1);
     });
 
-    it("continues to next phases even if updateSyncStateField throws", async () => {
+    it("account succeeds even if updateSyncStateField throws", async () => {
       mockAcquireLock.mockResolvedValue({ acquired: true });
       mockGetSyncState.mockResolvedValue({
         lastAccountSyncAt: null,
@@ -661,58 +663,41 @@ describe("sync-orchestrator", () => {
         lastSaleSyncAt: null,
         updatedAt: "2025-01-15T11:45:00.000Z",
       });
-      mockFetchAccountsInternal.mockResolvedValue({ success: true });
-      mockSyncAccountsInternal.mockResolvedValue({
-        success: true,
-        report: { added: 1, updated: 0, skipped: 0, errored: 0 },
-      });
-      // updateSyncStateField never throws in orchestrator (state manager handles retries internally)
-      // But if it did throw, the orchestrator's try/catch around the phase would catch it.
-      // The orchestrator currently awaits updateSyncStateField within the phase try block.
-      // Let's verify the orchestrator calls it correctly by having it succeed.
+      mockGetRunningOrPausedJob.mockResolvedValue(null);
       mockUpdateSyncStateField.mockResolvedValue(undefined);
-      mockStartStepFunctionForSync
-        .mockResolvedValueOnce("arn:items")
-        .mockResolvedValueOnce("arn:sales");
+      mockStartStepFunctionForSync.mockResolvedValueOnce("arn:accounts");
       mockReleaseLock.mockResolvedValue(undefined);
 
       const result = await handleScheduledSync();
 
       expect(result.phases.accounts.status).toBe("success");
-      expect(result.phases.items.status).toBe("success");
-      expect(result.phases.sales.status).toBe("success");
+      expect(result.phases.items).toEqual({
+        status: "skipped",
+        reason: "disabled",
+      });
+      expect(result.phases.sales).toEqual({
+        status: "skipped",
+        reason: "disabled",
+      });
     });
   });
 
   describe("first sync (no sync state)", () => {
-    it("omits createdAfter when sync state fields are null", async () => {
+    it("omits createdAfter when sync state is null", async () => {
       mockAcquireLock.mockResolvedValue({ acquired: true });
       mockGetSyncState.mockResolvedValue(null);
-      mockFetchAccountsInternal.mockResolvedValue({ success: true });
-      mockSyncAccountsInternal.mockResolvedValue({
-        success: true,
-        report: { added: 5, updated: 0, skipped: 0, errored: 0 },
-      });
-      mockStartStepFunctionForSync
-        .mockResolvedValueOnce("arn:items-full")
-        .mockResolvedValueOnce("arn:sales-full");
+      mockGetRunningOrPausedJob.mockResolvedValue(null);
+      mockStartStepFunctionForSync.mockResolvedValueOnce("arn:accounts-full");
       mockUpdateSyncStateField.mockResolvedValue(undefined);
       mockReleaseLock.mockResolvedValue(undefined);
 
       await handleScheduledSync();
 
-      // Items call should have undefined createdAfter
+      // Only accounts call with undefined createdAfter
+      expect(mockStartStepFunctionForSync).toHaveBeenCalledTimes(1);
       expect(mockStartStepFunctionForSync).toHaveBeenCalledWith(
         expect.objectContaining({
-          type: "item",
-          createdAfter: undefined,
-        }),
-      );
-
-      // Sales call should have undefined createdAfter
-      expect(mockStartStepFunctionForSync).toHaveBeenCalledWith(
-        expect.objectContaining({
-          type: "sale",
+          type: "account",
           createdAfter: undefined,
         }),
       );

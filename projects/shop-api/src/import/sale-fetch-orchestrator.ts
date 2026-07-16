@@ -11,7 +11,10 @@ import {
 } from "./sale-checkpoint-manager";
 import { getSaleJob, transitionSaleJob } from "./sale-job-manager";
 import { RateLimiter } from "./rate-limiter";
-import { ProgressCounts } from "./checkpoint-manager";
+import {
+  runGenericFetchLoop,
+  FetchPageResult,
+} from "./generic-fetch-orchestrator";
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import {
   BatchWriteCommand,
@@ -53,23 +56,11 @@ export async function runSaleFetchLoop(
   const { jobId, apiKey, baseUrl, rateLimiter, startTime, timeoutThresholdMs } =
     config;
 
-  // 1. Load job to get filterParams
+  // Load job to get filterParams
   const job = await getSaleJob(jobId);
   if (!job) {
     throw new Error(`Sale job ${jobId} not found`);
   }
-
-  // 2. Load checkpoint if exists (resume scenario)
-  const checkpoint = await loadSaleFetchCheckpoint(jobId);
-  const isResume = checkpoint !== null;
-
-  let cursor: string | null = checkpoint?.cursor ?? null;
-  const progress: ProgressCounts = checkpoint?.progress ?? {
-    processed: 0,
-    imported: 0,
-    skipped: 0,
-    failed: 0,
-  };
 
   // Build client config
   const clientConfig: SaleClientConfig = {
@@ -79,123 +70,64 @@ export async function runSaleFetchLoop(
     createdAfter: job.filterParams.createdAfter,
   };
 
-  // Log start
-  console.info(
-    JSON.stringify({
-      level: "INFO",
-      message: "Sale fetch loop started",
-      jobId,
-      filterParams: job.filterParams,
-      isResume,
-      cursor,
-      progress,
-    }),
-  );
+  const result = await runGenericFetchLoop<ConsignCloudSale>({
+    jobId,
+    startTime,
+    timeoutThresholdMs,
+    pageLimit: PAGE_LIMIT,
+    fetchPage: async (
+      cursor: string | null,
+      limit: number,
+    ): Promise<FetchPageResult<ConsignCloudSale>> => {
+      const pageResult = await fetchSalePage(clientConfig, cursor, limit);
+      return { data: pageResult.sales, nextCursor: pageResult.nextCursor };
+    },
+    stageRecords: async (
+      sales: ConsignCloudSale[],
+    ): Promise<{ staged: number; skipped: number }> => {
+      const salesToStage: StagedSaleRecord[] = [];
 
-  let pageNumber = 0;
+      for (const sale of sales) {
+        let lineItems: ConsignCloudLineItem[] = [];
+        try {
+          const lineItemsResult = await fetchSaleLineItems(
+            clientConfig,
+            sale.id,
+          );
+          lineItems = lineItemsResult.lineItems;
+        } catch (error: unknown) {
+          const message =
+            error instanceof Error ? error.message : "Unknown error";
+          console.warn(
+            JSON.stringify({
+              level: "WARN",
+              message:
+                "Failed to fetch line items for sale, storing with empty line_items",
+              jobId,
+              saleId: sale.id,
+              error: message,
+            }),
+          );
+          lineItems = [];
+        }
 
-  // 3. Processing loop
-  for (;;) {
-    // Fetch next page
-    const pageResult = await fetchSalePage(clientConfig, cursor, PAGE_LIMIT);
-    pageNumber++;
-
-    // Stage all sales with their line items
-    const salesToStage: StagedSaleRecord[] = [];
-
-    for (const sale of pageResult.sales) {
-      // Fetch line items for this sale
-      let lineItems: ConsignCloudLineItem[] = [];
-      try {
-        const lineItemsResult = await fetchSaleLineItems(clientConfig, sale.id);
-        lineItems = lineItemsResult.lineItems;
-      } catch (error: unknown) {
-        const message =
-          error instanceof Error ? error.message : "Unknown error";
-        console.warn(
-          JSON.stringify({
-            level: "WARN",
-            message:
-              "Failed to fetch line items for sale, storing with empty line_items",
-            jobId,
-            saleId: sale.id,
-            error: message,
-          }),
-        );
-        lineItems = [];
+        salesToStage.push({ sale, line_items: lineItems });
       }
 
-      salesToStage.push({ sale, line_items: lineItems });
-    }
+      await batchWriteStagedSales(salesToStage);
+      return { staged: salesToStage.length, skipped: 0 };
+    },
+    jobManager: {
+      getJob: getSaleJob,
+      transitionJob: transitionSaleJob,
+    },
+    checkpointManager: {
+      saveCheckpoint: saveSaleFetchCheckpoint,
+      loadCheckpoint: loadSaleFetchCheckpoint,
+    },
+  });
 
-    // Batch write staged sales to Import_Table
-    await batchWriteStagedSales(salesToStage);
-
-    // Update progress
-    progress.imported += salesToStage.length;
-    progress.processed += pageResult.sales.length;
-
-    // Update cursor from page result
-    cursor = pageResult.nextCursor;
-
-    // Log after each page
-    console.info(
-      JSON.stringify({
-        level: "INFO",
-        message: "Sale fetch page processed",
-        jobId,
-        pageNumber,
-        saleCount: pageResult.sales.length,
-        staged: salesToStage.length,
-        progress,
-      }),
-    );
-
-    // Save checkpoint after each page
-    await saveSaleFetchCheckpoint({
-      jobId,
-      cursor,
-      progress,
-      lastUpdatedAt: new Date().toISOString(),
-    });
-
-    // Check if no more pages
-    if (cursor === null) {
-      // Fetch phase complete — transition job to paused so sync can pick it up
-      await transitionSaleJob(jobId, "paused", progress);
-
-      console.info(
-        JSON.stringify({
-          level: "INFO",
-          message: "Sale fetch phase completed",
-          jobId,
-          state: "paused",
-          progress,
-          elapsedSeconds: Math.round((Date.now() - startTime) / 1000),
-        }),
-      );
-      return { status: "complete", jobId };
-    }
-
-    // Check elapsed time against threshold
-    const elapsed = Date.now() - startTime;
-    if (elapsed >= timeoutThresholdMs) {
-      // Return continue so Step Function will re-invoke
-      console.info(
-        JSON.stringify({
-          level: "INFO",
-          message:
-            "Sale fetch timeout threshold reached, returning continue for next iteration",
-          jobId,
-          cursor,
-          progress,
-          elapsedMs: elapsed,
-        }),
-      );
-
-      return { status: "continue", jobId };
-    }
-  }
+  return { status: result.status, jobId: result.jobId };
 }
 
 async function batchWriteStagedSales(

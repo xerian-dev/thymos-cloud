@@ -5,8 +5,7 @@ import {
   releaseLock,
 } from "./sync-lock-manager";
 import { getSyncState, updateSyncStateField } from "./sync-state-manager";
-import { fetchAccountsInternal } from "./fetch-from-consigncloud";
-import { syncAccountsInternal } from "./sync-to-shop-table";
+import { createJobManager } from "./generic-job-manager";
 import { startStepFunctionForSync } from "./step-function-starter";
 import type { ImportPhase } from "./self-invoker";
 import type { ImportJobType } from "./step-function-starter";
@@ -24,9 +23,12 @@ export interface SyncRunResult {
     items: PhaseOutcome;
     sales: PhaseOutcome;
   };
+  accountExecutionArn?: string;
   itemExecutionArn?: string;
   saleExecutionArn?: string;
 }
+
+const accountJobManager = createJobManager({ prefix: "ACCOUNT_IMPORT" });
 
 export async function handleScheduledSync(): Promise<SyncRunResult> {
   const correlationId = randomUUID();
@@ -113,119 +115,68 @@ export async function handleScheduledSync(): Promise<SyncRunResult> {
           lastSaleSyncAt: syncState?.lastSaleSyncAt ?? null,
         },
         mode: {
-          accounts: "full",
+          accounts: syncState?.lastAccountSyncAt ? "incremental" : "full",
           items: syncState?.lastItemSyncAt ? "incremental" : "full",
           sales: syncState?.lastSaleSyncAt ? "incremental" : "full",
         },
       }),
     );
 
+    let accountExecutionArn: string | undefined;
     let itemExecutionArn: string | undefined;
     let saleExecutionArn: string | undefined;
 
-    // ===== Phase 1: Accounts (synchronous) =====
+    // ===== Phase 1: Accounts (async via Step Functions) =====
     try {
-      const fetchResult = await fetchAccountsInternal();
-      if (!fetchResult.success) {
-        throw new Error(fetchResult.error ?? "Account fetch failed");
-      }
-
-      const syncResult = await syncAccountsInternal();
-      if (!syncResult.success) {
-        throw new Error(syncResult.error ?? "Account sync failed");
-      }
-
-      phases.accounts = {
-        status: "success",
-        detail: `added=${syncResult.report?.added}, updated=${syncResult.report?.updated}, skipped=${syncResult.report?.skipped}, errored=${syncResult.report?.errored}`,
-      };
-      await updateSyncStateField("lastAccountSyncAt", syncTimestamp);
-
-      console.info(
-        JSON.stringify({
-          level: "INFO",
-          message: "Account import phase completed",
+      const existingAccountJob =
+        await accountJobManager.getRunningOrPausedJob();
+      if (existingAccountJob) {
+        phases.accounts = {
+          status: "skipped",
+          reason: "Account import already running/paused",
+        };
+        console.info(
+          JSON.stringify({
+            level: "INFO",
+            message: "Account import already in progress, skipping",
+            correlationId,
+            existingJobId: existingAccountJob.jobId,
+            existingJobState: existingAccountJob.state,
+          }),
+        );
+      } else {
+        const accountJobId = randomUUID();
+        const accountArn = await startStepFunctionWithRetry(
+          {
+            jobId: accountJobId,
+            phase: "fetch",
+            type: "account",
+            createdAfter: syncState?.lastAccountSyncAt ?? undefined,
+          },
           correlationId,
-          report: syncResult.report,
-        }),
-      );
+        );
+        accountExecutionArn = accountArn;
+        phases.accounts = { status: "success" };
+        await updateSyncStateField("lastAccountSyncAt", syncTimestamp);
+      }
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unknown error";
       phases.accounts = { status: "error", reason: message };
-      phases.items = { status: "skipped", reason: "Account phase failed" };
-      phases.sales = { status: "skipped", reason: "Account phase failed" };
-
       console.error(
         JSON.stringify({
           level: "ERROR",
-          message: "Account import phase failed, skipping items and sales",
+          message: "Account import Step Function start failed",
           correlationId,
           error: message,
         }),
       );
     }
 
-    // ===== Phase 2: Items (async via Step Functions with retry) =====
-    if (phases.accounts.status === "success") {
-      const itemJobId = randomUUID();
-      try {
-        const itemArn = await startStepFunctionWithRetry(
-          {
-            jobId: itemJobId,
-            phase: "fetch",
-            type: "item",
-            createdAfter: syncState?.lastItemSyncAt ?? undefined,
-          },
-          correlationId,
-        );
-        itemExecutionArn = itemArn;
-        phases.items = { status: "success" };
-        await updateSyncStateField("lastItemSyncAt", syncTimestamp);
-      } catch (error) {
-        const message =
-          error instanceof Error ? error.message : "Unknown error";
-        phases.items = { status: "error", reason: message };
-        console.error(
-          JSON.stringify({
-            level: "ERROR",
-            message: "Item import Step Function start failed",
-            correlationId,
-            error: message,
-          }),
-        );
-      }
-    }
+    // ===== Phase 2: Items (DISABLED) =====
+    phases.items = { status: "skipped", reason: "disabled" };
 
-    // ===== Phase 3: Sales (async via Step Functions with retry) =====
-    if (phases.accounts.status === "success") {
-      const saleJobId = randomUUID();
-      try {
-        const saleArn = await startStepFunctionWithRetry(
-          {
-            jobId: saleJobId,
-            phase: "fetch",
-            type: "sale",
-            createdAfter: syncState?.lastSaleSyncAt ?? undefined,
-          },
-          correlationId,
-        );
-        saleExecutionArn = saleArn;
-        phases.sales = { status: "success" };
-        await updateSyncStateField("lastSaleSyncAt", syncTimestamp);
-      } catch (error) {
-        const message =
-          error instanceof Error ? error.message : "Unknown error";
-        phases.sales = { status: "error", reason: message };
-        console.error(
-          JSON.stringify({
-            level: "ERROR",
-            message: "Sale import Step Function start failed",
-            correlationId,
-            error: message,
-          }),
-        );
-      }
-    }
+    // ===== Phase 3: Sales (DISABLED) =====
+    phases.sales = { status: "skipped", reason: "disabled" };
 
     // Log sync completion
     console.info(
@@ -235,6 +186,7 @@ export async function handleScheduledSync(): Promise<SyncRunResult> {
         correlationId,
         elapsedMs: Date.now() - startTime,
         phases,
+        accountExecutionArn: accountExecutionArn ?? null,
         itemExecutionArn: itemExecutionArn ?? null,
         saleExecutionArn: saleExecutionArn ?? null,
       }),
@@ -244,6 +196,7 @@ export async function handleScheduledSync(): Promise<SyncRunResult> {
       correlationId,
       elapsedMs: Date.now() - startTime,
       phases,
+      accountExecutionArn,
       itemExecutionArn,
       saleExecutionArn,
     };

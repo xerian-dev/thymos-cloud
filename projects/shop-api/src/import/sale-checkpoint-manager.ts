@@ -5,6 +5,7 @@ import {
   PutCommand,
 } from "@aws-sdk/lib-dynamodb";
 import { ProgressCounts } from "./checkpoint-manager";
+import { createCheckpointManager } from "./generic-checkpoint-manager";
 
 export interface SaleFetchCheckpoint {
   jobId: string;
@@ -22,6 +23,10 @@ export interface SaleSyncCheckpoint {
   lastUpdatedAt: string;
 }
 
+// Generic checkpoint manager handles fetch checkpoint (SK: "CHECKPOINT")
+const saleCheckpointMgr = createCheckpointManager({ prefix: "SALE_IMPORT" });
+
+// DynamoDB client retained only for sync checkpoint (SK: "SYNC_CHECKPOINT")
 const client = new DynamoDBClient({});
 const docClient: DynamoDBDocumentClient = DynamoDBDocumentClient.from(client, {
   marshallOptions: { removeUndefinedValues: true },
@@ -39,58 +44,13 @@ function delay(ms: number): Promise<void> {
 export async function saveSaleFetchCheckpoint(
   checkpoint: SaleFetchCheckpoint,
 ): Promise<void> {
-  let lastError: unknown;
-
-  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
-    try {
-      await docClient.send(
-        new PutCommand({
-          TableName: IMPORT_TABLE_NAME,
-          Item: {
-            PK: `SALE_IMPORT#${checkpoint.jobId}`,
-            SK: "CHECKPOINT",
-            jobId: checkpoint.jobId,
-            cursor: checkpoint.cursor,
-            progress: checkpoint.progress,
-            lastUpdatedAt: checkpoint.lastUpdatedAt,
-          },
-        }),
-      );
-      return;
-    } catch (error: unknown) {
-      lastError = error;
-      if (attempt < MAX_RETRIES) {
-        await delay(RETRY_DELAY_MS);
-      }
-    }
-  }
-
-  throw lastError;
+  await saleCheckpointMgr.saveCheckpoint(checkpoint);
 }
 
 export async function loadSaleFetchCheckpoint(
   jobId: string,
 ): Promise<SaleFetchCheckpoint | null> {
-  const result = await docClient.send(
-    new GetCommand({
-      TableName: IMPORT_TABLE_NAME,
-      Key: {
-        PK: `SALE_IMPORT#${jobId}`,
-        SK: "CHECKPOINT",
-      },
-    }),
-  );
-
-  if (!result.Item) {
-    return null;
-  }
-
-  return {
-    jobId: result.Item.jobId as string,
-    cursor: result.Item.cursor as string | null,
-    progress: result.Item.progress as ProgressCounts,
-    lastUpdatedAt: result.Item.lastUpdatedAt as string,
-  };
+  return saleCheckpointMgr.loadCheckpoint(jobId);
 }
 
 export async function saveSaleSyncCheckpoint(

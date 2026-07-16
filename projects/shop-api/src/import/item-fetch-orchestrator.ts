@@ -5,13 +5,14 @@ import {
 } from "./item-consigncloud-client";
 import { isDeletedItem } from "./item-filter";
 import { saveCheckpoint, loadCheckpoint } from "./checkpoint-manager";
-import { getJob, transitionJob, ProgressCounts } from "./job-manager";
+import { getJob, transitionJob } from "./job-manager";
 import { RateLimiter } from "./rate-limiter";
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import {
   BatchWriteCommand,
   DynamoDBDocumentClient,
 } from "@aws-sdk/lib-dynamodb";
+import { runGenericFetchLoop } from "./generic-fetch-orchestrator";
 
 export interface FetchOrchestratorConfig {
   jobId: string;
@@ -25,11 +26,6 @@ export interface FetchOrchestratorConfig {
 export interface FetchLoopResult {
   status: "continue" | "complete";
   jobId: string;
-}
-
-interface FetchProgress {
-  fetched: number;
-  skipped: number;
 }
 
 const PAGE_LIMIT = 100;
@@ -48,29 +44,13 @@ export async function runFetchLoop(
   const { jobId, apiKey, baseUrl, rateLimiter, startTime, timeoutThresholdMs } =
     config;
 
-  // 1. Load job to get filterParams
+  // Load job to get filterParams for the client config
   const job = await getJob(jobId);
   if (!job) {
     throw new Error(`Job ${jobId} not found`);
   }
 
-  // 2. Load checkpoint if exists (resume scenario)
-  const checkpoint = await loadCheckpoint(jobId);
-  const isResume = checkpoint !== null;
-
-  let cursor: string | null = checkpoint?.cursor ?? null;
-  const progress: ProgressCounts = checkpoint?.progress ?? {
-    processed: 0,
-    imported: 0,
-    skipped: 0,
-    failed: 0,
-  };
-
-  // We track fetch-specific counts in the imported/skipped fields:
-  // imported = fetched (staged to Import_Table)
-  // skipped = deleted items skipped
-
-  // Build client config
+  // Build item client config
   const clientConfig: ItemClientConfig = {
     apiKey,
     baseUrl,
@@ -78,109 +58,34 @@ export async function runFetchLoop(
     createdAfter: job.filterParams.createdAfter,
   };
 
-  // Log start
-  console.info(
-    JSON.stringify({
-      level: "INFO",
-      message: "Item fetch loop started",
-      jobId,
-      filterParams: job.filterParams,
-      isResume,
-      cursor,
-      progress,
-    }),
-  );
+  return runGenericFetchLoop<ConsignCloudItem>({
+    jobId,
+    startTime,
+    timeoutThresholdMs,
+    pageLimit: PAGE_LIMIT,
+    fetchPage: async (cursor, limit) => {
+      const result = await fetchItemPage(clientConfig, cursor, limit);
+      return { data: result.items, nextCursor: result.nextCursor };
+    },
+    stageRecords: async (records) => {
+      const itemsToStage: ConsignCloudItem[] = [];
+      let skipped = 0;
 
-  let pageNumber = 0;
-
-  // 3. Processing loop
-  for (;;) {
-    // Fetch next page
-    const pageResult = await fetchItemPage(clientConfig, cursor, PAGE_LIMIT);
-    pageNumber++;
-
-    // Filter out deleted items, stage the rest
-    const itemsToStage: ConsignCloudItem[] = [];
-    let pageSkipped = 0;
-
-    for (const item of pageResult.items) {
-      if (isDeletedItem(item)) {
-        pageSkipped++;
-        continue;
+      for (const item of records) {
+        if (isDeletedItem(item)) {
+          skipped++;
+          continue;
+        }
+        itemsToStage.push(item);
       }
-      itemsToStage.push(item);
-    }
 
-    // Batch write staged items to Import_Table
-    await batchWriteStagedItems(itemsToStage);
+      await batchWriteStagedItems(itemsToStage);
 
-    // Update progress
-    progress.imported += itemsToStage.length;
-    progress.skipped += pageSkipped;
-    progress.processed += pageResult.items.length;
-
-    // Update cursor from page result
-    cursor = pageResult.nextCursor;
-
-    // Log after each page
-    console.info(
-      JSON.stringify({
-        level: "INFO",
-        message: "Fetch page processed",
-        jobId,
-        pageNumber,
-        itemCount: pageResult.items.length,
-        staged: itemsToStage.length,
-        skippedDeleted: pageSkipped,
-        progress,
-      }),
-    );
-
-    // Save checkpoint after each page
-    await saveCheckpoint({
-      jobId,
-      cursor,
-      progress,
-      lastUpdatedAt: new Date().toISOString(),
-    });
-
-    // Check if no more pages
-    if (cursor === null) {
-      // Fetch phase complete — transition job to paused so sync can pick it up
-      await transitionJob(jobId, "paused", progress);
-
-      console.info(
-        JSON.stringify({
-          level: "INFO",
-          message: "Item fetch phase completed",
-          jobId,
-          state: "paused",
-          progress,
-          elapsedSeconds: Math.round((Date.now() - startTime) / 1000),
-        }),
-      );
-      return { status: "complete", jobId };
-    }
-
-    // Check elapsed time against threshold
-    const elapsed = Date.now() - startTime;
-    if (elapsed >= timeoutThresholdMs) {
-      // Return continue so Step Function will re-invoke
-      console.info(
-        JSON.stringify({
-          level: "INFO",
-          message:
-            "Fetch timeout threshold reached, returning continue for next iteration",
-          jobId,
-          cursor,
-          progress,
-          elapsedMs: elapsed,
-        }),
-      );
-
-      return { status: "continue", jobId };
-    }
-  }
+      return { staged: itemsToStage.length, skipped };
+    },
+    jobManager: { getJob, transitionJob },
+    checkpointManager: { saveCheckpoint, loadCheckpoint },
+  });
 }
 
 async function batchWriteStagedItems(items: ConsignCloudItem[]): Promise<void> {

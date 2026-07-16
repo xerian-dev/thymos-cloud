@@ -19,6 +19,13 @@ import {
   handleSaleImportCancel,
   handleSaleResumeInternal,
 } from "./import/sale-import-handler";
+import {
+  handleAccountImportStart,
+  handleAccountImportStatus,
+  handleAccountImportResume,
+  handleAccountImportCancel,
+  handleAccountResumeInternal,
+} from "./import/account-import-handler";
 import { handleScheduledSync } from "./import/sync-orchestrator";
 import type { ImportPhase } from "./import/self-invoker";
 
@@ -42,6 +49,17 @@ export async function handler(
   if (rawEvent.action === "resume-internal" && rawEvent.jobId) {
     if (rawEvent.type === "sale") {
       const result = await handleSaleResumeInternal(
+        rawEvent.jobId,
+        rawEvent.phase ?? "fetch",
+      );
+      return {
+        statusCode: 200,
+        body: JSON.stringify(result),
+      };
+    }
+
+    if (rawEvent.type === "account") {
+      const result = await handleAccountResumeInternal(
         rawEvent.jobId,
         rawEvent.phase ?? "fetch",
       );
@@ -186,6 +204,46 @@ export async function handler(
       };
     }
     return handleSaleImportCancel(event);
+  }
+
+  if (path === "/api/import/accounts/start") {
+    if (method !== "POST") {
+      return {
+        statusCode: 405,
+        body: JSON.stringify({ message: "Method Not Allowed" }),
+      };
+    }
+    return handleAccountImportStart(event);
+  }
+
+  if (path === "/api/import/accounts/status") {
+    if (method !== "POST") {
+      return {
+        statusCode: 405,
+        body: JSON.stringify({ message: "Method Not Allowed" }),
+      };
+    }
+    return handleAccountImportStatus(event);
+  }
+
+  if (path === "/api/import/accounts/resume") {
+    if (method !== "POST") {
+      return {
+        statusCode: 405,
+        body: JSON.stringify({ message: "Method Not Allowed" }),
+      };
+    }
+    return handleAccountImportResume(event);
+  }
+
+  if (path === "/api/import/accounts/cancel") {
+    if (method !== "POST") {
+      return {
+        statusCode: 405,
+        body: JSON.stringify({ message: "Method Not Allowed" }),
+      };
+    }
+    return handleAccountImportCancel(event);
   }
 
   return {

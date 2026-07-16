@@ -233,3 +233,43 @@ resource "aws_apigatewayv2_route" "post_employees_batch" {
   authorization_type = "CUSTOM"
   authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
 }
+
+# -----------------------------------------------------------------------------
+# Import Account Routes
+# -----------------------------------------------------------------------------
+
+resource "aws_apigatewayv2_route" "post_import_accounts_start" {
+  api_id    = aws_apigatewayv2_api.shop_api.id
+  route_key = "POST /api/import/accounts/start"
+  target    = "integrations/${aws_apigatewayv2_integration.monolambda.id}"
+
+  authorization_type = "CUSTOM"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "post_import_accounts_status" {
+  api_id    = aws_apigatewayv2_api.shop_api.id
+  route_key = "POST /api/import/accounts/status"
+  target    = "integrations/${aws_apigatewayv2_integration.monolambda.id}"
+
+  authorization_type = "CUSTOM"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "post_import_accounts_resume" {
+  api_id    = aws_apigatewayv2_api.shop_api.id
+  route_key = "POST /api/import/accounts/resume"
+  target    = "integrations/${aws_apigatewayv2_integration.monolambda.id}"
+
+  authorization_type = "CUSTOM"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "post_import_accounts_cancel" {
+  api_id    = aws_apigatewayv2_api.shop_api.id
+  route_key = "POST /api/import/accounts/cancel"
+  target    = "integrations/${aws_apigatewayv2_integration.monolambda.id}"
+
+  authorization_type = "CUSTOM"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
