@@ -12,6 +12,12 @@ fileMatchPattern: "infrastructure/**/*.tf"
 - Use `terraform fmt` formatting conventions
 - All resources MUST have meaningful names and descriptions where supported
 
+## Resource Constraints
+
+- Do NOT set `reserved_concurrent_executions` on Lambda functions unless explicitly requested by the user
+- Do NOT set provisioned concurrency, reserved capacity, or similar resource reservation settings unless explicitly requested
+- The AWS account has limited concurrency budget — assume shared pool usage by default
+
 ## File Organization
 
 - `main.tf` — primary resource definitions

@@ -10,10 +10,12 @@ data "aws_region" "current" {}
 # -----------------------------------------------------------------------------
 
 resource "aws_dynamodb_table" "import" {
-  name         = "${var.project_name}-${var.environment}-import"
-  billing_mode = "PAY_PER_REQUEST"
-  hash_key     = "PK"
-  range_key    = "SK"
+  name             = "${var.project_name}-${var.environment}-import"
+  billing_mode     = "PAY_PER_REQUEST"
+  hash_key         = "PK"
+  range_key        = "SK"
+  stream_enabled   = true
+  stream_view_type = "NEW_IMAGE"
 
   attribute {
     name = "PK"
@@ -33,6 +35,215 @@ resource "aws_dynamodb_table" "import" {
   tags = {
     Environment = var.environment
     Project     = var.project_name
+  }
+}
+
+# -----------------------------------------------------------------------------
+# SQS Dead Letter Queue — Stream Processing Failures
+# -----------------------------------------------------------------------------
+
+resource "aws_sqs_queue" "stream_dlq" {
+  name                      = "${var.project_name}-${var.environment}-import-stream-dlq"
+  message_retention_seconds = 1209600 # 14 days
+
+  tags = {
+    Environment = var.environment
+    Project     = var.project_name
+  }
+}
+
+# -----------------------------------------------------------------------------
+# Stream Lambda IAM Role
+# -----------------------------------------------------------------------------
+
+resource "aws_iam_role" "stream_lambda" {
+  name = "${var.project_name}-${var.environment}-stream-sync-lambda-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Principal = {
+          Service = "lambda.amazonaws.com"
+        }
+        Action = "sts:AssumeRole"
+      }
+    ]
+  })
+
+  tags = {
+    Environment = var.environment
+    Project     = var.project_name
+  }
+}
+
+# -----------------------------------------------------------------------------
+# Stream Lambda IAM Policies
+# -----------------------------------------------------------------------------
+
+resource "aws_iam_role_policy" "stream_lambda_stream_read" {
+  name = "${var.project_name}-${var.environment}-stream-sync-stream-read"
+  role = aws_iam_role.stream_lambda.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "dynamodb:GetRecords",
+          "dynamodb:GetShardIterator",
+          "dynamodb:DescribeStream",
+          "dynamodb:ListStreams"
+        ]
+        Resource = aws_dynamodb_table.import.stream_arn
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy" "stream_lambda_import_table" {
+  name = "${var.project_name}-${var.environment}-stream-sync-import-table"
+  role = aws_iam_role.stream_lambda.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "dynamodb:GetItem",
+          "dynamodb:PutItem",
+          "dynamodb:UpdateItem",
+          "dynamodb:Query"
+        ]
+        Resource = aws_dynamodb_table.import.arn
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy" "stream_lambda_shop_table" {
+  name = "${var.project_name}-${var.environment}-stream-sync-shop-table"
+  role = aws_iam_role.stream_lambda.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "dynamodb:GetItem",
+          "dynamodb:PutItem",
+          "dynamodb:UpdateItem",
+          "dynamodb:Query",
+          "dynamodb:TransactWriteItems"
+        ]
+        Resource = [
+          var.shop_table_arn,
+          "${var.shop_table_arn}/index/*"
+        ]
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy" "stream_lambda_logs" {
+  name = "${var.project_name}-${var.environment}-stream-sync-logs"
+  role = aws_iam_role.stream_lambda.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "logs:CreateLogGroup",
+          "logs:CreateLogStream",
+          "logs:PutLogEvents"
+        ]
+        Resource = "arn:aws:logs:*:*:*"
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy" "stream_lambda_dlq" {
+  name = "${var.project_name}-${var.environment}-stream-sync-dlq"
+  role = aws_iam_role.stream_lambda.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect   = "Allow"
+        Action   = ["sqs:SendMessage"]
+        Resource = aws_sqs_queue.stream_dlq.arn
+      }
+    ]
+  })
+}
+
+# -----------------------------------------------------------------------------
+# Stream Lambda Function
+# -----------------------------------------------------------------------------
+
+resource "aws_lambda_function" "stream_sync" {
+  function_name    = "${var.project_name}-${var.environment}-stream-sync"
+  role             = aws_iam_role.stream_lambda.arn
+  handler          = "stream-handler.handler"
+  runtime          = "nodejs20.x"
+  memory_size      = 256
+  timeout          = 60
+  filename         = "../projects/shop-api/dist/stream-handler.zip"
+  source_code_hash = filebase64sha256("../projects/shop-api/dist/stream-handler.zip")
+
+  environment {
+    variables = {
+      TABLE_NAME        = var.shop_table_name
+      IMPORT_TABLE_NAME = aws_dynamodb_table.import.name
+    }
+  }
+
+  tags = {
+    Environment = var.environment
+    Project     = var.project_name
+  }
+}
+
+# -----------------------------------------------------------------------------
+# DynamoDB Stream Event Source Mapping
+# -----------------------------------------------------------------------------
+
+resource "aws_lambda_event_source_mapping" "stream" {
+  event_source_arn                   = aws_dynamodb_table.import.stream_arn
+  function_name                      = aws_lambda_function.stream_sync.arn
+  starting_position                  = "LATEST"
+  batch_size                         = 100
+  maximum_retry_attempts             = 3
+  bisect_batch_on_function_error     = true
+  maximum_batching_window_in_seconds = 5
+  function_response_types            = ["ReportBatchItemFailures"]
+
+  destination_config {
+    on_failure {
+      destination_arn = aws_sqs_queue.stream_dlq.arn
+    }
+  }
+
+  filter_criteria {
+    filter {
+      pattern = jsonencode({
+        eventName = ["INSERT", "MODIFY"]
+        dynamodb = {
+          NewImage = {
+            PK       = { S = [{ prefix = "IMPORT#CONSIGNCLOUD#" }] }
+            syncedAt = [{ exists = false }]
+          }
+        }
+      })
+    }
   }
 }
 

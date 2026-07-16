@@ -9,7 +9,12 @@ const buildTimestamp = new Date().toISOString();
 rmSync(outdir, { recursive: true, force: true });
 
 await build({
-  entryPoints: ["src/handler.ts", "src/authorizer.ts", "src/import-handler.ts"],
+  entryPoints: [
+    "src/handler.ts",
+    "src/authorizer.ts",
+    "src/import-handler.ts",
+    "src/stream-handler.ts",
+  ],
   bundle: true,
   platform: "node",
   target: "node20",
@@ -28,7 +33,10 @@ execSync(`cd ${outdir} && zip -j authorizer.zip authorizer.js`, {
 execSync(`cd ${outdir} && zip -j import-handler.zip import-handler.js`, {
   stdio: "inherit",
 });
+execSync(`cd ${outdir} && zip -j stream-handler.zip stream-handler.js`, {
+  stdio: "inherit",
+});
 
 console.log(
-  "Build complete: dist/handler.zip, dist/authorizer.zip, and dist/import-handler.zip",
+  "Build complete: dist/handler.zip, dist/authorizer.zip, dist/import-handler.zip, and dist/stream-handler.zip",
 );
