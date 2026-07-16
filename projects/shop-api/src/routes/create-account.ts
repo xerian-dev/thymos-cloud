@@ -75,7 +75,7 @@ export async function createAccount(
     uuid,
     shopUid: paddedAccountNumber,
     GSI1PK: "ACCOUNT",
-    GSI1SK: paddedAccountNumber,
+    GSI1SK: `ACCOUNT#${paddedAccountNumber}`,
     name,
     street,
     place,

@@ -23,6 +23,7 @@ export interface MappedAccount {
   isVendor: boolean;
   taxExempt: boolean;
   tags: string[];
+  accountNumber: number;
   sourceId: string;
   createdAt: string;
 }
@@ -51,6 +52,8 @@ export function mapAccount(raw: Record<string, unknown>): MappedAccount {
     typeof raw.email_notifications_enabled === "boolean"
       ? raw.email_notifications_enabled
       : false;
+  const accountNumber =
+    typeof raw.number === "string" ? parseInt(raw.number, 10) : 0;
   const sourceId = typeof raw.id === "string" ? raw.id : "";
   const createdAt = typeof raw.created === "string" ? raw.created : "";
 
@@ -77,6 +80,7 @@ export function mapAccount(raw: Record<string, unknown>): MappedAccount {
     isVendor: true,
     taxExempt: false,
     tags,
+    accountNumber,
     sourceId,
     createdAt,
   };

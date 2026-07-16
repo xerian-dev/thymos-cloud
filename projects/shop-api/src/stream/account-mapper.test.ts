@@ -4,6 +4,7 @@ import { mapAccount } from "./account-mapper";
 describe("account-mapper", () => {
   const fullRawAccount: Record<string, unknown> = {
     id: "abc-123",
+    number: "1042",
     first_name: "Hans",
     last_name: "Müller",
     company: "Müller GmbH",
@@ -44,6 +45,7 @@ describe("account-mapper", () => {
       isVendor: true,
       taxExempt: false,
       tags: ["email_notification", "text_notification"],
+      accountNumber: 1042,
       sourceId: "abc-123",
       createdAt: "2024-01-15T10:30:00Z",
     });
@@ -69,6 +71,7 @@ describe("account-mapper", () => {
 
     expect(result.balance).toBe(0);
     expect(result.defaultSplit).toBe(0);
+    expect(result.accountNumber).toBe(0);
   });
 
   it("defaults missing boolean fields to false", () => {

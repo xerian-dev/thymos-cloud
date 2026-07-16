@@ -134,7 +134,7 @@ export async function upsertAccount(
         TableName: TABLE_NAME,
         Key: { PK: existing.PK, SK: existing.SK },
         UpdateExpression:
-          "SET firstName = :firstName, lastName = :lastName, company = :company, " +
+          "SET firstName = :firstName, lastName = :lastName, #n = :name, company = :company, " +
           "street = :street, addressLine2 = :addressLine2, place = :place, " +
           "postcode = :postcode, canton = :canton, email = :email, " +
           "telephone = :telephone, balance = :balance, defaultSplit = :defaultSplit, " +
@@ -142,9 +142,13 @@ export async function upsertAccount(
           "emailNotificationsEnabled = :emailNotificationsEnabled, " +
           "isVendor = :isVendor, taxExempt = :taxExempt, tags = :tags, " +
           "updatedAt = :updatedAt",
+        ExpressionAttributeNames: {
+          "#n": "name",
+        },
         ExpressionAttributeValues: {
           ":firstName": mapped.firstName,
           ":lastName": mapped.lastName,
+          ":name": `${mapped.firstName} ${mapped.lastName}`.trim(),
           ":company": mapped.company,
           ":street": mapped.street,
           ":addressLine2": mapped.addressLine2,
@@ -170,7 +174,11 @@ export async function upsertAccount(
 
   // Create new account
   const uuid = randomUUID();
-  const shopUid = await getNextSequenceNumber("ACCOUNT");
+  // Use the ConsignCloud account number as shopUid (preserving the original numbering)
+  const shopUid =
+    mapped.accountNumber > 0
+      ? mapped.accountNumber
+      : await getNextSequenceNumber("ACCOUNT");
   const now = new Date().toISOString();
 
   try {
@@ -181,9 +189,10 @@ export async function upsertAccount(
           PK: `ACCOUNT#${uuid}`,
           SK: "METADATA",
           uuid,
-          shopUid,
-          GSI1PK: "ACCOUNTS",
+          shopUid: String(shopUid).padStart(7, "0"),
+          GSI1PK: "ACCOUNT",
           GSI1SK: `ACCOUNT#${String(shopUid).padStart(7, "0")}`,
+          name: `${mapped.firstName} ${mapped.lastName}`.trim(),
           firstName: mapped.firstName,
           lastName: mapped.lastName,
           company: mapped.company,
@@ -211,6 +220,31 @@ export async function upsertAccount(
         ConditionExpression: "attribute_not_exists(PK)",
       }),
     );
+
+    // Ensure sequence counter is at least as high as this imported account number
+    try {
+      await docClient.send(
+        new UpdateCommand({
+          TableName: TABLE_NAME,
+          Key: { PK: "SEQUENCE#ACCOUNT", SK: "COUNTER" },
+          UpdateExpression: "SET #val = :newVal",
+          ConditionExpression: "attribute_not_exists(#val) OR #val < :newVal",
+          ExpressionAttributeNames: { "#val": "value" },
+          ExpressionAttributeValues: { ":newVal": shopUid },
+        }),
+      );
+    } catch (error: unknown) {
+      // ConditionalCheckFailedException means counter is already higher — that's fine
+      if (
+        !(
+          error instanceof Error &&
+          error.name === "ConditionalCheckFailedException"
+        )
+      ) {
+        throw error;
+      }
+    }
+
     return { action: "created" };
   } catch (error: unknown) {
     if (isConditionalCheckFailed(error)) {
@@ -289,15 +323,11 @@ export async function upsertItem(
     !Array.isArray(rawCreatedBy)
   ) {
     const employee = rawCreatedBy as Record<string, unknown>;
-    const employeeSourceId =
-      typeof employee.id === "string" ? employee.id : "";
+    const employeeSourceId = typeof employee.id === "string" ? employee.id : "";
     const employeeName =
       typeof employee.name === "string" ? employee.name : "Unknown";
     if (employeeSourceId) {
-      createdBy = await resolveOrCreateEmployee(
-        employeeSourceId,
-        employeeName,
-      );
+      createdBy = await resolveOrCreateEmployee(employeeSourceId, employeeName);
     }
   }
 
@@ -310,8 +340,7 @@ export async function upsertItem(
     !Array.isArray(rawCategory)
   ) {
     const category = rawCategory as Record<string, unknown>;
-    const categorySourceId =
-      typeof category.id === "string" ? category.id : "";
+    const categorySourceId = typeof category.id === "string" ? category.id : "";
     const categoryName =
       typeof category.name === "string" ? category.name : "Unknown";
     if (categorySourceId) {
@@ -392,8 +421,7 @@ export async function upsertSale(
     !Array.isArray(rawCashier)
   ) {
     const cashier = rawCashier as Record<string, unknown>;
-    const cashierSourceId =
-      typeof cashier.id === "string" ? cashier.id : "";
+    const cashierSourceId = typeof cashier.id === "string" ? cashier.id : "";
     const cashierName =
       typeof cashier.name === "string" ? cashier.name : "Unknown";
     if (cashierSourceId) {

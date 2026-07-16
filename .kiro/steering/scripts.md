@@ -14,9 +14,26 @@ Builds and deploys the shop-api Lambda functions via Terraform.
 ./scripts/deploy-shop-api.sh deploy   # Terraform apply only (assumes dist/ is current)
 ```
 
-- The `build` step runs `npm ci`, `vitest run`, and `npm run build` (esbuild → zip)
-- The `deploy` step runs `terraform plan` then prompts for apply confirmation
-- **Always run the full pipeline (no argument) when source code has changed** — running `deploy` alone reuses the existing zip and won't pick up new code
+### Build phase (automatic)
+
+The build step runs in sequence:
+
+1. `npm ci` — clean install dependencies
+2. `npx vitest run` — run all tests (fails fast if any test fails)
+3. `npm run build` — esbuild bundles all Lambda handlers into `dist/*.zip`
+
+### Deploy phase
+
+1. `terraform plan -out=tfplan` — shows what will change
+2. Prompts for confirmation (`y/N`)
+3. `terraform apply tfplan` — applies infrastructure changes and deploys Lambda code
+
+### Important
+
+- **Do NOT manually run `npm run build` or `npm test` before deploying** — the deploy script handles both automatically. Running the full script (`./scripts/deploy-shop-api.sh` with no args) is the standard workflow.
+- The script uses `set -euo pipefail` — any test failure aborts the entire pipeline before deployment.
+- Running `deploy` alone reuses existing zip artifacts and won't pick up new code changes.
+- The script must be run from the repository root.
 
 ## Import: `./scripts/import-consigncloud.sh`
 

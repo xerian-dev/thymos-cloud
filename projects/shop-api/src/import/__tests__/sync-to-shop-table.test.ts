@@ -178,7 +178,7 @@ describe("sync-to-shop-table", () => {
       expect(metadataItem.shopUid).toBe("0001893");
       // GSI1 attributes
       expect(metadataItem.GSI1PK).toBe("ACCOUNT");
-      expect(metadataItem.GSI1SK).toBe("0001893");
+      expect(metadataItem.GSI1SK).toBe("ACCOUNT#0001893");
       expect(metadataItem.sourceId).toBe("abc-123");
 
       // Verify NO TransactWrite or sequence counter allocation was used for creation

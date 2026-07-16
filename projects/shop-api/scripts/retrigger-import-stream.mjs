@@ -1,8 +1,20 @@
 #!/usr/bin/env node
 // Usage: node scripts/retrigger-import-stream.mjs [--table thymos-dev-import] [--type ACCOUNT|ITEM|SALE|ALL]
+//
+// Re-triggers DynamoDB Stream processing for import records by removing the
+// `syncedAt` attribute and setting `_retriggeredAt`. This works for both:
+//   - First-time triggers (records that never had syncedAt)
+//   - Re-triggers (records that already have syncedAt from a previous sync)
+//
+// Removing syncedAt ensures the stream filter expression matches the record,
+// and setting _retriggeredAt generates the stream MODIFY event.
 
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
-import { DynamoDBDocumentClient, ScanCommand, UpdateCommand } from "@aws-sdk/lib-dynamodb";
+import {
+  DynamoDBDocumentClient,
+  ScanCommand,
+  UpdateCommand,
+} from "@aws-sdk/lib-dynamodb";
 
 function parseArgs(argv) {
   const args = { table: "thymos-dev-import", type: "ALL" };
@@ -15,7 +27,9 @@ function parseArgs(argv) {
   }
   const validTypes = ["ACCOUNT", "ITEM", "SALE", "ALL"];
   if (!validTypes.includes(args.type)) {
-    console.error(`Invalid --type value: ${args.type}. Must be one of: ${validTypes.join(", ")}`);
+    console.error(
+      `Invalid --type value: ${args.type}. Must be one of: ${validTypes.join(", ")}`,
+    );
     process.exit(1);
   }
   return args;
@@ -53,7 +67,7 @@ async function main() {
     pageCount++;
     const scanParams = {
       TableName: table,
-      FilterExpression: "begins_with(PK, :prefix) AND attribute_not_exists(syncedAt)",
+      FilterExpression: "begins_with(PK, :prefix)",
       ExpressionAttributeValues: {
         ":prefix": pkPrefix,
       },
@@ -72,7 +86,9 @@ async function main() {
     totalFound += items.length;
     exclusiveStartKey = scanResult.LastEvaluatedKey;
 
-    console.log(`Page ${pageCount}: found ${items.length} unsynced records${exclusiveStartKey ? " (more pages)" : " (last page)"}`);
+    console.log(
+      `Page ${pageCount}: found ${items.length} records${exclusiveStartKey ? " (more pages)" : " (last page)"}`,
+    );
 
     for (const item of items) {
       try {
@@ -80,10 +96,10 @@ async function main() {
           new UpdateCommand({
             TableName: table,
             Key: { PK: item.PK, SK: item.SK },
-            UpdateExpression: "SET #retriggeredAt = :ts",
+            UpdateExpression: "REMOVE syncedAt SET #retriggeredAt = :ts",
             ExpressionAttributeNames: { "#retriggeredAt": "_retriggeredAt" },
             ExpressionAttributeValues: { ":ts": new Date().toISOString() },
-          })
+          }),
         );
         totalTouched++;
       } catch (err) {
@@ -98,7 +114,9 @@ async function main() {
   } while (exclusiveStartKey);
 
   console.log("---");
-  console.log(`Done. Found: ${totalFound} | Touched: ${totalTouched} | Errors: ${totalErrors}`);
+  console.log(
+    `Done. Found: ${totalFound} | Touched: ${totalTouched} | Errors: ${totalErrors}`,
+  );
 }
 
 main();

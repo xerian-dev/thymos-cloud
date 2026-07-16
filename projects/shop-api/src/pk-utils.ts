@@ -19,6 +19,14 @@ export function formatAccountNumber(accountNumber: number): string {
 }
 
 /**
+ * Formats an account number as the GSI1SK value with a 7-digit zero-padded number.
+ * Example: formatAccountGsi1sk(42) → "ACCOUNT#0000042"
+ */
+export function formatAccountGsi1sk(accountNumber: number): string {
+  return `${ACCOUNT_PREFIX}${String(accountNumber).padStart(PAD_LENGTH, "0")}`;
+}
+
+/**
  * Constructs a DynamoDB PK for an item from a UUID.
  * Example: buildItemPk("abc-123") → "ITEM#abc-123"
  */
