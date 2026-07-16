@@ -11,6 +11,7 @@ export interface Account {
   canton?: string;
   email?: string;
   telephone?: string;
+  createdBy?: { id: string; name: string; userType: string } | null;
   commentCount: number;
   tags: string[];
 }

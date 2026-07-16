@@ -61,9 +61,9 @@ describe("parseEntityType", () => {
   });
 
   it("handles PK with extra hash segments in the ID", () => {
-    expect(
-      parseEntityType("IMPORT#CONSIGNCLOUD#ACCOUNT#id-with#hash"),
-    ).toBe("ACCOUNT");
+    expect(parseEntityType("IMPORT#CONSIGNCLOUD#ACCOUNT#id-with#hash")).toBe(
+      "ACCOUNT",
+    );
   });
 });
 
@@ -73,16 +73,17 @@ describe("routeRecord", () => {
   });
 
   it("routes ACCOUNT to mapAccount + upsertAccount", async () => {
+    const raw = { id: "acc-1", first_name: "Test" };
     await routeRecord({
       entityType: "ACCOUNT",
-      rawAttributes: { id: "acc-1", first_name: "Test" },
+      rawAttributes: raw,
     });
 
-    expect(mapAccount).toHaveBeenCalledWith({
-      id: "acc-1",
-      first_name: "Test",
-    });
-    expect(upsertAccount).toHaveBeenCalled();
+    expect(mapAccount).toHaveBeenCalledWith(raw);
+    expect(upsertAccount).toHaveBeenCalledWith(
+      { sourceId: "acc-1", firstName: "Test" },
+      raw,
+    );
   });
 
   it("routes ITEM to mapItem + upsertItem on success", async () => {

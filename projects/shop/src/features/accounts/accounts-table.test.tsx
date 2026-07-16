@@ -14,6 +14,7 @@ const mockAccounts: Account[] = [
     canton: "ZH",
     email: "alice@example.com",
     telephone: "555-0001",
+    createdBy: { id: "emp-1", name: "Admin User", userType: "admin" },
     commentCount: 3,
     tags: ["vip"],
   },
@@ -27,6 +28,7 @@ const mockAccounts: Account[] = [
     canton: "BE",
     email: "bob@example.com",
     telephone: "555-0002",
+    createdBy: { id: "emp-2", name: "Manager User", userType: "manager" },
     commentCount: 0,
     tags: ["wholesale", "vip"],
   },
@@ -70,9 +72,9 @@ describe("AccountsTable", () => {
         "Street",
         "Place",
         "Postcode",
-        "Canton",
         "Email",
         "Telephone",
+        "Created By",
         "",
       ]);
     });
@@ -240,10 +242,6 @@ describe("AccountsTable", () => {
       expect(screen.getByText("8001")).toBeInTheDocument();
       expect(screen.getByText("3001")).toBeInTheDocument();
 
-      // Canton
-      expect(screen.getByText("ZH")).toBeInTheDocument();
-      expect(screen.getByText("BE")).toBeInTheDocument();
-
       // Email
       expect(screen.getByText("alice@example.com")).toBeInTheDocument();
       expect(screen.getByText("bob@example.com")).toBeInTheDocument();
@@ -251,6 +249,10 @@ describe("AccountsTable", () => {
       // Telephone
       expect(screen.getByText("555-0001")).toBeInTheDocument();
       expect(screen.getByText("555-0002")).toBeInTheDocument();
+
+      // Created By
+      expect(screen.getByText("Admin User")).toBeInTheDocument();
+      expect(screen.getByText("Manager User")).toBeInTheDocument();
     });
   });
 

@@ -5,6 +5,7 @@ import { AccountForm } from "./account-form";
 import { DeleteAccountDialog } from "./delete-account-dialog";
 import { usePaginatedAccounts } from "./use-paginated-accounts";
 import { fetchNextAccountNumber } from "./accounts-api";
+import { fetchEmployeesByIds } from "@/features/employees/employees-api";
 import type { Account } from "./accounts-types";
 
 export function AccountsPage(): React.ReactNode {

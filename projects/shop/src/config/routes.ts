@@ -4,6 +4,7 @@ import { AuthGuard } from "@/components/auth-guard";
 import { AdminLayout } from "@/components/layout/admin-layout";
 import { LoginScreen } from "@/features/auth/login-screen";
 import { AccountsPage } from "@/features/accounts/accounts-page";
+import { EmployeesPage } from "@/features/employees/employees-page";
 import { ItemsPage } from "@/features/inventory/items-page";
 import { HelpPage } from "@/features/help/help-page";
 import { SalesPage } from "@/features/sales/sales-page";
@@ -39,6 +40,10 @@ export const router = createBrowserRouter([
           {
             path: "accounts",
             Component: AccountsPage,
+          },
+          {
+            path: "employees",
+            Component: EmployeesPage,
           },
           {
             path: "sales",

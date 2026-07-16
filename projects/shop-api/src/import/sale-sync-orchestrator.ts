@@ -429,6 +429,8 @@ async function resolveOrCreateEmployee(
           uuid: employeeUuid,
           name: cashier.name,
           sourceId: cashier.id,
+          GSI2PK: "EMPLOYEES",
+          GSI2SK: `EMPLOYEE#${employeeUuid}`,
           createdAt: now,
           updatedAt: now,
         },

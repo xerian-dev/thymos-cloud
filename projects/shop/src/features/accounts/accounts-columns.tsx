@@ -31,16 +31,20 @@ export const accountsColumns: ColumnDef<Account>[] = [
     header: "Postcode",
   },
   {
-    accessorKey: "canton",
-    header: "Canton",
-  },
-  {
     accessorKey: "email",
     header: "Email",
   },
   {
     accessorKey: "telephone",
     header: "Telephone",
+  },
+  {
+    accessorKey: "createdBy",
+    header: "Created By",
+    cell: ({ row }) => {
+      const createdBy = row.original.createdBy;
+      return createdBy?.name ?? "";
+    },
   },
   {
     id: "actions",

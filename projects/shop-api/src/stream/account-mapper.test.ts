@@ -21,6 +21,10 @@ describe("account-mapper", () => {
     inventory_type: "Consignment",
     email_notifications_enabled: true,
     created: "2024-01-15T10:30:00Z",
+    last_settlement: "2024-06-01T12:00:00Z",
+    last_item_entered: "2024-05-20T09:15:00Z",
+    last_activity: "2024-06-10T14:30:00Z",
+    locations: [{ id: "loc-1", name: "Main Store" }],
   };
 
   it("maps a full ConsignCloud account to MappedAccount", () => {
@@ -48,6 +52,10 @@ describe("account-mapper", () => {
       accountNumber: 1042,
       sourceId: "abc-123",
       createdAt: "2024-01-15T10:30:00Z",
+      lastSettlement: "2024-06-01T12:00:00Z",
+      lastItemEntered: "2024-05-20T09:15:00Z",
+      lastActivity: "2024-06-10T14:30:00Z",
+      locations: [{ id: "loc-1", name: "Main Store" }],
     });
   });
 
@@ -64,6 +72,9 @@ describe("account-mapper", () => {
     expect(result.canton).toBe("");
     expect(result.email).toBe("");
     expect(result.telephone).toBe("");
+    expect(result.lastSettlement).toBe("");
+    expect(result.lastItemEntered).toBe("");
+    expect(result.lastActivity).toBe("");
   });
 
   it("defaults missing numeric fields to 0", () => {
@@ -72,6 +83,12 @@ describe("account-mapper", () => {
     expect(result.balance).toBe(0);
     expect(result.defaultSplit).toBe(0);
     expect(result.accountNumber).toBe(0);
+  });
+
+  it("defaults missing locations to empty array", () => {
+    const result = mapAccount({ id: "x", created: "2024-01-01T00:00:00Z" });
+
+    expect(result.locations).toEqual([]);
   });
 
   it("defaults missing boolean fields to false", () => {

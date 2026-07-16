@@ -26,6 +26,10 @@ export interface MappedAccount {
   accountNumber: number;
   sourceId: string;
   createdAt: string;
+  lastSettlement: string;
+  lastItemEntered: string;
+  lastActivity: string;
+  locations: Array<{ id: string; name: string }>;
 }
 
 export function mapAccount(raw: Record<string, unknown>): MappedAccount {
@@ -61,6 +65,16 @@ export function mapAccount(raw: Record<string, unknown>): MappedAccount {
   const street = buildStreet(addressLine1, addressLine2);
   const tags = deriveImportTags(emailNotificationsEnabled, telephone);
 
+  const lastSettlement =
+    typeof raw.last_settlement === "string" ? raw.last_settlement : "";
+  const lastItemEntered =
+    typeof raw.last_item_entered === "string" ? raw.last_item_entered : "";
+  const lastActivity =
+    typeof raw.last_activity === "string" ? raw.last_activity : "";
+  const locations = Array.isArray(raw.locations)
+    ? (raw.locations as Array<{ id: string; name: string }>)
+    : [];
+
   return {
     firstName,
     lastName,
@@ -83,5 +97,9 @@ export function mapAccount(raw: Record<string, unknown>): MappedAccount {
     accountNumber,
     sourceId,
     createdAt,
+    lastSettlement,
+    lastItemEntered,
+    lastActivity,
+    locations,
   };
 }
