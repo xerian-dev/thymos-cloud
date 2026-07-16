@@ -145,10 +145,12 @@ export async function handleScheduledSync(): Promise<SyncRunResult> {
           }),
         );
       } else {
-        const accountJobId = randomUUID();
+        const accountJob = await accountJobManager.createJob({
+          createdAfter: syncState?.lastAccountSyncAt ?? undefined,
+        });
         const accountArn = await startStepFunctionWithRetry(
           {
-            jobId: accountJobId,
+            jobId: accountJob.jobId,
             phase: "fetch",
             type: "account",
             createdAfter: syncState?.lastAccountSyncAt ?? undefined,

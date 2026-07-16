@@ -6,6 +6,7 @@ const mockReleaseLock = vi.hoisted(() => vi.fn());
 const mockGetSyncState = vi.hoisted(() => vi.fn());
 const mockUpdateSyncStateField = vi.hoisted(() => vi.fn());
 const mockGetRunningOrPausedJob = vi.hoisted(() => vi.fn());
+const mockCreateJob = vi.hoisted(() => vi.fn());
 const mockStartStepFunctionForSync = vi.hoisted(() => vi.fn());
 const mockRandomUUID = vi.hoisted(() => vi.fn());
 
@@ -23,6 +24,7 @@ vi.mock("../sync-state-manager", () => ({
 vi.mock("../generic-job-manager", () => ({
   createJobManager: () => ({
     getRunningOrPausedJob: mockGetRunningOrPausedJob,
+    createJob: mockCreateJob,
   }),
 }));
 
@@ -57,6 +59,16 @@ describe("sync-orchestrator", () => {
         uuidSequence[uuidCallCount] ?? `fallback-uuid-${uuidCallCount}`;
       uuidCallCount++;
       return value;
+    });
+
+    mockCreateJob.mockResolvedValue({
+      jobId: "account-job-uuid",
+      state: "running",
+      phase: "fetch",
+      startedAt: "2025-01-15T12:00:00.000Z",
+      lastUpdatedAt: "2025-01-15T12:00:00.000Z",
+      filterParams: {},
+      progress: { processed: 0, imported: 0, skipped: 0, failed: 0 },
     });
 
     consoleInfoSpy = vi.spyOn(console, "info").mockImplementation(() => {});

@@ -20,6 +20,7 @@ const mockUpdateSyncStateField = vi.hoisted(() => vi.fn());
 const mockStartStepFunctionForSync = vi.hoisted(() => vi.fn());
 const mockRandomUUID = vi.hoisted(() => vi.fn());
 const mockGetRunningOrPausedJob = vi.hoisted(() => vi.fn());
+const mockCreateJob = vi.hoisted(() => vi.fn());
 
 vi.mock("../sync-lock-manager", () => ({
   acquireLock: mockAcquireLock,
@@ -36,6 +37,7 @@ vi.mock("../step-function-starter", () => ({
 vi.mock("../generic-job-manager", () => ({
   createJobManager: () => ({
     getRunningOrPausedJob: mockGetRunningOrPausedJob,
+    createJob: mockCreateJob,
   }),
 }));
 vi.mock("crypto", () => ({
@@ -91,6 +93,15 @@ describe("Property 3: Sync state timestamps are only updated on phase success", 
     mockRandomUUID.mockReturnValueOnce("corr-id-1").mockReturnValue("job-uuid");
     mockUpdateSyncStateField.mockResolvedValue(undefined);
     mockGetRunningOrPausedJob.mockResolvedValue(null);
+    mockCreateJob.mockResolvedValue({
+      jobId: "account-job-uuid",
+      state: "running",
+      phase: "fetch",
+      startedAt: "2025-01-15T12:00:00.000Z",
+      lastUpdatedAt: "2025-01-15T12:00:00.000Z",
+      filterParams: {},
+      progress: { processed: 0, imported: 0, skipped: 0, failed: 0 },
+    });
   });
 
   afterEach(() => {
@@ -106,6 +117,15 @@ describe("Property 3: Sync state timestamps are only updated on phase success", 
           .mockReturnValue("job-uuid");
         mockUpdateSyncStateField.mockResolvedValue(undefined);
         mockGetRunningOrPausedJob.mockResolvedValue(null);
+        mockCreateJob.mockResolvedValue({
+          jobId: "account-job-uuid",
+          state: "running",
+          phase: "fetch",
+          startedAt: "2025-01-15T12:00:00.000Z",
+          lastUpdatedAt: "2025-01-15T12:00:00.000Z",
+          filterParams: {},
+          progress: { processed: 0, imported: 0, skipped: 0, failed: 0 },
+        });
         setupLockAcquired();
         setupSyncState(null);
         setupAccountStepFunction(accountSuccess);
@@ -143,6 +163,15 @@ describe("Property 4: Sync timestamp is captured before phase execution", () => 
     mockRandomUUID.mockReturnValueOnce("corr-id-1").mockReturnValue("job-uuid");
     mockUpdateSyncStateField.mockResolvedValue(undefined);
     mockGetRunningOrPausedJob.mockResolvedValue(null);
+    mockCreateJob.mockResolvedValue({
+      jobId: "account-job-uuid",
+      state: "running",
+      phase: "fetch",
+      startedAt: "2025-01-15T12:00:00.000Z",
+      lastUpdatedAt: "2025-01-15T12:00:00.000Z",
+      filterParams: {},
+      progress: { processed: 0, imported: 0, skipped: 0, failed: 0 },
+    });
   });
 
   afterEach(() => {
@@ -161,6 +190,15 @@ describe("Property 4: Sync timestamp is captured before phase execution", () => 
             .mockReturnValue("job-uuid");
           mockUpdateSyncStateField.mockResolvedValue(undefined);
           mockGetRunningOrPausedJob.mockResolvedValue(null);
+          mockCreateJob.mockResolvedValue({
+            jobId: "account-job-uuid",
+            state: "running",
+            phase: "fetch",
+            startedAt: "2025-01-15T12:00:00.000Z",
+            lastUpdatedAt: "2025-01-15T12:00:00.000Z",
+            filterParams: {},
+            progress: { processed: 0, imported: 0, skipped: 0, failed: 0 },
+          });
           setupLockAcquired();
           setupSyncState(null);
 
@@ -203,6 +241,15 @@ describe("Property 5: Only account phase calls Step Functions (items/sales disab
     mockRandomUUID.mockReturnValueOnce("corr-id-1").mockReturnValue("job-uuid");
     mockUpdateSyncStateField.mockResolvedValue(undefined);
     mockGetRunningOrPausedJob.mockResolvedValue(null);
+    mockCreateJob.mockResolvedValue({
+      jobId: "account-job-uuid",
+      state: "running",
+      phase: "fetch",
+      startedAt: "2025-01-15T12:00:00.000Z",
+      lastUpdatedAt: "2025-01-15T12:00:00.000Z",
+      filterParams: {},
+      progress: { processed: 0, imported: 0, skipped: 0, failed: 0 },
+    });
   });
 
   afterEach(() => {
@@ -220,6 +267,15 @@ describe("Property 5: Only account phase calls Step Functions (items/sales disab
             .mockReturnValue("job-uuid");
           mockUpdateSyncStateField.mockResolvedValue(undefined);
           mockGetRunningOrPausedJob.mockResolvedValue(null);
+          mockCreateJob.mockResolvedValue({
+            jobId: "account-job-uuid",
+            state: "running",
+            phase: "fetch",
+            startedAt: "2025-01-15T12:00:00.000Z",
+            lastUpdatedAt: "2025-01-15T12:00:00.000Z",
+            filterParams: {},
+            progress: { processed: 0, imported: 0, skipped: 0, failed: 0 },
+          });
           setupLockAcquired();
           setupSyncState(null);
 
@@ -259,6 +315,15 @@ describe("Property 6: Account failure does not prevent completion — items/sale
     mockRandomUUID.mockReturnValueOnce("corr-id-1").mockReturnValue("job-uuid");
     mockUpdateSyncStateField.mockResolvedValue(undefined);
     mockGetRunningOrPausedJob.mockResolvedValue(null);
+    mockCreateJob.mockResolvedValue({
+      jobId: "account-job-uuid",
+      state: "running",
+      phase: "fetch",
+      startedAt: "2025-01-15T12:00:00.000Z",
+      lastUpdatedAt: "2025-01-15T12:00:00.000Z",
+      filterParams: {},
+      progress: { processed: 0, imported: 0, skipped: 0, failed: 0 },
+    });
   });
 
   afterEach(() => {
@@ -276,6 +341,15 @@ describe("Property 6: Account failure does not prevent completion — items/sale
             .mockReturnValue("job-uuid");
           mockUpdateSyncStateField.mockResolvedValue(undefined);
           mockGetRunningOrPausedJob.mockResolvedValue(null);
+          mockCreateJob.mockResolvedValue({
+            jobId: "account-job-uuid",
+            state: "running",
+            phase: "fetch",
+            startedAt: "2025-01-15T12:00:00.000Z",
+            lastUpdatedAt: "2025-01-15T12:00:00.000Z",
+            filterParams: {},
+            progress: { processed: 0, imported: 0, skipped: 0, failed: 0 },
+          });
           setupLockAcquired();
           setupSyncState(null);
 
@@ -323,6 +397,15 @@ describe("Property 7: Lock is always released in finally block", () => {
     mockRandomUUID.mockReturnValueOnce("corr-id-1").mockReturnValue("job-uuid");
     mockUpdateSyncStateField.mockResolvedValue(undefined);
     mockGetRunningOrPausedJob.mockResolvedValue(null);
+    mockCreateJob.mockResolvedValue({
+      jobId: "account-job-uuid",
+      state: "running",
+      phase: "fetch",
+      startedAt: "2025-01-15T12:00:00.000Z",
+      lastUpdatedAt: "2025-01-15T12:00:00.000Z",
+      filterParams: {},
+      progress: { processed: 0, imported: 0, skipped: 0, failed: 0 },
+    });
   });
 
   afterEach(() => {
@@ -340,6 +423,15 @@ describe("Property 7: Lock is always released in finally block", () => {
           .mockReturnValue("job-uuid");
         mockUpdateSyncStateField.mockResolvedValue(undefined);
         mockGetRunningOrPausedJob.mockResolvedValue(null);
+        mockCreateJob.mockResolvedValue({
+          jobId: "account-job-uuid",
+          state: "running",
+          phase: "fetch",
+          startedAt: "2025-01-15T12:00:00.000Z",
+          lastUpdatedAt: "2025-01-15T12:00:00.000Z",
+          filterParams: {},
+          progress: { processed: 0, imported: 0, skipped: 0, failed: 0 },
+        });
         setupLockAcquired();
         setupSyncState(null);
         mockReleaseLock.mockResolvedValue(undefined);
@@ -406,6 +498,15 @@ describe("Property 8: Correlation ID is present in all log entries", () => {
     vi.clearAllMocks();
     mockUpdateSyncStateField.mockResolvedValue(undefined);
     mockGetRunningOrPausedJob.mockResolvedValue(null);
+    mockCreateJob.mockResolvedValue({
+      jobId: "account-job-uuid",
+      state: "running",
+      phase: "fetch",
+      startedAt: "2025-01-15T12:00:00.000Z",
+      lastUpdatedAt: "2025-01-15T12:00:00.000Z",
+      filterParams: {},
+      progress: { processed: 0, imported: 0, skipped: 0, failed: 0 },
+    });
     logEntries = [];
     console.info = (...args: unknown[]) => {
       logEntries.push(args[0] as string);
@@ -444,6 +545,7 @@ describe("Property 8: Correlation ID is present in all log entries", () => {
           mockUpdateSyncStateField.mockReset();
           mockStartStepFunctionForSync.mockReset();
           mockGetRunningOrPausedJob.mockReset();
+          mockCreateJob.mockReset();
           logEntries = [];
 
           mockRandomUUID
@@ -452,6 +554,15 @@ describe("Property 8: Correlation ID is present in all log entries", () => {
           mockUpdateSyncStateField.mockResolvedValue(undefined);
           mockReleaseLock.mockResolvedValue(undefined);
           mockGetRunningOrPausedJob.mockResolvedValue(null);
+          mockCreateJob.mockResolvedValue({
+            jobId: "account-job-uuid",
+            state: "running",
+            phase: "fetch",
+            startedAt: "2025-01-15T12:00:00.000Z",
+            lastUpdatedAt: "2025-01-15T12:00:00.000Z",
+            filterParams: {},
+            progress: { processed: 0, imported: 0, skipped: 0, failed: 0 },
+          });
 
           switch (scenario) {
             case "success":
@@ -503,6 +614,15 @@ describe("Property 9: Step Function retry follows defined policy", () => {
     mockUpdateSyncStateField.mockResolvedValue(undefined);
     mockReleaseLock.mockResolvedValue(undefined);
     mockGetRunningOrPausedJob.mockResolvedValue(null);
+    mockCreateJob.mockResolvedValue({
+      jobId: "account-job-uuid",
+      state: "running",
+      phase: "fetch",
+      startedAt: "2025-01-15T12:00:00.000Z",
+      lastUpdatedAt: "2025-01-15T12:00:00.000Z",
+      filterParams: {},
+      progress: { processed: 0, imported: 0, skipped: 0, failed: 0 },
+    });
   });
 
   afterEach(() => {
@@ -528,6 +648,15 @@ describe("Property 9: Step Function retry follows defined policy", () => {
           mockUpdateSyncStateField.mockResolvedValue(undefined);
           mockReleaseLock.mockResolvedValue(undefined);
           mockGetRunningOrPausedJob.mockResolvedValue(null);
+          mockCreateJob.mockResolvedValue({
+            jobId: "account-job-uuid",
+            state: "running",
+            phase: "fetch",
+            startedAt: "2025-01-15T12:00:00.000Z",
+            lastUpdatedAt: "2025-01-15T12:00:00.000Z",
+            filterParams: {},
+            progress: { processed: 0, imported: 0, skipped: 0, failed: 0 },
+          });
           setupLockAcquired();
           setupSyncState(null);
 
@@ -574,6 +703,15 @@ describe("Property 9: Step Function retry follows defined policy", () => {
           mockUpdateSyncStateField.mockResolvedValue(undefined);
           mockReleaseLock.mockResolvedValue(undefined);
           mockGetRunningOrPausedJob.mockResolvedValue(null);
+          mockCreateJob.mockResolvedValue({
+            jobId: "account-job-uuid",
+            state: "running",
+            phase: "fetch",
+            startedAt: "2025-01-15T12:00:00.000Z",
+            lastUpdatedAt: "2025-01-15T12:00:00.000Z",
+            filterParams: {},
+            progress: { processed: 0, imported: 0, skipped: 0, failed: 0 },
+          });
           setupLockAcquired();
           setupSyncState(null);
 

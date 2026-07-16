@@ -60,7 +60,7 @@ export async function runAccountFetchLoop(
     apiKey,
     baseUrl,
     rateLimiter,
-    updatedAfter: job.filterParams.createdAfter,
+    createdAfter: job.filterParams.createdAfter,
   };
 
   return runGenericFetchLoop<ConsignCloudAccount>({

@@ -100,13 +100,13 @@ describe("account-consigncloud-client fetchAccountPage", () => {
     );
   });
 
-  it("applies updated:gt filter when updatedAfter is provided", async () => {
+  it("applies created:gt filter when createdAfter is provided", async () => {
     mockFetchWithRetry.mockResolvedValue(
       mockJsonResponse({ data: [], next_cursor: null }),
     );
 
     const config: AccountClientConfig = createConfig({
-      updatedAfter: "2025-01-01T00:00:00.000Z",
+      createdAfter: "2025-01-01T00:00:00.000Z",
     });
 
     await fetchAccountPage(config, null, 50);
@@ -114,12 +114,12 @@ describe("account-consigncloud-client fetchAccountPage", () => {
     const url: string = mockFetchWithRetry.mock.calls[0][0];
     const parsedUrl = new URL(url);
 
-    expect(parsedUrl.searchParams.get("updated:gt")).toBe(
+    expect(parsedUrl.searchParams.get("created:gt")).toBe(
       "2025-01-01T00:00:00.000Z",
     );
   });
 
-  it("does not include updated:gt filter when updatedAfter is not provided", async () => {
+  it("does not include created:gt filter when createdAfter is not provided", async () => {
     mockFetchWithRetry.mockResolvedValue(
       mockJsonResponse({ data: [], next_cursor: null }),
     );
@@ -129,7 +129,7 @@ describe("account-consigncloud-client fetchAccountPage", () => {
     const url: string = mockFetchWithRetry.mock.calls[0][0];
     const parsedUrl = new URL(url);
 
-    expect(parsedUrl.searchParams.has("updated:gt")).toBe(false);
+    expect(parsedUrl.searchParams.has("created:gt")).toBe(false);
   });
 
   it("includes cursor parameter when cursor is provided", async () => {

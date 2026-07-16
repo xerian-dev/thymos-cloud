@@ -16,7 +16,11 @@ export interface ConsignCloudAccount {
   created_by?: { id: string; name: string } | null;
   last_activity?: string | null;
   locations?: Array<{ id: string; name: string }> | null;
-  recurring_fees?: Array<{ id: string; amount: number; description: string }> | null;
+  recurring_fees?: Array<{
+    id: string;
+    amount: number;
+    description: string;
+  }> | null;
   tags?: string[] | null;
   is_vendor?: boolean | null;
   has_pending_invite?: boolean | null;
@@ -34,7 +38,7 @@ export interface AccountClientConfig {
   apiKey: string;
   baseUrl: string;
   rateLimiter: RateLimiter;
-  updatedAfter?: string;
+  createdAfter?: string;
   requestTimeoutMs?: number;
 }
 
@@ -55,11 +59,7 @@ const INCLUDE_VALUES: string[] = [
   "has_pending_invite",
 ];
 
-const EXPAND_VALUES: string[] = [
-  "created_by",
-  "locations",
-  "recurring_fees",
-];
+const EXPAND_VALUES: string[] = ["created_by", "locations", "recurring_fees"];
 
 export async function fetchAccountPage(
   config: AccountClientConfig,
@@ -76,8 +76,8 @@ export async function fetchAccountPage(
     url.searchParams.append("expand", value);
   }
 
-  if (config.updatedAfter) {
-    url.searchParams.set("updated:gt", config.updatedAfter);
+  if (config.createdAfter) {
+    url.searchParams.set("created:gt", config.createdAfter);
   }
 
   if (cursor) {

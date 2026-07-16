@@ -98,6 +98,7 @@ resource "aws_iam_role_policy" "import_table" {
           "dynamodb:GetItem",
           "dynamodb:PutItem",
           "dynamodb:UpdateItem",
+          "dynamodb:DeleteItem",
           "dynamodb:Query",
           "dynamodb:Scan",
           "dynamodb:BatchWriteItem"
