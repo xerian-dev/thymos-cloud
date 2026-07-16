@@ -18,6 +18,7 @@ import { nextSaleNumber } from "./routes/next-sale-number.js";
 import { createSale } from "./routes/create-sale.js";
 import { updateSale } from "./routes/update-sale.js";
 import { deleteSale } from "./routes/delete-sale.js";
+import { listEmployees } from "./routes/list-employees.js";
 import { getEmployee } from "./routes/get-employee.js";
 import { batchGetEmployees } from "./routes/batch-get-employees.js";
 import { jsonResponse } from "./response.js";
@@ -43,6 +44,7 @@ const routes: Record<string, RouteHandler> = {
   "POST /api/sales": createSale,
   "PUT /api/sales/{uuid}": updateSale,
   "DELETE /api/sales/{uuid}": deleteSale,
+  "GET /api/employees": listEmployees,
   "GET /api/employees/{uuid}": getEmployee,
   "POST /api/employees/batch": batchGetEmployees,
 };

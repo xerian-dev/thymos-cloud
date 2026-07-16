@@ -1,0 +1,411 @@
+{
+  "pbtResults": {},
+  "executionHistory": {
+    "1.1 Add GSI2 to DynamoDB table in `infrastructure/dynamodb.tf`": [
+      {
+        "executionId": "5a6b2335-0911-4d9b-89cc-1739ec789696",
+        "chatSessionId": "sess_e9570d9a-8d04-46a0-94d6-77bbd00b6ca4",
+        "timestamp": 1784215661219
+      },
+      {
+        "executionId": "5a6b2335-0911-4d9b-89cc-1739ec789696",
+        "chatSessionId": "sess_e9570d9a-8d04-46a0-94d6-77bbd00b6ca4",
+        "timestamp": 1784215670776
+      },
+      {
+        "executionId": "5a6b2335-0911-4d9b-89cc-1739ec789696",
+        "chatSessionId": "sess_e9570d9a-8d04-46a0-94d6-77bbd00b6ca4",
+        "timestamp": 1784215727728
+      }
+    ],
+    "1.2 Add API Gateway route for `GET /api/employees` in `infrastructure/api-gateway.tf`": [
+      {
+        "executionId": "5a6b2335-0911-4d9b-89cc-1739ec789696",
+        "chatSessionId": "sess_e9570d9a-8d04-46a0-94d6-77bbd00b6ca4",
+        "timestamp": 1784215661275
+      },
+      {
+        "executionId": "5a6b2335-0911-4d9b-89cc-1739ec789696",
+        "chatSessionId": "sess_e9570d9a-8d04-46a0-94d6-77bbd00b6ca4",
+        "timestamp": 1784215671633
+      },
+      {
+        "executionId": "5a6b2335-0911-4d9b-89cc-1739ec789696",
+        "chatSessionId": "sess_e9570d9a-8d04-46a0-94d6-77bbd00b6ca4",
+        "timestamp": 1784215728527
+      }
+    ],
+    "2.1 Create `projects/shop-api/src/routes/list-employees.ts`": [
+      {
+        "executionId": "5a6b2335-0911-4d9b-89cc-1739ec789696",
+        "chatSessionId": "sess_e9570d9a-8d04-46a0-94d6-77bbd00b6ca4",
+        "timestamp": 1784215661356
+      },
+      {
+        "executionId": "5a6b2335-0911-4d9b-89cc-1739ec789696",
+        "chatSessionId": "sess_e9570d9a-8d04-46a0-94d6-77bbd00b6ca4",
+        "timestamp": 1784215732270
+      },
+      {
+        "executionId": "5a6b2335-0911-4d9b-89cc-1739ec789696",
+        "chatSessionId": "sess_e9570d9a-8d04-46a0-94d6-77bbd00b6ca4",
+        "timestamp": 1784215800371
+      }
+    ],
+    "2.2 Register route in `projects/shop-api/src/router.ts`": [
+      {
+        "executionId": "5a6b2335-0911-4d9b-89cc-1739ec789696",
+        "chatSessionId": "sess_e9570d9a-8d04-46a0-94d6-77bbd00b6ca4",
+        "timestamp": 1784215661431
+      },
+      {
+        "executionId": "5a6b2335-0911-4d9b-89cc-1739ec789696",
+        "chatSessionId": "sess_e9570d9a-8d04-46a0-94d6-77bbd00b6ca4",
+        "timestamp": 1784215733071
+      },
+      {
+        "executionId": "5a6b2335-0911-4d9b-89cc-1739ec789696",
+        "chatSessionId": "sess_e9570d9a-8d04-46a0-94d6-77bbd00b6ca4",
+        "timestamp": 1784215801197
+      }
+    ],
+    "3.1 Update `projects/shop/src/features/employees/employees-types.ts`": [
+      {
+        "executionId": "5a6b2335-0911-4d9b-89cc-1739ec789696",
+        "chatSessionId": "sess_e9570d9a-8d04-46a0-94d6-77bbd00b6ca4",
+        "timestamp": 1784215661485
+      },
+      {
+        "executionId": "5a6b2335-0911-4d9b-89cc-1739ec789696",
+        "chatSessionId": "sess_e9570d9a-8d04-46a0-94d6-77bbd00b6ca4",
+        "timestamp": 1784215806047
+      },
+      {
+        "executionId": "5a6b2335-0911-4d9b-89cc-1739ec789696",
+        "chatSessionId": "sess_e9570d9a-8d04-46a0-94d6-77bbd00b6ca4",
+        "timestamp": 1784215890172
+      }
+    ],
+    "3.2 Add `fetchPaginatedEmployees` to `projects/shop/src/features/employees/employees-api.ts`": [
+      {
+        "executionId": "5a6b2335-0911-4d9b-89cc-1739ec789696",
+        "chatSessionId": "sess_e9570d9a-8d04-46a0-94d6-77bbd00b6ca4",
+        "timestamp": 1784215661543
+      },
+      {
+        "executionId": "5a6b2335-0911-4d9b-89cc-1739ec789696",
+        "chatSessionId": "sess_e9570d9a-8d04-46a0-94d6-77bbd00b6ca4",
+        "timestamp": 1784215806953
+      },
+      {
+        "executionId": "5a6b2335-0911-4d9b-89cc-1739ec789696",
+        "chatSessionId": "sess_e9570d9a-8d04-46a0-94d6-77bbd00b6ca4",
+        "timestamp": 1784215891001
+      }
+    ],
+    "3.3 Create `projects/shop/src/features/employees/use-paginated-employees.ts`": [
+      {
+        "executionId": "5a6b2335-0911-4d9b-89cc-1739ec789696",
+        "chatSessionId": "sess_e9570d9a-8d04-46a0-94d6-77bbd00b6ca4",
+        "timestamp": 1784215661601
+      },
+      {
+        "executionId": "5a6b2335-0911-4d9b-89cc-1739ec789696",
+        "chatSessionId": "sess_e9570d9a-8d04-46a0-94d6-77bbd00b6ca4",
+        "timestamp": 1784215898427
+      },
+      {
+        "executionId": "5a6b2335-0911-4d9b-89cc-1739ec789696",
+        "chatSessionId": "sess_e9570d9a-8d04-46a0-94d6-77bbd00b6ca4",
+        "timestamp": 1784216000812
+      }
+    ],
+    "4.1 Create `projects/shop/src/features/employees/employees-columns.tsx`": [
+      {
+        "executionId": "5a6b2335-0911-4d9b-89cc-1739ec789696",
+        "chatSessionId": "sess_e9570d9a-8d04-46a0-94d6-77bbd00b6ca4",
+        "timestamp": 1784215661664
+      },
+      {
+        "executionId": "5a6b2335-0911-4d9b-89cc-1739ec789696",
+        "chatSessionId": "sess_e9570d9a-8d04-46a0-94d6-77bbd00b6ca4",
+        "timestamp": 1784216006227
+      },
+      {
+        "executionId": "5a6b2335-0911-4d9b-89cc-1739ec789696",
+        "chatSessionId": "sess_e9570d9a-8d04-46a0-94d6-77bbd00b6ca4",
+        "timestamp": 1784216150052
+      }
+    ],
+    "4.2 Create `projects/shop/src/features/employees/employees-page.tsx`": [
+      {
+        "executionId": "5a6b2335-0911-4d9b-89cc-1739ec789696",
+        "chatSessionId": "sess_e9570d9a-8d04-46a0-94d6-77bbd00b6ca4",
+        "timestamp": 1784215661730
+      },
+      {
+        "executionId": "5a6b2335-0911-4d9b-89cc-1739ec789696",
+        "chatSessionId": "sess_e9570d9a-8d04-46a0-94d6-77bbd00b6ca4",
+        "timestamp": 1784216007100
+      },
+      {
+        "executionId": "5a6b2335-0911-4d9b-89cc-1739ec789696",
+        "chatSessionId": "sess_e9570d9a-8d04-46a0-94d6-77bbd00b6ca4",
+        "timestamp": 1784216150853
+      }
+    ],
+    "4.3 Add Employees entry to navigation and routing": [
+      {
+        "executionId": "5a6b2335-0911-4d9b-89cc-1739ec789696",
+        "chatSessionId": "sess_e9570d9a-8d04-46a0-94d6-77bbd00b6ca4",
+        "timestamp": 1784215661781
+      },
+      {
+        "executionId": "5a6b2335-0911-4d9b-89cc-1739ec789696",
+        "chatSessionId": "sess_e9570d9a-8d04-46a0-94d6-77bbd00b6ca4",
+        "timestamp": 1784216007838
+      },
+      {
+        "executionId": "5a6b2335-0911-4d9b-89cc-1739ec789696",
+        "chatSessionId": "sess_e9570d9a-8d04-46a0-94d6-77bbd00b6ca4",
+        "timestamp": 1784216151919
+      }
+    ],
+    "5. Checkpoint — Verify frontend and backend build": [
+      {
+        "executionId": "5a6b2335-0911-4d9b-89cc-1739ec789696",
+        "chatSessionId": "sess_e9570d9a-8d04-46a0-94d6-77bbd00b6ca4",
+        "timestamp": 1784215661835
+      },
+      {
+        "executionId": "5a6b2335-0911-4d9b-89cc-1739ec789696",
+        "chatSessionId": "sess_e9570d9a-8d04-46a0-94d6-77bbd00b6ca4",
+        "timestamp": 1784216156658
+      },
+      {
+        "executionId": "5a6b2335-0911-4d9b-89cc-1739ec789696",
+        "chatSessionId": "sess_e9570d9a-8d04-46a0-94d6-77bbd00b6ca4",
+        "timestamp": 1784216227234
+      }
+    ],
+    "6.1 Update `projects/shop-api/src/stream/upsert-service.ts` — `resolveOrCreateEmployee()`": [
+      {
+        "executionId": "5a6b2335-0911-4d9b-89cc-1739ec789696",
+        "chatSessionId": "sess_e9570d9a-8d04-46a0-94d6-77bbd00b6ca4",
+        "timestamp": 1784215661890
+      },
+      {
+        "executionId": "5a6b2335-0911-4d9b-89cc-1739ec789696",
+        "chatSessionId": "sess_e9570d9a-8d04-46a0-94d6-77bbd00b6ca4",
+        "timestamp": 1784215807798
+      },
+      {
+        "executionId": "5a6b2335-0911-4d9b-89cc-1739ec789696",
+        "chatSessionId": "sess_e9570d9a-8d04-46a0-94d6-77bbd00b6ca4",
+        "timestamp": 1784215891859
+      }
+    ],
+    "6.2 Update `projects/shop-api/src/import/item-sync-orchestrator.ts` — inline employee creation": [
+      {
+        "executionId": "5a6b2335-0911-4d9b-89cc-1739ec789696",
+        "chatSessionId": "sess_e9570d9a-8d04-46a0-94d6-77bbd00b6ca4",
+        "timestamp": 1784215661946
+      },
+      {
+        "executionId": "5a6b2335-0911-4d9b-89cc-1739ec789696",
+        "chatSessionId": "sess_e9570d9a-8d04-46a0-94d6-77bbd00b6ca4",
+        "timestamp": 1784215808615
+      },
+      {
+        "executionId": "5a6b2335-0911-4d9b-89cc-1739ec789696",
+        "chatSessionId": "sess_e9570d9a-8d04-46a0-94d6-77bbd00b6ca4",
+        "timestamp": 1784215892770
+      }
+    ],
+    "6.3 Update `projects/shop-api/src/import/sale-sync-orchestrator.ts` — inline employee creation": [
+      {
+        "executionId": "5a6b2335-0911-4d9b-89cc-1739ec789696",
+        "chatSessionId": "sess_e9570d9a-8d04-46a0-94d6-77bbd00b6ca4",
+        "timestamp": 1784215661999
+      },
+      {
+        "executionId": "5a6b2335-0911-4d9b-89cc-1739ec789696",
+        "chatSessionId": "sess_e9570d9a-8d04-46a0-94d6-77bbd00b6ca4",
+        "timestamp": 1784215811267
+      },
+      {
+        "executionId": "5a6b2335-0911-4d9b-89cc-1739ec789696",
+        "chatSessionId": "sess_e9570d9a-8d04-46a0-94d6-77bbd00b6ca4",
+        "timestamp": 1784215893663
+      }
+    ],
+    "7.1 Create `projects/shop-api/src/scripts/backfill-employees-gsi2.ts`": [
+      {
+        "executionId": "5a6b2335-0911-4d9b-89cc-1739ec789696",
+        "chatSessionId": "sess_e9570d9a-8d04-46a0-94d6-77bbd00b6ca4",
+        "timestamp": 1784215662052
+      },
+      {
+        "executionId": "5a6b2335-0911-4d9b-89cc-1739ec789696",
+        "chatSessionId": "sess_e9570d9a-8d04-46a0-94d6-77bbd00b6ca4",
+        "timestamp": 1784215899288
+      },
+      {
+        "executionId": "5a6b2335-0911-4d9b-89cc-1739ec789696",
+        "chatSessionId": "sess_e9570d9a-8d04-46a0-94d6-77bbd00b6ca4",
+        "timestamp": 1784216001659
+      }
+    ],
+    "8.1 Write unit tests for `list-employees.ts` handler": [
+      {
+        "executionId": "5a6b2335-0911-4d9b-89cc-1739ec789696",
+        "chatSessionId": "sess_e9570d9a-8d04-46a0-94d6-77bbd00b6ca4",
+        "timestamp": 1784215662109
+      },
+      {
+        "executionId": "5a6b2335-0911-4d9b-89cc-1739ec789696",
+        "chatSessionId": "sess_e9570d9a-8d04-46a0-94d6-77bbd00b6ca4",
+        "timestamp": 1784216232368
+      },
+      {
+        "executionId": "5a6b2335-0911-4d9b-89cc-1739ec789696",
+        "chatSessionId": "sess_e9570d9a-8d04-46a0-94d6-77bbd00b6ca4",
+        "timestamp": 1784216342070
+      }
+    ],
+    "8.6 Write unit tests for employees page component": [
+      {
+        "executionId": "5a6b2335-0911-4d9b-89cc-1739ec789696",
+        "chatSessionId": "sess_e9570d9a-8d04-46a0-94d6-77bbd00b6ca4",
+        "timestamp": 1784215662181
+      },
+      {
+        "executionId": "5a6b2335-0911-4d9b-89cc-1739ec789696",
+        "chatSessionId": "sess_e9570d9a-8d04-46a0-94d6-77bbd00b6ca4",
+        "timestamp": 1784216233183
+      },
+      {
+        "executionId": "5a6b2335-0911-4d9b-89cc-1739ec789696",
+        "chatSessionId": "sess_e9570d9a-8d04-46a0-94d6-77bbd00b6ca4",
+        "timestamp": 1784216342908
+      }
+    ],
+    "8.7 Write unit tests for pagination controls": [
+      {
+        "executionId": "5a6b2335-0911-4d9b-89cc-1739ec789696",
+        "chatSessionId": "sess_e9570d9a-8d04-46a0-94d6-77bbd00b6ca4",
+        "timestamp": 1784215662234
+      },
+      {
+        "executionId": "5a6b2335-0911-4d9b-89cc-1739ec789696",
+        "chatSessionId": "sess_e9570d9a-8d04-46a0-94d6-77bbd00b6ca4",
+        "timestamp": 1784216233781
+      },
+      {
+        "executionId": "5a6b2335-0911-4d9b-89cc-1739ec789696",
+        "chatSessionId": "sess_e9570d9a-8d04-46a0-94d6-77bbd00b6ca4",
+        "timestamp": 1784216343813
+      }
+    ],
+    "8.8 Write unit tests for navigation integration": [
+      {
+        "executionId": "5a6b2335-0911-4d9b-89cc-1739ec789696",
+        "chatSessionId": "sess_e9570d9a-8d04-46a0-94d6-77bbd00b6ca4",
+        "timestamp": 1784215662292
+      },
+      {
+        "executionId": "5a6b2335-0911-4d9b-89cc-1739ec789696",
+        "chatSessionId": "sess_e9570d9a-8d04-46a0-94d6-77bbd00b6ca4",
+        "timestamp": 1784216234587
+      },
+      {
+        "executionId": "5a6b2335-0911-4d9b-89cc-1739ec789696",
+        "chatSessionId": "sess_e9570d9a-8d04-46a0-94d6-77bbd00b6ca4",
+        "timestamp": 1784216344589
+      }
+    ],
+    "8.9 Write unit test for router mapping": [
+      {
+        "executionId": "5a6b2335-0911-4d9b-89cc-1739ec789696",
+        "chatSessionId": "sess_e9570d9a-8d04-46a0-94d6-77bbd00b6ca4",
+        "timestamp": 1784215662351
+      },
+      {
+        "executionId": "5a6b2335-0911-4d9b-89cc-1739ec789696",
+        "chatSessionId": "sess_e9570d9a-8d04-46a0-94d6-77bbd00b6ca4",
+        "timestamp": 1784216235347
+      },
+      {
+        "executionId": "5a6b2335-0911-4d9b-89cc-1739ec789696",
+        "chatSessionId": "sess_e9570d9a-8d04-46a0-94d6-77bbd00b6ca4",
+        "timestamp": 1784216345532
+      }
+    ],
+    "9. Final checkpoint — Ensure all tests pass": [
+      {
+        "executionId": "5a6b2335-0911-4d9b-89cc-1739ec789696",
+        "chatSessionId": "sess_e9570d9a-8d04-46a0-94d6-77bbd00b6ca4",
+        "timestamp": 1784215662401
+      },
+      {
+        "executionId": "5a6b2335-0911-4d9b-89cc-1739ec789696",
+        "chatSessionId": "sess_e9570d9a-8d04-46a0-94d6-77bbd00b6ca4",
+        "timestamp": 1784216374048
+      },
+      {
+        "executionId": "5a6b2335-0911-4d9b-89cc-1739ec789696",
+        "chatSessionId": "sess_e9570d9a-8d04-46a0-94d6-77bbd00b6ca4",
+        "timestamp": 1784216414546
+      }
+    ],
+    "1. Infrastructure — DynamoDB GSI2 and API Gateway route": [
+      {
+        "executionId": "5a6b2335-0911-4d9b-89cc-1739ec789696",
+        "chatSessionId": "sess_e9570d9a-8d04-46a0-94d6-77bbd00b6ca4",
+        "timestamp": 1784215728593
+      }
+    ],
+    "2. Backend — List employees endpoint": [
+      {
+        "executionId": "5a6b2335-0911-4d9b-89cc-1739ec789696",
+        "chatSessionId": "sess_e9570d9a-8d04-46a0-94d6-77bbd00b6ca4",
+        "timestamp": 1784215801288
+      }
+    ],
+    "6. Write path updates — Add GSI2 attributes to employee creation": [
+      {
+        "executionId": "5a6b2335-0911-4d9b-89cc-1739ec789696",
+        "chatSessionId": "sess_e9570d9a-8d04-46a0-94d6-77bbd00b6ca4",
+        "timestamp": 1784215893747
+      }
+    ],
+    "3. Frontend — Types, API client, and pagination hook": [
+      {
+        "executionId": "5a6b2335-0911-4d9b-89cc-1739ec789696",
+        "chatSessionId": "sess_e9570d9a-8d04-46a0-94d6-77bbd00b6ca4",
+        "timestamp": 1784216000901
+      }
+    ],
+    "7. Backfill script — Populate GSI2 for existing employees": [
+      {
+        "executionId": "5a6b2335-0911-4d9b-89cc-1739ec789696",
+        "chatSessionId": "sess_e9570d9a-8d04-46a0-94d6-77bbd00b6ca4",
+        "timestamp": 1784216001719
+      }
+    ],
+    "4. Frontend — Page components and navigation": [
+      {
+        "executionId": "5a6b2335-0911-4d9b-89cc-1739ec789696",
+        "chatSessionId": "sess_e9570d9a-8d04-46a0-94d6-77bbd00b6ca4",
+        "timestamp": 1784216151994
+      }
+    ],
+    "8. Tests": [
+      {
+        "executionId": "5a6b2335-0911-4d9b-89cc-1739ec789696",
+        "chatSessionId": "sess_e9570d9a-8d04-46a0-94d6-77bbd00b6ca4",
+        "timestamp": 1784216345611
+      }
+    ]
+  }
+}

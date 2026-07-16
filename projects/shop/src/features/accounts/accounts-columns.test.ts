@@ -18,16 +18,16 @@ describe("accountsColumns", () => {
     expect(accessorKeys).toContain("postcode");
   });
 
-  it("includes canton column", () => {
-    expect(accessorKeys).toContain("canton");
-  });
-
   it("includes email column", () => {
     expect(accessorKeys).toContain("email");
   });
 
   it("includes telephone column", () => {
     expect(accessorKeys).toContain("telephone");
+  });
+
+  it("includes createdBy column", () => {
+    expect(accessorKeys).toContain("createdBy");
   });
 
   it("does not include address column", () => {

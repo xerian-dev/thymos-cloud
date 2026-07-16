@@ -1,4 +1,4 @@
-import { HelpCircle, Package, Receipt, Users } from "lucide-react";
+import { HelpCircle, Package, Receipt, UserCheck, Users } from "lucide-react";
 import type { ComponentType } from "react";
 
 export interface NavItem {
@@ -10,6 +10,7 @@ export interface NavItem {
 export const navigationItems: NavItem[] = [
   { label: "Inventory", path: "/inventory", icon: Package },
   { label: "Accounts", path: "/accounts", icon: Users },
+  { label: "Employees", path: "/employees", icon: UserCheck },
   { label: "Sales", path: "/sales", icon: Receipt },
   { label: "Help", path: "/help", icon: HelpCircle },
 ];

@@ -11,20 +11,10 @@ export const ALLOWED_PAGE_SIZES = [20, 50, 100] as const;
 
 export type PageSize = (typeof ALLOWED_PAGE_SIZES)[number];
 
-export async function listAccounts(
+export async function listEmployees(
   event: APIGatewayProxyEventV2,
 ): Promise<APIGatewayProxyResultV2> {
   const raw = event.queryStringParameters ?? {};
-
-  // Reject legacy parameters
-  const legacyParams = ["pageIndex", "sortColumn", "sortDirection"];
-  for (const param of legacyParams) {
-    if (raw[param] !== undefined) {
-      return jsonResponse(400, {
-        error: `Unsupported parameter: ${param}`,
-      });
-    }
-  }
 
   // Validate pageSize
   let pageSize: PageSize = 20;
@@ -52,32 +42,21 @@ export async function listAccounts(
     const queryResult = await docClient.send(
       new QueryCommand({
         TableName: TABLE_NAME,
-        IndexName: "GSI1",
-        KeyConditionExpression: "GSI1PK = :pk",
-        ExpressionAttributeValues: { ":pk": "ACCOUNT" },
+        IndexName: "GSI2",
+        KeyConditionExpression: "GSI2PK = :pk",
+        ExpressionAttributeValues: { ":pk": "EMPLOYEES" },
         ScanIndexForward: true,
         Limit: pageSize,
         ExclusiveStartKey: exclusiveStartKey,
       }),
     );
 
-    const accounts = (queryResult.Items ?? []).map((item) => ({
+    const employees = (queryResult.Items ?? []).map((item) => ({
       uuid: item.uuid as string,
-      shopUid: parseInt(item.shopUid as string, 10),
       name: (item.name as string) ?? "",
-      street: (item.street as string) ?? "",
-      place: (item.place as string) ?? "",
-      postcode: (item.postcode as string) ?? "",
-      canton: (item.canton as string) ?? "",
-      email: (item.email as string) ?? "",
-      telephone: (item.telephone as string) ?? "",
-      company: (item.company as string) ?? "",
-      createdBy:
-        (item.createdBy as
-          | { id: string; name: string; userType: string }
-          | undefined) ?? null,
-      commentCount: 0,
-      tags: [] as string[],
+      sourceId: (item.sourceId as string) ?? "",
+      createdAt: item.createdAt as string,
+      updatedAt: item.updatedAt as string,
     }));
 
     const lastEvaluatedKey = queryResult.LastEvaluatedKey as
@@ -87,9 +66,9 @@ export async function listAccounts(
     const nextCursor = lastEvaluatedKey ? encodeCursor(lastEvaluatedKey) : null;
     const hasMore = lastEvaluatedKey !== undefined;
 
-    return jsonResponse(200, { accounts, nextCursor, hasMore });
+    return jsonResponse(200, { employees, nextCursor, hasMore });
   } catch (error: unknown) {
-    console.error("listAccounts error", {
+    console.error("listEmployees error", {
       message: error instanceof Error ? error.message : "Unknown error",
       name: error instanceof Error ? error.name : undefined,
     });

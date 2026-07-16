@@ -54,6 +54,8 @@ async function resolveOrCreateEmployee(
           uuid,
           name,
           sourceId,
+          GSI2PK: "EMPLOYEES",
+          GSI2SK: `EMPLOYEE#${uuid}`,
           createdAt: now,
           updatedAt: now,
         },
@@ -124,49 +126,99 @@ async function resolveOrCreateCategory(
 
 export async function upsertAccount(
   mapped: MappedAccount,
+  raw: Record<string, unknown>,
 ): Promise<UpsertResult> {
+  // Resolve or create Employee (side effect: ensures Employee record exists)
+  const rawCreatedBy = raw.created_by;
+  if (
+    rawCreatedBy != null &&
+    typeof rawCreatedBy === "object" &&
+    !Array.isArray(rawCreatedBy)
+  ) {
+    const employee = rawCreatedBy as Record<string, unknown>;
+    const employeeSourceId = typeof employee.id === "string" ? employee.id : "";
+    const employeeName =
+      typeof employee.name === "string" ? employee.name : "Unknown";
+    if (employeeSourceId) {
+      await resolveOrCreateEmployee(employeeSourceId, employeeName);
+    }
+  }
+
+  // Build createdBy object from raw data (stored on Account as { id, name, userType })
+  let createdBy: { id: string; name: string; userType: string } | undefined;
+  if (
+    rawCreatedBy != null &&
+    typeof rawCreatedBy === "object" &&
+    !Array.isArray(rawCreatedBy)
+  ) {
+    const employee = rawCreatedBy as Record<string, unknown>;
+    const employeeId = typeof employee.id === "string" ? employee.id : "";
+    const employeeName = typeof employee.name === "string" ? employee.name : "";
+    const userType =
+      typeof employee.user_type === "string" ? employee.user_type : "";
+    if (employeeId) {
+      createdBy = { id: employeeId, name: employeeName, userType };
+    }
+  }
+
   const existing = await findBySourceId(mapped.sourceId);
 
   if (existing) {
     const now = new Date().toISOString();
+
+    let updateExpression =
+      "SET firstName = :firstName, lastName = :lastName, #n = :name, company = :company, " +
+      "street = :street, addressLine2 = :addressLine2, place = :place, " +
+      "postcode = :postcode, canton = :canton, email = :email, " +
+      "telephone = :telephone, balance = :balance, defaultSplit = :defaultSplit, " +
+      "defaultTerms = :defaultTerms, defaultInventoryType = :defaultInventoryType, " +
+      "emailNotificationsEnabled = :emailNotificationsEnabled, " +
+      "isVendor = :isVendor, taxExempt = :taxExempt, tags = :tags, " +
+      "lastSettlement = :lastSettlement, lastItemEntered = :lastItemEntered, " +
+      "lastActivity = :lastActivity, locations = :locations, " +
+      "updatedAt = :updatedAt";
+
+    const expressionValues: Record<string, unknown> = {
+      ":firstName": mapped.firstName,
+      ":lastName": mapped.lastName,
+      ":name": `${mapped.firstName} ${mapped.lastName}`.trim(),
+      ":company": mapped.company,
+      ":street": mapped.street,
+      ":addressLine2": mapped.addressLine2,
+      ":place": mapped.place,
+      ":postcode": mapped.postcode,
+      ":canton": mapped.canton,
+      ":email": mapped.email,
+      ":telephone": mapped.telephone,
+      ":balance": mapped.balance,
+      ":defaultSplit": mapped.defaultSplit,
+      ":defaultTerms": mapped.defaultTerms,
+      ":defaultInventoryType": mapped.defaultInventoryType,
+      ":emailNotificationsEnabled": mapped.emailNotificationsEnabled,
+      ":isVendor": mapped.isVendor,
+      ":taxExempt": mapped.taxExempt,
+      ":tags": mapped.tags,
+      ":lastSettlement": mapped.lastSettlement,
+      ":lastItemEntered": mapped.lastItemEntered,
+      ":lastActivity": mapped.lastActivity,
+      ":locations": mapped.locations,
+      ":updatedAt": now,
+    };
+
+    if (createdBy) {
+      updateExpression += ", createdBy = if_not_exists(createdBy, :createdBy)";
+      expressionValues[":createdBy"] = createdBy;
+    }
+
     await docClient.send(
       new UpdateCommand({
         TableName: TABLE_NAME,
         Key: { PK: existing.PK, SK: existing.SK },
-        UpdateExpression:
-          "SET firstName = :firstName, lastName = :lastName, #n = :name, company = :company, " +
-          "street = :street, addressLine2 = :addressLine2, place = :place, " +
-          "postcode = :postcode, canton = :canton, email = :email, " +
-          "telephone = :telephone, balance = :balance, defaultSplit = :defaultSplit, " +
-          "defaultTerms = :defaultTerms, defaultInventoryType = :defaultInventoryType, " +
-          "emailNotificationsEnabled = :emailNotificationsEnabled, " +
-          "isVendor = :isVendor, taxExempt = :taxExempt, tags = :tags, " +
-          "updatedAt = :updatedAt",
+        UpdateExpression: updateExpression,
         ExpressionAttributeNames: {
           "#n": "name",
         },
-        ExpressionAttributeValues: {
-          ":firstName": mapped.firstName,
-          ":lastName": mapped.lastName,
-          ":name": `${mapped.firstName} ${mapped.lastName}`.trim(),
-          ":company": mapped.company,
-          ":street": mapped.street,
-          ":addressLine2": mapped.addressLine2,
-          ":place": mapped.place,
-          ":postcode": mapped.postcode,
-          ":canton": mapped.canton,
-          ":email": mapped.email,
-          ":telephone": mapped.telephone,
-          ":balance": mapped.balance,
-          ":defaultSplit": mapped.defaultSplit,
-          ":defaultTerms": mapped.defaultTerms,
-          ":defaultInventoryType": mapped.defaultInventoryType,
-          ":emailNotificationsEnabled": mapped.emailNotificationsEnabled,
-          ":isVendor": mapped.isVendor,
-          ":taxExempt": mapped.taxExempt,
-          ":tags": mapped.tags,
-          ":updatedAt": now,
-        },
+        ExpressionAttributeValues: expressionValues,
       }),
     );
     return { action: "updated" };
@@ -216,6 +268,15 @@ export async function upsertAccount(
           sourceId: mapped.sourceId,
           createdAt: mapped.createdAt || now,
           updatedAt: now,
+          ...(createdBy && { createdBy }),
+          ...(mapped.lastSettlement && {
+            lastSettlement: mapped.lastSettlement,
+          }),
+          ...(mapped.lastItemEntered && {
+            lastItemEntered: mapped.lastItemEntered,
+          }),
+          ...(mapped.lastActivity && { lastActivity: mapped.lastActivity }),
+          ...(mapped.locations.length > 0 && { locations: mapped.locations }),
         },
         ConditionExpression: "attribute_not_exists(PK)",
       }),

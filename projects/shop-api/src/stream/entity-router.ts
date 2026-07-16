@@ -52,7 +52,7 @@ export async function routeRecord(record: RoutableRecord): Promise<void> {
   switch (record.entityType) {
     case "ACCOUNT": {
       const mapped = mapAccount(record.rawAttributes);
-      await upsertAccount(mapped);
+      await upsertAccount(mapped, record.rawAttributes);
       return;
     }
 

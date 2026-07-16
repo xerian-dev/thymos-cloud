@@ -216,6 +216,15 @@ resource "aws_apigatewayv2_route" "delete_sale" {
 # Employee Routes
 # -----------------------------------------------------------------------------
 
+resource "aws_apigatewayv2_route" "get_employees" {
+  api_id    = aws_apigatewayv2_api.shop_api.id
+  route_key = "GET /api/employees"
+  target    = "integrations/${aws_apigatewayv2_integration.monolambda.id}"
+
+  authorization_type = "CUSTOM"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
 resource "aws_apigatewayv2_route" "get_employee" {
   api_id    = aws_apigatewayv2_api.shop_api.id
   route_key = "GET /api/employees/{uuid}"

@@ -29,6 +29,16 @@ resource "aws_dynamodb_table" "shop" {
     type = "S"
   }
 
+  attribute {
+    name = "GSI2PK"
+    type = "S"
+  }
+
+  attribute {
+    name = "GSI2SK"
+    type = "S"
+  }
+
   global_secondary_index {
     name            = "sourceId-index"
     hash_key        = "sourceId"
@@ -39,6 +49,13 @@ resource "aws_dynamodb_table" "shop" {
     name            = "GSI1"
     hash_key        = "GSI1PK"
     range_key       = "GSI1SK"
+    projection_type = "ALL"
+  }
+
+  global_secondary_index {
+    name            = "GSI2"
+    hash_key        = "GSI2PK"
+    range_key       = "GSI2SK"
     projection_type = "ALL"
   }
 

@@ -96,6 +96,7 @@ describe("listAccounts", () => {
       email: "jane@example.com",
       telephone: "555-0100",
       company: "",
+      createdBy: null,
       commentCount: 0,
       tags: [],
     });
@@ -131,6 +132,7 @@ describe("listAccounts", () => {
       email: "",
       telephone: "",
       company: "",
+      createdBy: null,
       commentCount: 0,
       tags: [],
     });
