@@ -1,5 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import type { APIGatewayProxyEventV2 } from "aws-lambda";
+import type {
+  APIGatewayProxyEventV2,
+  APIGatewayProxyStructuredResultV2,
+} from "aws-lambda";
 
 /**
  * Unit tests for account-import-handler.ts
@@ -53,6 +56,12 @@ vi.mock("@aws-sdk/lib-dynamodb", () => ({
       this.input = input;
     }
   },
+  PutCommand: class {
+    input: unknown;
+    constructor(input: unknown) {
+      this.input = input;
+    }
+  },
 }));
 
 // --- Helpers ---
@@ -99,12 +108,13 @@ describe("account-import-handler unit tests", () => {
         startedAt: "2026-01-10T08:00:00.000Z",
       });
 
-      const { handleAccountImportStart } = await import(
-        "../account-import-handler"
-      );
+      const { handleAccountImportStart } =
+        await import("../account-import-handler");
 
       const event = createEvent({ createdAfter: "2026-01-01" });
-      const result = await handleAccountImportStart(event);
+      const result = (await handleAccountImportStart(
+        event,
+      )) as APIGatewayProxyStructuredResultV2;
 
       expect(result.statusCode).toBe(409);
       const body = JSON.parse(result.body as string);
@@ -116,12 +126,13 @@ describe("account-import-handler unit tests", () => {
     });
 
     it("creates job and starts Step Function, returns 200", async () => {
-      const { handleAccountImportStart } = await import(
-        "../account-import-handler"
-      );
+      const { handleAccountImportStart } =
+        await import("../account-import-handler");
 
       const event = createEvent({ createdAfter: "2026-01-01" });
-      const result = await handleAccountImportStart(event);
+      const result = (await handleAccountImportStart(
+        event,
+      )) as APIGatewayProxyStructuredResultV2;
 
       expect(result.statusCode).toBe(200);
       const body = JSON.parse(result.body as string);
@@ -146,12 +157,13 @@ describe("account-import-handler unit tests", () => {
         new Error("Step Function unavailable"),
       );
 
-      const { handleAccountImportStart } = await import(
-        "../account-import-handler"
-      );
+      const { handleAccountImportStart } =
+        await import("../account-import-handler");
 
       const event = createEvent({});
-      const result = await handleAccountImportStart(event);
+      const result = (await handleAccountImportStart(
+        event,
+      )) as APIGatewayProxyStructuredResultV2;
 
       expect(result.statusCode).toBe(500);
       const body = JSON.parse(result.body as string);
@@ -167,16 +179,17 @@ describe("account-import-handler unit tests", () => {
     });
 
     it("returns 400 on invalid JSON body", async () => {
-      const { handleAccountImportStart } = await import(
-        "../account-import-handler"
-      );
+      const { handleAccountImportStart } =
+        await import("../account-import-handler");
 
       const event = {
         body: "not-valid-json{{{",
         requestContext: { http: { method: "POST" } },
       } as unknown as APIGatewayProxyEventV2;
 
-      const result = await handleAccountImportStart(event);
+      const result = (await handleAccountImportStart(
+        event,
+      )) as APIGatewayProxyStructuredResultV2;
 
       expect(result.statusCode).toBe(400);
       const body = JSON.parse(result.body as string);
@@ -196,12 +209,13 @@ describe("account-import-handler unit tests", () => {
         error: undefined,
       });
 
-      const { handleAccountImportStatus } = await import(
-        "../account-import-handler"
-      );
+      const { handleAccountImportStatus } =
+        await import("../account-import-handler");
 
       const event = createEvent({ jobId: "acc-job-status" });
-      const result = await handleAccountImportStatus(event);
+      const result = (await handleAccountImportStatus(
+        event,
+      )) as APIGatewayProxyStructuredResultV2;
 
       expect(result.statusCode).toBe(200);
       const body = JSON.parse(result.body as string);
@@ -219,12 +233,13 @@ describe("account-import-handler unit tests", () => {
     it("returns 404 when job not found", async () => {
       mockGetJob.mockResolvedValue(null);
 
-      const { handleAccountImportStatus } = await import(
-        "../account-import-handler"
-      );
+      const { handleAccountImportStatus } =
+        await import("../account-import-handler");
 
       const event = createEvent({ jobId: "nonexistent-job" });
-      const result = await handleAccountImportStatus(event);
+      const result = (await handleAccountImportStatus(
+        event,
+      )) as APIGatewayProxyStructuredResultV2;
 
       expect(result.statusCode).toBe(404);
       const body = JSON.parse(result.body as string);
@@ -243,12 +258,13 @@ describe("account-import-handler unit tests", () => {
         progress: { processed: 50, imported: 40, skipped: 5, failed: 5 },
       });
 
-      const { handleAccountImportResume } = await import(
-        "../account-import-handler"
-      );
+      const { handleAccountImportResume } =
+        await import("../account-import-handler");
 
       const event = createEvent({ jobId: "acc-job-paused" });
-      const result = await handleAccountImportResume(event);
+      const result = (await handleAccountImportResume(
+        event,
+      )) as APIGatewayProxyStructuredResultV2;
 
       expect(result.statusCode).toBe(200);
       const body = JSON.parse(result.body as string);
@@ -279,12 +295,13 @@ describe("account-import-handler unit tests", () => {
         progress: { processed: 80, imported: 60, skipped: 10, failed: 10 },
       });
 
-      const { handleAccountImportResume } = await import(
-        "../account-import-handler"
-      );
+      const { handleAccountImportResume } =
+        await import("../account-import-handler");
 
       const event = createEvent({ jobId: "acc-job-failed" });
-      const result = await handleAccountImportResume(event);
+      const result = (await handleAccountImportResume(
+        event,
+      )) as APIGatewayProxyStructuredResultV2;
 
       expect(result.statusCode).toBe(200);
       const body = JSON.parse(result.body as string);
@@ -314,12 +331,13 @@ describe("account-import-handler unit tests", () => {
         progress: { processed: 30, imported: 25, skipped: 3, failed: 2 },
       });
 
-      const { handleAccountImportResume } = await import(
-        "../account-import-handler"
-      );
+      const { handleAccountImportResume } =
+        await import("../account-import-handler");
 
       const event = createEvent({ jobId: "acc-job-running" });
-      const result = await handleAccountImportResume(event);
+      const result = (await handleAccountImportResume(
+        event,
+      )) as APIGatewayProxyStructuredResultV2;
 
       expect(result.statusCode).toBe(400);
       const body = JSON.parse(result.body as string);
@@ -341,12 +359,13 @@ describe("account-import-handler unit tests", () => {
         progress: { processed: 50, imported: 40, skipped: 5, failed: 5 },
       });
 
-      const { handleAccountImportCancel } = await import(
-        "../account-import-handler"
-      );
+      const { handleAccountImportCancel } =
+        await import("../account-import-handler");
 
       const event = createEvent({ jobId: "acc-job-cancel" });
-      const result = await handleAccountImportCancel(event);
+      const result = (await handleAccountImportCancel(
+        event,
+      )) as APIGatewayProxyStructuredResultV2;
 
       expect(result.statusCode).toBe(200);
       const body = JSON.parse(result.body as string);
@@ -381,12 +400,13 @@ describe("account-import-handler unit tests", () => {
         progress: { processed: 30, imported: 25, skipped: 3, failed: 2 },
       });
 
-      const { handleAccountImportCancel } = await import(
-        "../account-import-handler"
-      );
+      const { handleAccountImportCancel } =
+        await import("../account-import-handler");
 
       const event = createEvent({ jobId: "acc-job-running" });
-      const result = await handleAccountImportCancel(event);
+      const result = (await handleAccountImportCancel(
+        event,
+      )) as APIGatewayProxyStructuredResultV2;
 
       expect(result.statusCode).toBe(400);
       const body = JSON.parse(result.body as string);
@@ -411,9 +431,8 @@ describe("account-import-handler unit tests", () => {
         jobId: "acc-job-resume",
       });
 
-      const { handleAccountResumeInternal } = await import(
-        "../account-import-handler"
-      );
+      const { handleAccountResumeInternal } =
+        await import("../account-import-handler");
 
       const result = await handleAccountResumeInternal(
         "acc-job-resume",
@@ -438,14 +457,10 @@ describe("account-import-handler unit tests", () => {
     it("returns failed when job not found", async () => {
       mockGetJob.mockResolvedValue(null);
 
-      const { handleAccountResumeInternal } = await import(
-        "../account-import-handler"
-      );
+      const { handleAccountResumeInternal } =
+        await import("../account-import-handler");
 
-      const result = await handleAccountResumeInternal(
-        "missing-job",
-        "fetch",
-      );
+      const result = await handleAccountResumeInternal("missing-job", "fetch");
 
       expect(result.status).toBe("failed");
       expect(result.type).toBe("account");
@@ -462,9 +477,7 @@ describe("account-import-handler unit tests", () => {
         lastUpdatedAt: "2026-01-15T10:00:00.000Z",
         progress: { processed: 10, imported: 8, skipped: 1, failed: 1 },
       });
-      mockRunAccountFetchLoop.mockRejectedValue(
-        new Error("Network timeout"),
-      );
+      mockRunAccountFetchLoop.mockRejectedValue(new Error("Network timeout"));
       // After error, the handler re-fetches the job to get current progress
       mockGetJob
         .mockResolvedValueOnce({
@@ -484,9 +497,8 @@ describe("account-import-handler unit tests", () => {
           progress: { processed: 10, imported: 8, skipped: 1, failed: 1 },
         });
 
-      const { handleAccountResumeInternal } = await import(
-        "../account-import-handler"
-      );
+      const { handleAccountResumeInternal } =
+        await import("../account-import-handler");
 
       const result = await handleAccountResumeInternal(
         "acc-job-error",
@@ -502,6 +514,111 @@ describe("account-import-handler unit tests", () => {
         { processed: 10, imported: 8, skipped: 1, failed: 1 },
         "Network timeout",
       );
+    });
+
+    it("transitions to complete and writes report when fetch loop completes", async () => {
+      // First call: initial job validation (running state)
+      // Second call: reload job after fetch loop completes (to get final progress)
+      mockGetJob
+        .mockResolvedValueOnce({
+          jobId: "acc-job-complete",
+          state: "running",
+          phase: "fetch",
+          startedAt: "2026-01-15T10:00:00.000Z",
+          lastUpdatedAt: "2026-01-15T10:00:00.000Z",
+          progress: { processed: 0, imported: 0, skipped: 0, failed: 0 },
+        })
+        .mockResolvedValueOnce({
+          jobId: "acc-job-complete",
+          state: "paused",
+          phase: "fetch",
+          startedAt: "2026-01-15T10:00:00.000Z",
+          lastUpdatedAt: "2026-01-15T10:05:00.000Z",
+          progress: { processed: 100, imported: 95, skipped: 5, failed: 0 },
+        });
+
+      mockRunAccountFetchLoop.mockResolvedValue({
+        status: "complete",
+        jobId: "acc-job-complete",
+      });
+
+      const { handleAccountResumeInternal } =
+        await import("../account-import-handler");
+
+      const result = await handleAccountResumeInternal(
+        "acc-job-complete",
+        "fetch",
+      );
+
+      expect(result.status).toBe("complete");
+      expect(result.type).toBe("account");
+      expect(result.phase).toBe("fetch");
+      expect(result.jobId).toBe("acc-job-complete");
+
+      // Should transition paused → running, then running → complete
+      expect(mockTransitionJob).toHaveBeenCalledTimes(2);
+      expect(mockTransitionJob).toHaveBeenNthCalledWith(
+        1,
+        "acc-job-complete",
+        "running",
+        { processed: 100, imported: 95, skipped: 5, failed: 0 },
+      );
+      expect(mockTransitionJob).toHaveBeenNthCalledWith(
+        2,
+        "acc-job-complete",
+        "complete",
+        { processed: 100, imported: 95, skipped: 5, failed: 0 },
+      );
+
+      // Should write import report via PutCommand
+      expect(mockDocClientSend).toHaveBeenCalledTimes(1);
+      const putCall = mockDocClientSend.mock.calls[0][0];
+      expect(putCall.input.TableName).toBeDefined();
+      expect(putCall.input.Item.PK).toBe("ACCOUNT_IMPORT#REPORT");
+      expect(putCall.input.Item.SK).toBe("acc-job-complete");
+      expect(putCall.input.Item.jobId).toBe("acc-job-complete");
+      expect(putCall.input.Item.totalProcessed).toBe(100);
+      expect(putCall.input.Item.imported).toBe(95);
+      expect(putCall.input.Item.skipped).toBe(5);
+      expect(putCall.input.Item.failed).toBe(0);
+      expect(putCall.input.Item.failures).toEqual([]);
+      expect(putCall.input.Item.truncated).toBe(false);
+      expect(putCall.input.Item.totalFailures).toBe(0);
+      expect(putCall.input.Item.completedAt).toBeDefined();
+      expect(putCall.input.Item.elapsedSeconds).toBeGreaterThanOrEqual(0);
+    });
+
+    it("returns continue without finalizing when fetch loop needs more time", async () => {
+      mockGetJob.mockResolvedValue({
+        jobId: "acc-job-continue",
+        state: "running",
+        phase: "fetch",
+        startedAt: "2026-01-15T10:00:00.000Z",
+        lastUpdatedAt: "2026-01-15T10:00:00.000Z",
+        progress: { processed: 50, imported: 45, skipped: 3, failed: 2 },
+      });
+
+      mockRunAccountFetchLoop.mockResolvedValue({
+        status: "continue",
+        jobId: "acc-job-continue",
+      });
+
+      const { handleAccountResumeInternal } =
+        await import("../account-import-handler");
+
+      const result = await handleAccountResumeInternal(
+        "acc-job-continue",
+        "fetch",
+      );
+
+      expect(result.status).toBe("continue");
+      expect(result.type).toBe("account");
+      expect(result.phase).toBe("fetch");
+      expect(result.jobId).toBe("acc-job-continue");
+
+      // Should NOT transition job or write report
+      expect(mockTransitionJob).not.toHaveBeenCalled();
+      expect(mockDocClientSend).not.toHaveBeenCalled();
     });
   });
 });

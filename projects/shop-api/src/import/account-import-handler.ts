@@ -3,7 +3,11 @@ import type {
   APIGatewayProxyResultV2,
 } from "aws-lambda";
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
-import { DynamoDBDocumentClient, DeleteCommand } from "@aws-sdk/lib-dynamodb";
+import {
+  DynamoDBDocumentClient,
+  DeleteCommand,
+  PutCommand,
+} from "@aws-sdk/lib-dynamodb";
 import {
   accountJobManager,
   accountCheckpointManager,
@@ -45,8 +49,7 @@ export async function handleAccountImportStart(
     console.info(
       JSON.stringify({
         level: "INFO",
-        message:
-          "Account import start request rejected: existing active job",
+        message: "Account import start request rejected: existing active job",
         existingJobId: existingJob.jobId,
         existingState: existingJob.state,
       }),
@@ -374,8 +377,7 @@ export async function handleAccountResumeInternal(
     console.info(
       JSON.stringify({
         level: "INFO",
-        message:
-          "Account resume-internal: job not in running state, skipping",
+        message: "Account resume-internal: job not in running state, skipping",
         jobId,
         currentState: job.state,
       }),
@@ -411,15 +413,66 @@ export async function handleAccountResumeInternal(
   const rateLimiter = createRateLimiter({ capacity: 100, drainRate: 10 });
 
   // 4. Run the fetch loop
+  const startTime = Date.now();
   try {
     const result = await runAccountFetchLoop({
       jobId,
       apiKey,
       baseUrl: CONSIGNCLOUD_BASE_URL,
       rateLimiter,
-      startTime: Date.now(),
+      startTime,
       timeoutThresholdMs: TIMEOUT_THRESHOLD_MS,
     });
+
+    if (result.status === "complete") {
+      // The generic fetch loop set the job to "paused" when all pages were exhausted.
+      // For accounts there is no sync phase, so finalize the job here.
+      const finalJob = await accountJobManager.getJob(jobId);
+      const progress = finalJob?.progress ?? {
+        processed: 0,
+        imported: 0,
+        skipped: 0,
+        failed: 0,
+      };
+
+      // Transition paused → running → complete
+      await accountJobManager.transitionJob(jobId, "running", progress);
+      await accountJobManager.transitionJob(jobId, "complete", progress);
+
+      // Write import report
+      await docClient.send(
+        new PutCommand({
+          TableName: IMPORT_TABLE_NAME,
+          Item: {
+            PK: "ACCOUNT_IMPORT#REPORT",
+            SK: jobId,
+            jobId,
+            totalProcessed: progress.processed,
+            imported: progress.imported,
+            skipped: progress.skipped,
+            failed: progress.failed,
+            elapsedSeconds: Math.round((Date.now() - startTime) / 1000),
+            failures: [],
+            truncated: false,
+            totalFailures: 0,
+            completedAt: new Date().toISOString(),
+          },
+        }),
+      );
+
+      console.info(
+        JSON.stringify({
+          level: "INFO",
+          message: "Account import job completed",
+          jobId,
+          progress,
+        }),
+      );
+
+      return { status: "complete", jobId, phase: "fetch", type: "account" };
+    }
+
+    // status === "continue" — timeout reached, Step Function will re-invoke
     return { status: result.status, jobId, phase: "fetch", type: "account" };
   } catch (error: unknown) {
     const errorMsg =

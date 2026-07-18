@@ -8,6 +8,7 @@ import { EmployeesPage } from "@/features/employees/employees-page";
 import { ItemsPage } from "@/features/inventory/items-page";
 import { HelpPage } from "@/features/help/help-page";
 import { SalesPage } from "@/features/sales/sales-page";
+import { ImportsPage } from "@/features/imports/imports-page";
 
 /**
  * Application route configuration.
@@ -48,6 +49,10 @@ export const router = createBrowserRouter([
           {
             path: "sales",
             Component: SalesPage,
+          },
+          {
+            path: "imports",
+            Component: ImportsPage,
           },
           {
             path: "help",
