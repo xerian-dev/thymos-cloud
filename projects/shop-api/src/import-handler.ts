@@ -26,6 +26,8 @@ import {
   handleAccountImportCancel,
   handleAccountResumeInternal,
 } from "./import/account-import-handler";
+import { handleImportStatusAll } from "./import/import-status-handler.js";
+import { handleImportHistory } from "./import/import-history-handler";
 import { handleScheduledSync } from "./import/sync-orchestrator";
 import type { ImportPhase } from "./import/self-invoker";
 
@@ -114,6 +116,17 @@ export async function handler(
       };
     }
     return syncToShopTable(event);
+  }
+
+  if (path === "/api/import/status" && method === "GET") {
+    return handleImportStatusAll(event);
+  }
+
+  if (
+    path.match(/^\/api\/import\/(items|sales|accounts)\/history$/) &&
+    method === "GET"
+  ) {
+    return handleImportHistory(event);
   }
 
   if (path === "/api/import/items/start") {

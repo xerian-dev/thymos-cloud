@@ -1,0 +1,351 @@
+{
+  "pbtResults": {
+    "1.4 Write property tests for import-history-utils.ts": {
+      "status": "passed",
+      "lastRunTimestamp": 1784361473815
+    }
+  },
+  "executionHistory": {
+    "1.1 Extend imports-types.ts with history interfaces": [
+      {
+        "executionId": "6aa25413-d0e3-44cd-9958-597309e2451e",
+        "chatSessionId": "sess_4b2b143c-7efe-4262-86aa-e1e1101fa66f",
+        "timestamp": 1784361038339
+      },
+      {
+        "executionId": "6aa25413-d0e3-44cd-9958-597309e2451e",
+        "chatSessionId": "sess_4b2b143c-7efe-4262-86aa-e1e1101fa66f",
+        "timestamp": 1784361046896
+      },
+      {
+        "executionId": "6aa25413-d0e3-44cd-9958-597309e2451e",
+        "chatSessionId": "sess_4b2b143c-7efe-4262-86aa-e1e1101fa66f",
+        "timestamp": 1784361236122
+      }
+    ],
+    "1.2 Create import-history-utils.ts with pure utility functions": [
+      {
+        "executionId": "6aa25413-d0e3-44cd-9958-597309e2451e",
+        "chatSessionId": "sess_4b2b143c-7efe-4262-86aa-e1e1101fa66f",
+        "timestamp": 1784361038399
+      },
+      {
+        "executionId": "6aa25413-d0e3-44cd-9958-597309e2451e",
+        "chatSessionId": "sess_4b2b143c-7efe-4262-86aa-e1e1101fa66f",
+        "timestamp": 1784361245650
+      },
+      {
+        "executionId": "6aa25413-d0e3-44cd-9958-597309e2451e",
+        "chatSessionId": "sess_4b2b143c-7efe-4262-86aa-e1e1101fa66f",
+        "timestamp": 1784361361011
+      }
+    ],
+    "1.3 Write unit tests for import-history-utils.ts": [
+      {
+        "executionId": "6aa25413-d0e3-44cd-9958-597309e2451e",
+        "chatSessionId": "sess_4b2b143c-7efe-4262-86aa-e1e1101fa66f",
+        "timestamp": 1784361038461
+      },
+      {
+        "executionId": "6aa25413-d0e3-44cd-9958-597309e2451e",
+        "chatSessionId": "sess_4b2b143c-7efe-4262-86aa-e1e1101fa66f",
+        "timestamp": 1784361368561
+      },
+      {
+        "executionId": "6aa25413-d0e3-44cd-9958-597309e2451e",
+        "chatSessionId": "sess_4b2b143c-7efe-4262-86aa-e1e1101fa66f",
+        "timestamp": 1784361656961
+      }
+    ],
+    "1.4 Write property tests for import-history-utils.ts": [
+      {
+        "executionId": "6aa25413-d0e3-44cd-9958-597309e2451e",
+        "chatSessionId": "sess_4b2b143c-7efe-4262-86aa-e1e1101fa66f",
+        "timestamp": 1784361038559
+      },
+      {
+        "executionId": "6aa25413-d0e3-44cd-9958-597309e2451e",
+        "chatSessionId": "sess_4b2b143c-7efe-4262-86aa-e1e1101fa66f",
+        "timestamp": 1784361369316
+      },
+      {
+        "executionId": "6aa25413-d0e3-44cd-9958-597309e2451e",
+        "chatSessionId": "sess_4b2b143c-7efe-4262-86aa-e1e1101fa66f",
+        "timestamp": 1784361657757
+      }
+    ],
+    "2.1 Create import-history-handler.ts": [
+      {
+        "executionId": "6aa25413-d0e3-44cd-9958-597309e2451e",
+        "chatSessionId": "sess_4b2b143c-7efe-4262-86aa-e1e1101fa66f",
+        "timestamp": 1784361038626
+      },
+      {
+        "executionId": "6aa25413-d0e3-44cd-9958-597309e2451e",
+        "chatSessionId": "sess_4b2b143c-7efe-4262-86aa-e1e1101fa66f",
+        "timestamp": 1784361047564
+      },
+      {
+        "executionId": "6aa25413-d0e3-44cd-9958-597309e2451e",
+        "chatSessionId": "sess_4b2b143c-7efe-4262-86aa-e1e1101fa66f",
+        "timestamp": 1784361236795
+      }
+    ],
+    "2.2 Add history route to import-handler.ts": [
+      {
+        "executionId": "6aa25413-d0e3-44cd-9958-597309e2451e",
+        "chatSessionId": "sess_4b2b143c-7efe-4262-86aa-e1e1101fa66f",
+        "timestamp": 1784361038702
+      },
+      {
+        "executionId": "6aa25413-d0e3-44cd-9958-597309e2451e",
+        "chatSessionId": "sess_4b2b143c-7efe-4262-86aa-e1e1101fa66f",
+        "timestamp": 1784361246368
+      },
+      {
+        "executionId": "6aa25413-d0e3-44cd-9958-597309e2451e",
+        "chatSessionId": "sess_4b2b143c-7efe-4262-86aa-e1e1101fa66f",
+        "timestamp": 1784361360209
+      }
+    ],
+    "2.3 Write unit tests for import-history-handler.ts": [
+      {
+        "executionId": "6aa25413-d0e3-44cd-9958-597309e2451e",
+        "chatSessionId": "sess_4b2b143c-7efe-4262-86aa-e1e1101fa66f",
+        "timestamp": 1784361038769
+      },
+      {
+        "executionId": "6aa25413-d0e3-44cd-9958-597309e2451e",
+        "chatSessionId": "sess_4b2b143c-7efe-4262-86aa-e1e1101fa66f",
+        "timestamp": 1784361369994
+      },
+      {
+        "executionId": "6aa25413-d0e3-44cd-9958-597309e2451e",
+        "chatSessionId": "sess_4b2b143c-7efe-4262-86aa-e1e1101fa66f",
+        "timestamp": 1784361659241
+      }
+    ],
+    "3.1 Add API Gateway route for GET /api/import/{type}/history": [
+      {
+        "executionId": "6aa25413-d0e3-44cd-9958-597309e2451e",
+        "chatSessionId": "sess_4b2b143c-7efe-4262-86aa-e1e1101fa66f",
+        "timestamp": 1784361038837
+      },
+      {
+        "executionId": "6aa25413-d0e3-44cd-9958-597309e2451e",
+        "chatSessionId": "sess_4b2b143c-7efe-4262-86aa-e1e1101fa66f",
+        "timestamp": 1784361048324
+      },
+      {
+        "executionId": "6aa25413-d0e3-44cd-9958-597309e2451e",
+        "chatSessionId": "sess_4b2b143c-7efe-4262-86aa-e1e1101fa66f",
+        "timestamp": 1784361237830
+      }
+    ],
+    "4. Checkpoint - Backend complete": [
+      {
+        "executionId": "6aa25413-d0e3-44cd-9958-597309e2451e",
+        "chatSessionId": "sess_4b2b143c-7efe-4262-86aa-e1e1101fa66f",
+        "timestamp": 1784361038906
+      },
+      {
+        "executionId": "6aa25413-d0e3-44cd-9958-597309e2451e",
+        "chatSessionId": "sess_4b2b143c-7efe-4262-86aa-e1e1101fa66f",
+        "timestamp": 1784361993694
+      },
+      {
+        "executionId": "6aa25413-d0e3-44cd-9958-597309e2451e",
+        "chatSessionId": "sess_4b2b143c-7efe-4262-86aa-e1e1101fa66f",
+        "timestamp": 1784362047073
+      }
+    ],
+    "5.1 Add fetchImportHistory to imports-api.ts": [
+      {
+        "executionId": "6aa25413-d0e3-44cd-9958-597309e2451e",
+        "chatSessionId": "sess_4b2b143c-7efe-4262-86aa-e1e1101fa66f",
+        "timestamp": 1784361038976
+      },
+      {
+        "executionId": "6aa25413-d0e3-44cd-9958-597309e2451e",
+        "chatSessionId": "sess_4b2b143c-7efe-4262-86aa-e1e1101fa66f",
+        "timestamp": 1784361247117
+      },
+      {
+        "executionId": "6aa25413-d0e3-44cd-9958-597309e2451e",
+        "chatSessionId": "sess_4b2b143c-7efe-4262-86aa-e1e1101fa66f",
+        "timestamp": 1784361359499
+      }
+    ],
+    "5.2 Create use-import-history.ts hook": [
+      {
+        "executionId": "6aa25413-d0e3-44cd-9958-597309e2451e",
+        "chatSessionId": "sess_4b2b143c-7efe-4262-86aa-e1e1101fa66f",
+        "timestamp": 1784361039046
+      },
+      {
+        "executionId": "6aa25413-d0e3-44cd-9958-597309e2451e",
+        "chatSessionId": "sess_4b2b143c-7efe-4262-86aa-e1e1101fa66f",
+        "timestamp": 1784361370772
+      },
+      {
+        "executionId": "6aa25413-d0e3-44cd-9958-597309e2451e",
+        "chatSessionId": "sess_4b2b143c-7efe-4262-86aa-e1e1101fa66f",
+        "timestamp": 1784361659328
+      }
+    ],
+    "5.3 Write unit tests for use-import-history.ts": [
+      {
+        "executionId": "6aa25413-d0e3-44cd-9958-597309e2451e",
+        "chatSessionId": "sess_4b2b143c-7efe-4262-86aa-e1e1101fa66f",
+        "timestamp": 1784361039104
+      },
+      {
+        "executionId": "6aa25413-d0e3-44cd-9958-597309e2451e",
+        "chatSessionId": "sess_4b2b143c-7efe-4262-86aa-e1e1101fa66f",
+        "timestamp": 1784361666899
+      },
+      {
+        "executionId": "6aa25413-d0e3-44cd-9958-597309e2451e",
+        "chatSessionId": "sess_4b2b143c-7efe-4262-86aa-e1e1101fa66f",
+        "timestamp": 1784361832650
+      }
+    ],
+    "6.1 Create import-history-section.tsx": [
+      {
+        "executionId": "6aa25413-d0e3-44cd-9958-597309e2451e",
+        "chatSessionId": "sess_4b2b143c-7efe-4262-86aa-e1e1101fa66f",
+        "timestamp": 1784361039159
+      },
+      {
+        "executionId": "6aa25413-d0e3-44cd-9958-597309e2451e",
+        "chatSessionId": "sess_4b2b143c-7efe-4262-86aa-e1e1101fa66f",
+        "timestamp": 1784361667637
+      },
+      {
+        "executionId": "6aa25413-d0e3-44cd-9958-597309e2451e",
+        "chatSessionId": "sess_4b2b143c-7efe-4262-86aa-e1e1101fa66f",
+        "timestamp": 1784361833435
+      }
+    ],
+    "6.2 Create import-history-detail.tsx": [
+      {
+        "executionId": "6aa25413-d0e3-44cd-9958-597309e2451e",
+        "chatSessionId": "sess_4b2b143c-7efe-4262-86aa-e1e1101fa66f",
+        "timestamp": 1784361039242
+      },
+      {
+        "executionId": "6aa25413-d0e3-44cd-9958-597309e2451e",
+        "chatSessionId": "sess_4b2b143c-7efe-4262-86aa-e1e1101fa66f",
+        "timestamp": 1784361668277
+      },
+      {
+        "executionId": "6aa25413-d0e3-44cd-9958-597309e2451e",
+        "chatSessionId": "sess_4b2b143c-7efe-4262-86aa-e1e1101fa66f",
+        "timestamp": 1784361834054
+      }
+    ],
+    "6.3 Integrate ImportHistorySection into ImportTypeCard": [
+      {
+        "executionId": "6aa25413-d0e3-44cd-9958-597309e2451e",
+        "chatSessionId": "sess_4b2b143c-7efe-4262-86aa-e1e1101fa66f",
+        "timestamp": 1784361039319
+      },
+      {
+        "executionId": "6aa25413-d0e3-44cd-9958-597309e2451e",
+        "chatSessionId": "sess_4b2b143c-7efe-4262-86aa-e1e1101fa66f",
+        "timestamp": 1784361841832
+      },
+      {
+        "executionId": "6aa25413-d0e3-44cd-9958-597309e2451e",
+        "chatSessionId": "sess_4b2b143c-7efe-4262-86aa-e1e1101fa66f",
+        "timestamp": 1784361983511
+      }
+    ],
+    "6.4 Write component tests for import-history-section.tsx": [
+      {
+        "executionId": "6aa25413-d0e3-44cd-9958-597309e2451e",
+        "chatSessionId": "sess_4b2b143c-7efe-4262-86aa-e1e1101fa66f",
+        "timestamp": 1784361039391
+      },
+      {
+        "executionId": "6aa25413-d0e3-44cd-9958-597309e2451e",
+        "chatSessionId": "sess_4b2b143c-7efe-4262-86aa-e1e1101fa66f",
+        "timestamp": 1784361842606
+      },
+      {
+        "executionId": "6aa25413-d0e3-44cd-9958-597309e2451e",
+        "chatSessionId": "sess_4b2b143c-7efe-4262-86aa-e1e1101fa66f",
+        "timestamp": 1784361984590
+      }
+    ],
+    "6.5 Write component tests for import-history-detail.tsx": [
+      {
+        "executionId": "6aa25413-d0e3-44cd-9958-597309e2451e",
+        "chatSessionId": "sess_4b2b143c-7efe-4262-86aa-e1e1101fa66f",
+        "timestamp": 1784361039458
+      },
+      {
+        "executionId": "6aa25413-d0e3-44cd-9958-597309e2451e",
+        "chatSessionId": "sess_4b2b143c-7efe-4262-86aa-e1e1101fa66f",
+        "timestamp": 1784361843408
+      },
+      {
+        "executionId": "6aa25413-d0e3-44cd-9958-597309e2451e",
+        "chatSessionId": "sess_4b2b143c-7efe-4262-86aa-e1e1101fa66f",
+        "timestamp": 1784361985411
+      }
+    ],
+    "7. Final checkpoint - Ensure all tests pass": [
+      {
+        "executionId": "6aa25413-d0e3-44cd-9958-597309e2451e",
+        "chatSessionId": "sess_4b2b143c-7efe-4262-86aa-e1e1101fa66f",
+        "timestamp": 1784361039528
+      },
+      {
+        "executionId": "6aa25413-d0e3-44cd-9958-597309e2451e",
+        "chatSessionId": "sess_4b2b143c-7efe-4262-86aa-e1e1101fa66f",
+        "timestamp": 1784362055524
+      },
+      {
+        "executionId": "6aa25413-d0e3-44cd-9958-597309e2451e",
+        "chatSessionId": "sess_4b2b143c-7efe-4262-86aa-e1e1101fa66f",
+        "timestamp": 1784362110044
+      }
+    ],
+    "3. Add infrastructure route for history endpoint": [
+      {
+        "executionId": "6aa25413-d0e3-44cd-9958-597309e2451e",
+        "chatSessionId": "sess_4b2b143c-7efe-4262-86aa-e1e1101fa66f",
+        "timestamp": 1784361237882
+      }
+    ],
+    "1. Add history types and pure utility functions": [
+      {
+        "executionId": "6aa25413-d0e3-44cd-9958-597309e2451e",
+        "chatSessionId": "sess_4b2b143c-7efe-4262-86aa-e1e1101fa66f",
+        "timestamp": 1784361657838
+      }
+    ],
+    "2. Implement backend history handler": [
+      {
+        "executionId": "6aa25413-d0e3-44cd-9958-597309e2451e",
+        "chatSessionId": "sess_4b2b143c-7efe-4262-86aa-e1e1101fa66f",
+        "timestamp": 1784361659386
+      }
+    ],
+    "5. Implement frontend API client and hook": [
+      {
+        "executionId": "6aa25413-d0e3-44cd-9958-597309e2451e",
+        "chatSessionId": "sess_4b2b143c-7efe-4262-86aa-e1e1101fa66f",
+        "timestamp": 1784361832717
+      }
+    ],
+    "6. Implement frontend history UI components": [
+      {
+        "executionId": "6aa25413-d0e3-44cd-9958-597309e2451e",
+        "chatSessionId": "sess_4b2b143c-7efe-4262-86aa-e1e1101fa66f",
+        "timestamp": 1784361985479
+      }
+    ]
+  }
+}

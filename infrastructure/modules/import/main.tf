@@ -745,3 +745,39 @@ resource "aws_apigatewayv2_route" "post_import_sales_cancel" {
   authorization_type = "CUSTOM"
   authorizer_id      = var.authorizer_id
 }
+
+resource "aws_apigatewayv2_route" "get_import_status" {
+  api_id    = var.api_gateway_id
+  route_key = "GET /api/import/status"
+  target    = "integrations/${aws_apigatewayv2_integration.import.id}"
+
+  authorization_type = "CUSTOM"
+  authorizer_id      = var.authorizer_id
+}
+
+resource "aws_apigatewayv2_route" "get_import_items_history" {
+  api_id    = var.api_gateway_id
+  route_key = "GET /api/import/items/history"
+  target    = "integrations/${aws_apigatewayv2_integration.import.id}"
+
+  authorization_type = "CUSTOM"
+  authorizer_id      = var.authorizer_id
+}
+
+resource "aws_apigatewayv2_route" "get_import_sales_history" {
+  api_id    = var.api_gateway_id
+  route_key = "GET /api/import/sales/history"
+  target    = "integrations/${aws_apigatewayv2_integration.import.id}"
+
+  authorization_type = "CUSTOM"
+  authorizer_id      = var.authorizer_id
+}
+
+resource "aws_apigatewayv2_route" "get_import_accounts_history" {
+  api_id    = var.api_gateway_id
+  route_key = "GET /api/import/accounts/history"
+  target    = "integrations/${aws_apigatewayv2_integration.import.id}"
+
+  authorization_type = "CUSTOM"
+  authorizer_id      = var.authorizer_id
+}
