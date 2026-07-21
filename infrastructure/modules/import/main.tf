@@ -692,9 +692,9 @@ resource "aws_apigatewayv2_route" "post_import_items_status" {
   authorizer_id      = var.authorizer_id
 }
 
-resource "aws_apigatewayv2_route" "post_import_items_sync" {
+resource "aws_apigatewayv2_route" "post_import_items_cancel" {
   api_id    = var.api_gateway_id
-  route_key = "POST /api/import/items/sync"
+  route_key = "POST /api/import/items/cancel"
   target    = "integrations/${aws_apigatewayv2_integration.import.id}"
 
   authorization_type = "CUSTOM"

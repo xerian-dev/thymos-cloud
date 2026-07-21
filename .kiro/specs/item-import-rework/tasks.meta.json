@@ -1,0 +1,343 @@
+{
+  "pbtResults": {},
+  "executionHistory": {
+    "1.1 Update `infrastructure/dynamodb.tf` with GSI3 attribute definitions and index": [
+      {
+        "executionId": "dcacc4b8-a5b4-417b-b9df-aa95f6e28de4",
+        "chatSessionId": "sess_f2a88114-79e1-49f7-bde5-2a72faa80a8c",
+        "timestamp": 1784367849569
+      },
+      {
+        "executionId": "dcacc4b8-a5b4-417b-b9df-aa95f6e28de4",
+        "chatSessionId": "sess_f2a88114-79e1-49f7-bde5-2a72faa80a8c",
+        "timestamp": 1784367857737
+      },
+      {
+        "executionId": "dcacc4b8-a5b4-417b-b9df-aa95f6e28de4",
+        "chatSessionId": "sess_f2a88114-79e1-49f7-bde5-2a72faa80a8c",
+        "timestamp": 1784367946899
+      }
+    ],
+    "2.1 Expand `ConsignCloudItem` interface in `item-consigncloud-client.ts`": [
+      {
+        "executionId": "dcacc4b8-a5b4-417b-b9df-aa95f6e28de4",
+        "chatSessionId": "sess_f2a88114-79e1-49f7-bde5-2a72faa80a8c",
+        "timestamp": 1784367849651
+      },
+      {
+        "executionId": "dcacc4b8-a5b4-417b-b9df-aa95f6e28de4",
+        "chatSessionId": "sess_f2a88114-79e1-49f7-bde5-2a72faa80a8c",
+        "timestamp": 1784367858530
+      },
+      {
+        "executionId": "dcacc4b8-a5b4-417b-b9df-aa95f6e28de4",
+        "chatSessionId": "sess_f2a88114-79e1-49f7-bde5-2a72faa80a8c",
+        "timestamp": 1784367947687
+      }
+    ],
+    "3.1 Add `ItemStatus` type and `deriveItemStatus` function to `item-mapper.ts`": [
+      {
+        "executionId": "dcacc4b8-a5b4-417b-b9df-aa95f6e28de4",
+        "chatSessionId": "sess_f2a88114-79e1-49f7-bde5-2a72faa80a8c",
+        "timestamp": 1784367849724
+      },
+      {
+        "executionId": "dcacc4b8-a5b4-417b-b9df-aa95f6e28de4",
+        "chatSessionId": "sess_f2a88114-79e1-49f7-bde5-2a72faa80a8c",
+        "timestamp": 1784367859377
+      },
+      {
+        "executionId": "dcacc4b8-a5b4-417b-b9df-aa95f6e28de4",
+        "chatSessionId": "sess_f2a88114-79e1-49f7-bde5-2a72faa80a8c",
+        "timestamp": 1784367948620
+      }
+    ],
+    "3.2 Expand `MappedItemFields` interface and update `mapConsignCloudItem`": [
+      {
+        "executionId": "dcacc4b8-a5b4-417b-b9df-aa95f6e28de4",
+        "chatSessionId": "sess_f2a88114-79e1-49f7-bde5-2a72faa80a8c",
+        "timestamp": 1784367849783
+      },
+      {
+        "executionId": "dcacc4b8-a5b4-417b-b9df-aa95f6e28de4",
+        "chatSessionId": "sess_f2a88114-79e1-49f7-bde5-2a72faa80a8c",
+        "timestamp": 1784367953015
+      },
+      {
+        "executionId": "dcacc4b8-a5b4-417b-b9df-aa95f6e28de4",
+        "chatSessionId": "sess_f2a88114-79e1-49f7-bde5-2a72faa80a8c",
+        "timestamp": 1784368073074
+      }
+    ],
+    "3.3 Write unit tests for status derivation and expanded mapper": [
+      {
+        "executionId": "dcacc4b8-a5b4-417b-b9df-aa95f6e28de4",
+        "chatSessionId": "sess_f2a88114-79e1-49f7-bde5-2a72faa80a8c",
+        "timestamp": 1784367849836
+      },
+      {
+        "executionId": "dcacc4b8-a5b4-417b-b9df-aa95f6e28de4",
+        "chatSessionId": "sess_f2a88114-79e1-49f7-bde5-2a72faa80a8c",
+        "timestamp": 1784367953740
+      },
+      {
+        "executionId": "dcacc4b8-a5b4-417b-b9df-aa95f6e28de4",
+        "chatSessionId": "sess_f2a88114-79e1-49f7-bde5-2a72faa80a8c",
+        "timestamp": 1784368074028
+      }
+    ],
+    "4.1 Update `item-fetch-orchestrator.ts` to remove `isDeletedItem` filtering": [
+      {
+        "executionId": "dcacc4b8-a5b4-417b-b9df-aa95f6e28de4",
+        "chatSessionId": "sess_f2a88114-79e1-49f7-bde5-2a72faa80a8c",
+        "timestamp": 1784367849895
+      },
+      {
+        "executionId": "dcacc4b8-a5b4-417b-b9df-aa95f6e28de4",
+        "chatSessionId": "sess_f2a88114-79e1-49f7-bde5-2a72faa80a8c",
+        "timestamp": 1784367954592
+      },
+      {
+        "executionId": "dcacc4b8-a5b4-417b-b9df-aa95f6e28de4",
+        "chatSessionId": "sess_f2a88114-79e1-49f7-bde5-2a72faa80a8c",
+        "timestamp": 1784368074963
+      }
+    ],
+    "5.1 Change account resolution from account number to sourceId": [
+      {
+        "executionId": "dcacc4b8-a5b4-417b-b9df-aa95f6e28de4",
+        "chatSessionId": "sess_f2a88114-79e1-49f7-bde5-2a72faa80a8c",
+        "timestamp": 1784367849948
+      },
+      {
+        "executionId": "dcacc4b8-a5b4-417b-b9df-aa95f6e28de4",
+        "chatSessionId": "sess_f2a88114-79e1-49f7-bde5-2a72faa80a8c",
+        "timestamp": 1784368086207
+      },
+      {
+        "executionId": "dcacc4b8-a5b4-417b-b9df-aa95f6e28de4",
+        "chatSessionId": "sess_f2a88114-79e1-49f7-bde5-2a72faa80a8c",
+        "timestamp": 1784368273172
+      }
+    ],
+    "5.2 Update SKU handling to use CC SKU directly": [
+      {
+        "executionId": "dcacc4b8-a5b4-417b-b9df-aa95f6e28de4",
+        "chatSessionId": "sess_f2a88114-79e1-49f7-bde5-2a72faa80a8c",
+        "timestamp": 1784367850001
+      },
+      {
+        "executionId": "dcacc4b8-a5b4-417b-b9df-aa95f6e28de4",
+        "chatSessionId": "sess_f2a88114-79e1-49f7-bde5-2a72faa80a8c",
+        "timestamp": 1784368087133
+      },
+      {
+        "executionId": "dcacc4b8-a5b4-417b-b9df-aa95f6e28de4",
+        "chatSessionId": "sess_f2a88114-79e1-49f7-bde5-2a72faa80a8c",
+        "timestamp": 1784368273857
+      }
+    ],
+    "5.3 Add sequence counter seeding after first import completion": [
+      {
+        "executionId": "dcacc4b8-a5b4-417b-b9df-aa95f6e28de4",
+        "chatSessionId": "sess_f2a88114-79e1-49f7-bde5-2a72faa80a8c",
+        "timestamp": 1784367850050
+      },
+      {
+        "executionId": "dcacc4b8-a5b4-417b-b9df-aa95f6e28de4",
+        "chatSessionId": "sess_f2a88114-79e1-49f7-bde5-2a72faa80a8c",
+        "timestamp": 1784368088251
+      },
+      {
+        "executionId": "dcacc4b8-a5b4-417b-b9df-aa95f6e28de4",
+        "chatSessionId": "sess_f2a88114-79e1-49f7-bde5-2a72faa80a8c",
+        "timestamp": 1784368274586
+      }
+    ],
+    "5.4 Update `writeItem` to include new fields and GSI keys": [
+      {
+        "executionId": "dcacc4b8-a5b4-417b-b9df-aa95f6e28de4",
+        "chatSessionId": "sess_f2a88114-79e1-49f7-bde5-2a72faa80a8c",
+        "timestamp": 1784367850101
+      },
+      {
+        "executionId": "dcacc4b8-a5b4-417b-b9df-aa95f6e28de4",
+        "chatSessionId": "sess_f2a88114-79e1-49f7-bde5-2a72faa80a8c",
+        "timestamp": 1784368089217
+      },
+      {
+        "executionId": "dcacc4b8-a5b4-417b-b9df-aa95f6e28de4",
+        "chatSessionId": "sess_f2a88114-79e1-49f7-bde5-2a72faa80a8c",
+        "timestamp": 1784368275537
+      }
+    ],
+    "5.5 Write unit tests for updated sync orchestrator": [
+      {
+        "executionId": "dcacc4b8-a5b4-417b-b9df-aa95f6e28de4",
+        "chatSessionId": "sess_f2a88114-79e1-49f7-bde5-2a72faa80a8c",
+        "timestamp": 1784367850162
+      },
+      {
+        "executionId": "dcacc4b8-a5b4-417b-b9df-aa95f6e28de4",
+        "chatSessionId": "sess_f2a88114-79e1-49f7-bde5-2a72faa80a8c",
+        "timestamp": 1784368279880
+      },
+      {
+        "executionId": "dcacc4b8-a5b4-417b-b9df-aa95f6e28de4",
+        "chatSessionId": "sess_f2a88114-79e1-49f7-bde5-2a72faa80a8c",
+        "timestamp": 1784368470382
+      }
+    ],
+    "6. Checkpoint - Ensure all tests pass": [
+      {
+        "executionId": "dcacc4b8-a5b4-417b-b9df-aa95f6e28de4",
+        "chatSessionId": "sess_f2a88114-79e1-49f7-bde5-2a72faa80a8c",
+        "timestamp": 1784367850227
+      },
+      {
+        "executionId": "dcacc4b8-a5b4-417b-b9df-aa95f6e28de4",
+        "chatSessionId": "sess_f2a88114-79e1-49f7-bde5-2a72faa80a8c",
+        "timestamp": 1784368475243
+      },
+      {
+        "executionId": "dcacc4b8-a5b4-417b-b9df-aa95f6e28de4",
+        "chatSessionId": "sess_f2a88114-79e1-49f7-bde5-2a72faa80a8c",
+        "timestamp": 1784368547809
+      }
+    ],
+    "7.1 Replace disabled items phase with active import logic in `sync-orchestrator.ts`": [
+      {
+        "executionId": "dcacc4b8-a5b4-417b-b9df-aa95f6e28de4",
+        "chatSessionId": "sess_f2a88114-79e1-49f7-bde5-2a72faa80a8c",
+        "timestamp": 1784367850282
+      },
+      {
+        "executionId": "dcacc4b8-a5b4-417b-b9df-aa95f6e28de4",
+        "chatSessionId": "sess_f2a88114-79e1-49f7-bde5-2a72faa80a8c",
+        "timestamp": 1784368552316
+      },
+      {
+        "executionId": "dcacc4b8-a5b4-417b-b9df-aa95f6e28de4",
+        "chatSessionId": "sess_f2a88114-79e1-49f7-bde5-2a72faa80a8c",
+        "timestamp": 1784369050781
+      }
+    ],
+    "7.2 Ensure accounts complete before items start": [
+      {
+        "executionId": "dcacc4b8-a5b4-417b-b9df-aa95f6e28de4",
+        "chatSessionId": "sess_f2a88114-79e1-49f7-bde5-2a72faa80a8c",
+        "timestamp": 1784367850331
+      },
+      {
+        "executionId": "dcacc4b8-a5b4-417b-b9df-aa95f6e28de4",
+        "chatSessionId": "sess_f2a88114-79e1-49f7-bde5-2a72faa80a8c",
+        "timestamp": 1784368553175
+      },
+      {
+        "executionId": "dcacc4b8-a5b4-417b-b9df-aa95f6e28de4",
+        "chatSessionId": "sess_f2a88114-79e1-49f7-bde5-2a72faa80a8c",
+        "timestamp": 1784369051503
+      }
+    ],
+    "7.3 Write unit tests for items phase in sync orchestrator": [
+      {
+        "executionId": "dcacc4b8-a5b4-417b-b9df-aa95f6e28de4",
+        "chatSessionId": "sess_f2a88114-79e1-49f7-bde5-2a72faa80a8c",
+        "timestamp": 1784367850381
+      },
+      {
+        "executionId": "dcacc4b8-a5b4-417b-b9df-aa95f6e28de4",
+        "chatSessionId": "sess_f2a88114-79e1-49f7-bde5-2a72faa80a8c",
+        "timestamp": 1784369055445
+      },
+      {
+        "executionId": "dcacc4b8-a5b4-417b-b9df-aa95f6e28de4",
+        "chatSessionId": "sess_f2a88114-79e1-49f7-bde5-2a72faa80a8c",
+        "timestamp": 1784369127904
+      }
+    ],
+    "8.1 Update `docs/data-model.md` with new item fields, GSI mappings, and status enumeration": [
+      {
+        "executionId": "dcacc4b8-a5b4-417b-b9df-aa95f6e28de4",
+        "chatSessionId": "sess_f2a88114-79e1-49f7-bde5-2a72faa80a8c",
+        "timestamp": 1784367850431
+      },
+      {
+        "executionId": "dcacc4b8-a5b4-417b-b9df-aa95f6e28de4",
+        "chatSessionId": "sess_f2a88114-79e1-49f7-bde5-2a72faa80a8c",
+        "timestamp": 1784369132544
+      },
+      {
+        "executionId": "dcacc4b8-a5b4-417b-b9df-aa95f6e28de4",
+        "chatSessionId": "sess_f2a88114-79e1-49f7-bde5-2a72faa80a8c",
+        "timestamp": 1784369190496
+      }
+    ],
+    "9. Final checkpoint - Ensure all tests pass and build succeeds": [
+      {
+        "executionId": "dcacc4b8-a5b4-417b-b9df-aa95f6e28de4",
+        "chatSessionId": "sess_f2a88114-79e1-49f7-bde5-2a72faa80a8c",
+        "timestamp": 1784367850485
+      },
+      {
+        "executionId": "dcacc4b8-a5b4-417b-b9df-aa95f6e28de4",
+        "chatSessionId": "sess_f2a88114-79e1-49f7-bde5-2a72faa80a8c",
+        "timestamp": 1784369194663
+      },
+      {
+        "executionId": "dcacc4b8-a5b4-417b-b9df-aa95f6e28de4",
+        "chatSessionId": "sess_f2a88114-79e1-49f7-bde5-2a72faa80a8c",
+        "timestamp": 1784369235756
+      }
+    ],
+    "1. Infrastructure: Add GSI3 to Shop_Table": [
+      {
+        "executionId": "dcacc4b8-a5b4-417b-b9df-aa95f6e28de4",
+        "chatSessionId": "sess_f2a88114-79e1-49f7-bde5-2a72faa80a8c",
+        "timestamp": 1784367946973
+      }
+    ],
+    "2. Update ConsignCloud item client interface": [
+      {
+        "executionId": "dcacc4b8-a5b4-417b-b9df-aa95f6e28de4",
+        "chatSessionId": "sess_f2a88114-79e1-49f7-bde5-2a72faa80a8c",
+        "timestamp": 1784367947741
+      }
+    ],
+    "3. Update item mapper with expanded fields and status derivation": [
+      {
+        "executionId": "dcacc4b8-a5b4-417b-b9df-aa95f6e28de4",
+        "chatSessionId": "sess_f2a88114-79e1-49f7-bde5-2a72faa80a8c",
+        "timestamp": 1784368074099
+      }
+    ],
+    "4. Remove deleted-item filter from fetch loop": [
+      {
+        "executionId": "dcacc4b8-a5b4-417b-b9df-aa95f6e28de4",
+        "chatSessionId": "sess_f2a88114-79e1-49f7-bde5-2a72faa80a8c",
+        "timestamp": 1784368075044
+      }
+    ],
+    "5. Update item sync orchestrator with new fields, SKU handling, and GSI keys": [
+      {
+        "executionId": "dcacc4b8-a5b4-417b-b9df-aa95f6e28de4",
+        "chatSessionId": "sess_f2a88114-79e1-49f7-bde5-2a72faa80a8c",
+        "timestamp": 1784368470464
+      }
+    ],
+    "7. Enable items phase in sync orchestrator": [
+      {
+        "executionId": "dcacc4b8-a5b4-417b-b9df-aa95f6e28de4",
+        "chatSessionId": "sess_f2a88114-79e1-49f7-bde5-2a72faa80a8c",
+        "timestamp": 1784369127966
+      }
+    ],
+    "8. Update data model documentation": [
+      {
+        "executionId": "dcacc4b8-a5b4-417b-b9df-aa95f6e28de4",
+        "chatSessionId": "sess_f2a88114-79e1-49f7-bde5-2a72faa80a8c",
+        "timestamp": 1784369190567
+      }
+    ]
+  }
+}

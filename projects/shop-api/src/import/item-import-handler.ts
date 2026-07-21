@@ -3,18 +3,20 @@ import type {
   APIGatewayProxyResultV2,
 } from "aws-lambda";
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
-import { DynamoDBDocumentClient, GetCommand } from "@aws-sdk/lib-dynamodb";
+import {
+  DynamoDBDocumentClient,
+  DeleteCommand,
+  GetCommand,
+} from "@aws-sdk/lib-dynamodb";
 import {
   createJob,
   getJob,
   getRunningOrPausedJob,
   transitionJob,
-  updateJobPhase,
 } from "./job-manager";
 import { getConsignCloudApiKey } from "./ssm-client";
 import { createRateLimiter } from "./rate-limiter";
 import { runFetchLoop } from "./item-fetch-orchestrator";
-import { runSyncLoop } from "./item-sync-orchestrator";
 import { startStepFunction } from "./step-function-starter";
 import type { ImportPhase } from "./self-invoker";
 
@@ -119,103 +121,6 @@ export async function handleItemImportStart(
   };
 }
 
-export async function handleItemImportSync(
-  event: APIGatewayProxyEventV2,
-): Promise<APIGatewayProxyResultV2> {
-  // 1. Parse body
-  let jobId: string | undefined;
-  try {
-    if (event.body) {
-      const parsed = JSON.parse(event.body) as { jobId?: string };
-      jobId = parsed.jobId;
-    }
-  } catch {
-    return {
-      statusCode: 400,
-      body: JSON.stringify({ message: "Invalid JSON body" }),
-    };
-  }
-
-  if (!jobId) {
-    return {
-      statusCode: 400,
-      body: JSON.stringify({ message: "jobId is required" }),
-    };
-  }
-
-  // 2. Get job
-  const job = await getJob(jobId);
-  if (!job) {
-    return {
-      statusCode: 404,
-      body: JSON.stringify({ message: "Job not found", jobId }),
-    };
-  }
-
-  // 3. Validate state — sync can start from paused (after fetch completes)
-  if (job.state !== "paused" && job.state !== "failed") {
-    return {
-      statusCode: 400,
-      body: JSON.stringify({
-        message: `Cannot start sync for job in '${job.state}' state. Job must be in 'paused' or 'failed' state (fetch phase should be complete).`,
-        jobId,
-        currentState: job.state,
-        currentPhase: job.phase,
-      }),
-    };
-  }
-
-  // 4. Transition to running and update phase to sync
-  await updateJobPhase(jobId, "sync");
-  await transitionJob(jobId, "running", job.progress);
-
-  console.info(
-    JSON.stringify({
-      level: "INFO",
-      message: "Item import sync phase started",
-      jobId,
-    }),
-  );
-
-  // 5. Start Step Function execution to begin sync processing
-  try {
-    await startStepFunction(jobId, "sync");
-  } catch (error: unknown) {
-    const errorMsg =
-      error instanceof Error
-        ? error.message
-        : "Failed to start sync processing";
-    console.error(
-      JSON.stringify({
-        level: "ERROR",
-        message: "Failed to start Step Function for sync phase",
-        jobId,
-        error: errorMsg,
-      }),
-    );
-
-    await transitionJob(jobId, "paused", job.progress, errorMsg);
-
-    return {
-      statusCode: 500,
-      body: JSON.stringify({
-        message: "Failed to start sync processing",
-        jobId,
-      }),
-    };
-  }
-
-  // 6. Return 200
-  return {
-    statusCode: 200,
-    body: JSON.stringify({
-      jobId,
-      state: "running",
-      phase: "sync",
-    }),
-  };
-}
-
 export async function handleItemImportResume(
   event: APIGatewayProxyEventV2,
 ): Promise<APIGatewayProxyResultV2> {
@@ -274,10 +179,9 @@ export async function handleItemImportResume(
     }),
   );
 
-  // 5. Start Step Function execution with the current phase
-  const phase: ImportPhase = job.phase;
+  // 5. Start Step Function execution (always fetch phase now)
   try {
-    await startStepFunction(jobId, phase);
+    await startStepFunction(jobId, "fetch");
   } catch (error: unknown) {
     const errorMsg =
       error instanceof Error
@@ -288,7 +192,6 @@ export async function handleItemImportResume(
         level: "ERROR",
         message: "Failed to start Step Function for job resumption",
         jobId,
-        phase,
         error: errorMsg,
       }),
     );
@@ -310,7 +213,7 @@ export async function handleItemImportResume(
     body: JSON.stringify({
       jobId,
       state: "running",
-      phase,
+      phase: "fetch",
     }),
   };
 }
@@ -381,6 +284,86 @@ export async function handleItemImportStatus(
   };
 }
 
+export async function handleItemImportCancel(
+  event: APIGatewayProxyEventV2,
+): Promise<APIGatewayProxyResultV2> {
+  // 1. Parse body
+  let jobId: string | undefined;
+  try {
+    if (event.body) {
+      const parsed = JSON.parse(event.body) as { jobId?: string };
+      jobId = parsed.jobId;
+    }
+  } catch {
+    return {
+      statusCode: 400,
+      body: JSON.stringify({ message: "Invalid JSON body" }),
+    };
+  }
+
+  if (!jobId) {
+    return {
+      statusCode: 400,
+      body: JSON.stringify({ message: "jobId is required" }),
+    };
+  }
+
+  // 2. Get job
+  const job = await getJob(jobId);
+  if (!job) {
+    return {
+      statusCode: 404,
+      body: JSON.stringify({ message: "Job not found", jobId }),
+    };
+  }
+
+  // 3. Validate state — can cancel running, paused, or failed jobs
+  if (
+    job.state !== "running" &&
+    job.state !== "paused" &&
+    job.state !== "failed"
+  ) {
+    return {
+      statusCode: 400,
+      body: JSON.stringify({
+        message: `Cannot cancel job in '${job.state}' state. Job must be in 'running', 'paused', or 'failed' state.`,
+        jobId,
+        currentState: job.state,
+      }),
+    };
+  }
+
+  // 4. Delete job record and checkpoint
+  const pk = `ITEM_IMPORT#${jobId}`;
+  const sortKeys = ["METADATA", "CHECKPOINT"];
+
+  for (const sk of sortKeys) {
+    await docClient.send(
+      new DeleteCommand({
+        TableName: IMPORT_TABLE_NAME,
+        Key: { PK: pk, SK: sk },
+      }),
+    );
+  }
+
+  console.info(
+    JSON.stringify({
+      level: "INFO",
+      message: "Item import job cancelled and records deleted",
+      jobId,
+    }),
+  );
+
+  // 5. Return 200
+  return {
+    statusCode: 200,
+    body: JSON.stringify({
+      message: "Item import job cancelled",
+      jobId,
+    }),
+  };
+}
+
 export interface ResumeInternalResult {
   status: "continue" | "complete" | "failed";
   jobId: string;
@@ -390,7 +373,6 @@ export interface ResumeInternalResult {
 
 export async function handleResumeInternal(
   jobId: string,
-  phase: ImportPhase = "fetch",
 ): Promise<ResumeInternalResult> {
   // 1. Validate job exists and is in running state
   const job = await getJob(jobId);
@@ -402,7 +384,7 @@ export async function handleResumeInternal(
         jobId,
       }),
     );
-    return { status: "failed", jobId, phase, type: "item" };
+    return { status: "failed", jobId, phase: "fetch", type: "item" };
   }
 
   if (job.state !== "running") {
@@ -414,14 +396,10 @@ export async function handleResumeInternal(
         currentState: job.state,
       }),
     );
-    return { status: "failed", jobId, phase, type: "item" };
+    return { status: "failed", jobId, phase: "fetch", type: "item" };
   }
 
-  if (phase === "fetch") {
-    return runFetchPhase(jobId, job);
-  } else {
-    return runSyncPhase(jobId, job);
-  }
+  return runFetchPhase(jobId, job);
 }
 
 async function runFetchPhase(
@@ -483,44 +461,6 @@ async function runFetchPhase(
       await transitionJob(jobId, "paused", currentJob.progress, errorMsg);
     }
     return { status: "failed", jobId, phase: "fetch", type: "item" };
-  }
-}
-
-async function runSyncPhase(
-  jobId: string,
-  job: {
-    progress: {
-      processed: number;
-      imported: number;
-      skipped: number;
-      failed: number;
-    };
-  },
-): Promise<ResumeInternalResult> {
-  try {
-    const result = await runSyncLoop({
-      jobId,
-      startTime: Date.now(),
-      timeoutThresholdMs: TIMEOUT_THRESHOLD_MS,
-    });
-    return { status: result.status, jobId, phase: "sync", type: "item" };
-  } catch (error: unknown) {
-    const errorMsg =
-      error instanceof Error ? error.message : "Sync loop failed";
-    console.error(
-      JSON.stringify({
-        level: "ERROR",
-        message: "Resume-internal: sync loop threw an error",
-        jobId,
-        error: errorMsg,
-      }),
-    );
-
-    const currentJob = await getJob(jobId);
-    if (currentJob && currentJob.state === "running") {
-      await transitionJob(jobId, "paused", currentJob.progress, errorMsg);
-    }
-    return { status: "failed", jobId, phase: "sync", type: "item" };
   }
 }
 

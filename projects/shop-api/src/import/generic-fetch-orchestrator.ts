@@ -19,9 +19,7 @@ export interface GenericFetchOrchestratorConfig<T> {
     cursor: string | null,
     limit: number,
   ) => Promise<FetchPageResult<T>>;
-  stageRecords: (
-    records: T[],
-  ) => Promise<{ staged: number; skipped: number }>;
+  stageRecords: (records: T[]) => Promise<{ staged: number; skipped: number }>;
   jobManager: {
     getJob(jobId: string): Promise<ImportJob | null>;
     transitionJob(
@@ -34,6 +32,12 @@ export interface GenericFetchOrchestratorConfig<T> {
     saveCheckpoint(checkpoint: Checkpoint): Promise<void>;
     loadCheckpoint(jobId: string): Promise<Checkpoint | null>;
   };
+  /**
+   * The job state to transition to when all pages are fetched.
+   * Defaults to "complete" (items go directly to complete).
+   * Sales pass "paused" here so the sync phase can run separately.
+   */
+  completionState?: JobState;
 }
 
 export interface FetchLoopResult {
@@ -53,6 +57,7 @@ export async function runGenericFetchLoop<T>(
     stageRecords,
     jobManager,
     checkpointManager,
+    completionState = "complete",
   } = config;
 
   // 1. Validate job exists
@@ -121,16 +126,16 @@ export async function runGenericFetchLoop<T>(
       lastUpdatedAt: new Date().toISOString(),
     });
 
-    // Check if no more pages
+    // Check if no more pages — fetch phase is done, transition to completion state
     if (cursor === null) {
-      await jobManager.transitionJob(jobId, "paused", progress);
+      await jobManager.transitionJob(jobId, completionState, progress);
 
       console.info(
         JSON.stringify({
           level: "INFO",
-          message: "Fetch phase completed",
+          message: "Import completed",
           jobId,
-          state: "paused",
+          state: completionState,
           progress,
           elapsedSeconds: Math.round((Date.now() - startTime) / 1000),
         }),

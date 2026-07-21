@@ -20,6 +20,7 @@ export interface ConsignCloudItem {
   category?: { id: string; name: string } | null;
   tags?: string[] | Array<unknown>;
   description?: string;
+  details?: string | null;
   brand?: string;
   color?: string;
   size?: string;
@@ -30,6 +31,14 @@ export interface ConsignCloudItem {
   created: string;
   deleted?: string | null;
   sku?: string;
+  // New fields for expanded import
+  schedule_start?: string | null;
+  expires?: string | null;
+  status?: Record<string, number> | null;
+  last_sold?: string | null;
+  last_viewed?: string | null;
+  printed?: string | null;
+  days_on_shelf?: number | null;
 }
 
 export interface FetchItemPageResult {

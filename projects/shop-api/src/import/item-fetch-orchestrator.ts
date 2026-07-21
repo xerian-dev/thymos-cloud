@@ -3,7 +3,6 @@ import {
   ConsignCloudItem,
   ItemClientConfig,
 } from "./item-consigncloud-client";
-import { isDeletedItem } from "./item-filter";
 import { saveCheckpoint, loadCheckpoint } from "./checkpoint-manager";
 import { getJob, transitionJob } from "./job-manager";
 import { RateLimiter } from "./rate-limiter";
@@ -68,20 +67,9 @@ export async function runFetchLoop(
       return { data: result.items, nextCursor: result.nextCursor };
     },
     stageRecords: async (records) => {
-      const itemsToStage: ConsignCloudItem[] = [];
-      let skipped = 0;
+      await batchWriteStagedItems(records);
 
-      for (const item of records) {
-        if (isDeletedItem(item)) {
-          skipped++;
-          continue;
-        }
-        itemsToStage.push(item);
-      }
-
-      await batchWriteStagedItems(itemsToStage);
-
-      return { staged: itemsToStage.length, skipped };
+      return { staged: records.length, skipped: 0 };
     },
     jobManager: { getJob, transitionJob },
     checkpointManager: { saveCheckpoint, loadCheckpoint },

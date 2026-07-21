@@ -2,137 +2,106 @@
 
 ## Introduction
 
-This feature replaces the current batch-scan sync phases (item-sync-orchestrator, sale-sync-orchestrator, sync-to-shop-table) with a reactive, DynamoDB Streams-based mechanism. When records are inserted or modified in the import table, a Lambda function is triggered to map them from ConsignCloud format to shop table format and upsert them. This eliminates the polling/scanning approach and provides near-real-time sync for accounts, items, and sales.
+This feature aligns the stream Lambda's item processing pipeline with the import item-mapper's full field set and status derivation logic, expands the upsert-service to write GSI2/GSI3 keys and all new item fields, implements CC SKU passthrough with sequence counter seeding, adds graceful account resolution (skip on missing), and removes the now-redundant sync phase from the item import Step Function flow.
 
 ## Glossary
 
-- **Import_Table**: The DynamoDB table (`thymos-{environment}-import`) where raw ConsignCloud data is staged during fetch operations
-- **Shop_Table**: The DynamoDB table (`thymos-{environment}-shop`) that serves as the application's primary data store
-- **Stream_Lambda**: The AWS Lambda function triggered by DynamoDB Streams events from the Import_Table
-- **Entity_Mapper**: A module responsible for transforming a single import record from ConsignCloud snake_case format to Shop_Table camelCase format for a specific entity type (account, item, or sale)
-- **Source_ID**: The ConsignCloud UUID stored on shop records for deduplication and traceability, queryable via the `sourceId-index` GSI
-- **Import_Record**: A DynamoDB record in the Import_Table with PK pattern `IMPORT#CONSIGNCLOUD#<TYPE>#<id>` and SK `METADATA`
-- **Sync_Timestamp**: An ISO 8601 UTC timestamp (`syncedAt`) written to the import record after successful sync to the Shop_Table
+- **Stream_Lambda**: The Lambda function triggered by DynamoDB Streams on the import table, responsible for processing new/modified import records and upserting them into the shop table.
+- **Stream_Item_Mapper**: The module (`src/stream/item-mapper.ts`) that transforms raw unmarshalled DynamoDB attributes (`Record<string, unknown>`) into a structured `MappedItem` object for the stream Lambda.
+- **Upsert_Service**: The module (`src/stream/upsert-service.ts`) containing `upsertItem()` that writes or updates item records in the shop DynamoDB table.
+- **Sequence_Service**: The module (`src/stream/sequence-service.ts`) that atomically increments and returns the next sequence number for a given entity type using DynamoDB ADD operations.
+- **Item_Import_Handler**: The Lambda handler module (`src/import/item-import-handler.ts`) that orchestrates item import start, sync, resume, and status operations.
+- **Item_Sync_Orchestrator**: The module (`src/import/item-sync-orchestrator.ts`) that scans the import table and syncs items to the shop table in batch during the sync phase.
+- **Step_Function**: The AWS Step Functions state machine that loops the import Lambda for paginated fetch processing.
+- **Shop_Table**: The main DynamoDB table (`thymos-{env}-shop`) holding all shop entities (accounts, items, sales, employees, categories).
+- **Import_Table**: The DynamoDB table (`thymos-{env}-import`) where raw ConsignCloud records are staged before processing.
+- **Source_ID_Lookup**: The module (`src/stream/source-id-lookup.ts`) providing `findBySourceId()` to query the `sourceId-index` GSI on the shop table.
+- **ItemStatus**: A derived status value computed from the ConsignCloud status breakdown object, one of: active, parked, inactive, expired, to_be_returned, sold, returned_to_owner, donated, lost, stolen, damaged.
+- **CC_SKU**: The raw SKU string from ConsignCloud, which may be numeric (used directly) or non-numeric (fallback to sequence counter).
+- **GSI2**: Global Secondary Index for querying items by owning account (`GSI2PK: ACCOUNT#<uuid>`, `GSI2SK: ITEM#<createdAt>`).
+- **GSI3**: Global Secondary Index for querying items by category (`GSI3PK: CATEGORY#<uuid>`, `GSI3SK: ITEM#<createdAt>`).
 
 ## Requirements
 
-### Requirement 1: DynamoDB Streams Configuration
+### Requirement 1: Stream Item Mapper Field Parity
 
-**User Story:** As a platform operator, I want DynamoDB Streams enabled on the import table, so that record changes trigger reactive processing without polling.
-
-#### Acceptance Criteria
-
-1. THE Import_Table SHALL have DynamoDB Streams enabled with `NEW_IMAGE` stream view type
-2. WHEN a stream event occurs, THE Stream_Lambda SHALL be invoked with the new image of the record
-3. THE Stream_Lambda SHALL be configured with an event source mapping that filters to records where PK begins with `IMPORT#CONSIGNCLOUD#`
-
-### Requirement 2: Stream Event Filtering
-
-**User Story:** As a platform operator, I want the stream processor to only handle relevant import records, so that unrelated table writes do not trigger unnecessary Lambda invocations.
+**User Story:** As a developer, I want the stream item mapper to produce the same fields and derivations as the import item-mapper, so that items processed via the stream path have full data fidelity.
 
 #### Acceptance Criteria
 
-1. THE Stream_Lambda event source mapping SHALL use a filter pattern to process only INSERT and MODIFY event types
-2. THE Stream_Lambda SHALL ignore records where PK does not begin with `IMPORT#CONSIGNCLOUD#`
-3. THE Stream_Lambda SHALL ignore records that already have a `syncedAt` attribute present in the new image
+1. THE Stream_Item_Mapper SHALL include an `ItemStatus` type with the values: active, parked, inactive, expired, to_be_returned, sold, returned_to_owner, donated, lost, stolen, damaged.
+2. THE Stream_Item_Mapper SHALL export a `deriveItemStatus` function that accepts a `Record<string, number>` status breakdown object and returns the highest-priority `ItemStatus` with a non-zero count.
+3. THE Stream_Item_Mapper SHALL export a `STATUS_PRIORITY` array defining priority order from active (highest) to damaged (lowest).
+4. THE Stream_Item_Mapper SHALL export a `SOLD_VARIANTS` set containing "sold", "sold_on_shopify", "sold_on_square", "sold_on_third_party" and collapse all variants into "sold" during status derivation.
+5. WHEN `deriveItemStatus` receives a null, undefined, or empty status object, THE Stream_Item_Mapper SHALL return "active" as the default status.
+6. THE Stream_Item_Mapper SHALL include a `status` field of type `ItemStatus` in the `MappedItem` interface, derived from `raw.status` via `deriveItemStatus`.
+7. THE Stream_Item_Mapper SHALL include a `location` field (string, optional) in `MappedItem`, extracted from `raw.location.name` when present.
+8. THE Stream_Item_Mapper SHALL include a `details` field (string, optional, max 5000 chars) in `MappedItem`, extracted from `raw.details`.
+9. THE Stream_Item_Mapper SHALL include a `scheduleStart` field (string, optional) in `MappedItem`, extracted from `raw.schedule_start`.
+10. THE Stream_Item_Mapper SHALL include an `expirationDate` field (string, optional) in `MappedItem`, extracted from `raw.expires`.
+11. THE Stream_Item_Mapper SHALL include a `lastSold` field (string, optional) in `MappedItem`, extracted from `raw.last_sold`.
+12. THE Stream_Item_Mapper SHALL include a `lastViewed` field (string, optional) in `MappedItem`, extracted from `raw.last_viewed`.
+13. THE Stream_Item_Mapper SHALL include a `labelPrintedAt` field (string, optional) in `MappedItem`, extracted from `raw.printed`.
+14. THE Stream_Item_Mapper SHALL include a `daysOnShelf` field (number, optional) in `MappedItem`, extracted from `raw.days_on_shelf`.
+15. THE Stream_Item_Mapper SHALL include a `deleted` field (string, optional) in `MappedItem`, extracted from `raw.deleted`.
+16. THE Stream_Item_Mapper SHALL operate on `Record<string, unknown>` input (raw unmarshalled DynamoDB attributes), applying type guards for each field extraction.
 
-### Requirement 3: Entity Type Routing
+### Requirement 2: Upsert Service GSI and Field Expansion
 
-**User Story:** As a developer, I want the stream handler to route records to the correct mapper based on entity type, so that each record type is processed with its specific transformation logic.
-
-#### Acceptance Criteria
-
-1. WHEN a record has PK matching `IMPORT#CONSIGNCLOUD#ACCOUNT#<id>`, THE Stream_Lambda SHALL route the record to the Account_Entity_Mapper
-2. WHEN a record has PK matching `IMPORT#CONSIGNCLOUD#ITEM#<id>`, THE Stream_Lambda SHALL route the record to the Item_Entity_Mapper
-3. WHEN a record has PK matching `IMPORT#CONSIGNCLOUD#SALE#<id>`, THE Stream_Lambda SHALL route the record to the Sale_Entity_Mapper
-4. WHEN a record has an unrecognised entity type in the PK, THE Stream_Lambda SHALL log a warning and skip the record without error
-
-### Requirement 4: Account Sync
-
-**User Story:** As a platform operator, I want account records reactively synced to the shop table, so that consignor data is available immediately after import.
-
-#### Acceptance Criteria
-
-1. WHEN an account import record is received, THE Account_Entity_Mapper SHALL transform ConsignCloud snake_case fields to Shop_Table camelCase fields following the established field-mapper pattern
-2. WHEN a record with the same Source_ID already exists in the Shop_Table, THE Stream_Lambda SHALL update the existing record with changed fields
-3. WHEN no record with the same Source_ID exists in the Shop_Table, THE Stream_Lambda SHALL create a new account record with a generated UUID, shopUid from the sequence counter, and appropriate GSI keys
-4. THE Account_Entity_Mapper SHALL produce the same output given the same input regardless of how many times the record is processed
-
-### Requirement 5: Item Sync
-
-**User Story:** As a platform operator, I want item records reactively synced to the shop table, so that inventory is available immediately after import.
+**User Story:** As a developer, I want the stream upsert-service to write GSI2/GSI3 keys and all new item fields, so that items are queryable by account and category and contain complete data.
 
 #### Acceptance Criteria
 
-1. WHEN an item import record is received, THE Item_Entity_Mapper SHALL transform ConsignCloud snake_case fields to Shop_Table camelCase fields following the established item-mapper pattern
-2. WHEN a record with the same Source_ID already exists in the Shop_Table, THE Stream_Lambda SHALL update the existing record with changed fields
-3. WHEN no record with the same Source_ID exists in the Shop_Table, THE Stream_Lambda SHALL create a new item record with a generated UUID, SKU from the sequence counter, and appropriate GSI keys
-4. THE Item_Entity_Mapper SHALL resolve the owning account by ConsignCloud account reference and link items to the corresponding Shop_Table account UUID
-5. THE Item_Entity_Mapper SHALL resolve or create Employee and Category records as needed, following the existing create-on-the-fly pattern
+1. WHEN an account is resolved during item creation, THE Upsert_Service SHALL write `GSI2PK` as `ACCOUNT#<accountUuid>` and `GSI2SK` as `ITEM#<createdAt>` on the item record.
+2. WHEN a category is resolved during item creation, THE Upsert_Service SHALL write `GSI3PK` as `CATEGORY#<categoryUuid>` and `GSI3SK` as `ITEM#<createdAt>` on the item record.
+3. THE Upsert_Service SHALL write the `status` field (derived ItemStatus) on both new and updated item records.
+4. THE Upsert_Service SHALL write all new optional fields (location, details, scheduleStart, expirationDate, lastSold, lastViewed, labelPrintedAt, daysOnShelf, deleted) on both new and updated item records when present in the mapped data.
+5. THE Upsert_Service SHALL write `sourceSku` (the raw CC SKU string) on new item records when `raw.sku` is present.
+6. WHEN updating an existing item and an account is resolved, THE Upsert_Service SHALL update `GSI2PK` and `GSI2SK` on the item record.
+7. WHEN updating an existing item and a category is resolved, THE Upsert_Service SHALL update `GSI3PK` and `GSI3SK` on the item record.
 
-### Requirement 6: Sale Sync
+### Requirement 3: CC SKU Passthrough and Sequence Counter Seeding
 
-**User Story:** As a platform operator, I want sale records reactively synced to the shop table, so that transaction history is available immediately after import.
-
-#### Acceptance Criteria
-
-1. WHEN a sale import record is received, THE Sale_Entity_Mapper SHALL transform ConsignCloud snake_case fields to Shop_Table camelCase fields following the established sale-mapper pattern
-2. WHEN a record with the same Source_ID already exists in the Shop_Table, THE Stream_Lambda SHALL skip the record as sales are immutable once written
-3. WHEN no record with the same Source_ID exists in the Shop_Table, THE Stream_Lambda SHALL create a new sale record with a generated UUID, sale number from the sequence counter, and appropriate GSI keys
-4. THE Sale_Entity_Mapper SHALL only process finalized sales and skip open or voided sales
-5. THE Sale_Entity_Mapper SHALL write sale line items as part of the same transactional write as the sale record
-6. THE Sale_Entity_Mapper SHALL resolve cashier references to Employee UUIDs and item references in line items to Item UUIDs
-
-### Requirement 7: Sync Timestamp Marking
-
-**User Story:** As a platform operator, I want synced import records marked with a timestamp, so that I can audit which records have been processed and when.
+**User Story:** As a developer, I want the stream upsert-service to use the ConsignCloud SKU directly when numeric, so that imported items retain their original SKU numbering and the sequence counter stays synchronized.
 
 #### Acceptance Criteria
 
-1. WHEN a record is successfully synced to the Shop_Table, THE Stream_Lambda SHALL update the Import_Record with a `syncedAt` attribute containing the current ISO 8601 UTC timestamp
-2. THE Stream_Lambda SHALL NOT delete import records after sync, preserving them as an audit trail
-3. WHEN the `syncedAt` attribute update fails, THE Stream_Lambda SHALL log the failure but not retry the entire sync operation for that record
+1. WHEN `raw.sku` parses to a positive integer, THE Upsert_Service SHALL use that integer as the item's `sku` value instead of calling the Sequence_Service.
+2. WHEN `raw.sku` is absent, empty, or non-numeric, THE Upsert_Service SHALL call `getNextSequenceNumber("ITEM")` from the Sequence_Service to generate a new SKU.
+3. WHEN a CC SKU is used directly and exceeds the current ITEM sequence counter value, THE Upsert_Service SHALL seed the sequence counter to that SKU value using a conditional update (`attribute_not_exists(#val) OR #val < :newVal`).
+4. THE Upsert_Service SHALL format the `GSI1SK` value as `ITEM#<sku padded to 7 digits>` regardless of whether the SKU came from CC or from the sequence counter.
 
-### Requirement 8: Idempotency
+### Requirement 4: Account Resolution with Graceful Skip
 
-**User Story:** As a platform operator, I want the sync process to be idempotent, so that reprocessing the same stream event produces the same result without duplicating data.
-
-#### Acceptance Criteria
-
-1. THE Stream_Lambda SHALL use the Source_ID and `sourceId-index` GSI to detect whether a record has already been synced before creating new records
-2. WHEN creating new records in the Shop_Table, THE Stream_Lambda SHALL use conditional writes (`attribute_not_exists(PK)`) to prevent duplicate creation from concurrent processing
-3. WHEN a conditional write fails due to an existing record, THE Stream_Lambda SHALL treat it as a successful no-op and proceed to mark the import record with `syncedAt`
-
-### Requirement 9: Error Handling
-
-**User Story:** As a platform operator, I want stream processing failures to be isolated per record, so that one bad record does not block the processing of other records in the same batch.
+**User Story:** As a developer, I want the stream upsert-service to skip items when their owning account has not yet been synced, so that transient ordering issues do not cause permanent failures.
 
 #### Acceptance Criteria
 
-1. WHEN a single record fails to sync, THE Stream_Lambda SHALL log the error with the record PK and error details, then continue processing the remaining records in the batch
-2. IF a record fails field mapping validation, THEN THE Stream_Lambda SHALL log the validation error and skip the record without retrying
-3. IF a transient error occurs during a DynamoDB write operation, THEN THE Stream_Lambda SHALL allow the DynamoDB Streams retry mechanism to reprocess the batch
-4. THE Stream_Lambda SHALL configure a dead-letter queue for records that fail after all retry attempts are exhausted
+1. THE Upsert_Service SHALL resolve the owning account by extracting the source ID from `raw.account.id` or `raw.account_id` (whichever is present) and querying the Source_ID_Lookup.
+2. WHEN the account source ID is present but no matching account record exists in the Shop_Table, THE Upsert_Service SHALL log a warning with the item source ID and account source ID.
+3. WHEN the account source ID is present but no matching account record exists in the Shop_Table, THE Upsert_Service SHALL skip the item without adding it to `batchItemFailures` (allowing the stream record to be retried on a subsequent trigger or via the retrigger script).
+4. WHEN no account source ID is present in the raw record, THE Upsert_Service SHALL proceed with item creation without an `accountId` or GSI2 keys.
 
-### Requirement 10: Lambda Configuration
+### Requirement 5: Remove Item Sync Phase from Import Flow
 
-**User Story:** As a platform operator, I want the stream Lambda configured with appropriate concurrency and batch settings, so that sync throughput is balanced against downstream resource pressure.
-
-#### Acceptance Criteria
-
-1. THE Stream_Lambda event source mapping SHALL be configured with a batch size appropriate for the expected record volume
-2. THE Stream_Lambda event source mapping SHALL use `bisectBatchOnFunctionError` set to true, so that failing batches are split to isolate problematic records
-3. THE Stream_Lambda event source mapping SHALL configure a maximum retry attempts limit to prevent infinite retry loops
-4. THE Stream_Lambda SHALL have a reserved concurrency setting to prevent overwhelming the Shop_Table with concurrent writes
-
-### Requirement 11: Infrastructure Provisioning
-
-**User Story:** As a developer, I want the stream infrastructure defined in Terraform, so that the DynamoDB Streams trigger, Lambda, and associated resources are provisioned consistently.
+**User Story:** As a developer, I want to remove the sync phase from the item import flow, so that all item syncing happens exclusively through the DynamoDB stream pipeline.
 
 #### Acceptance Criteria
 
-1. THE Terraform configuration SHALL define the DynamoDB Streams enablement on the Import_Table within the existing import module
-2. THE Terraform configuration SHALL define the Stream_Lambda function, its IAM execution role, and event source mapping
-3. THE Terraform configuration SHALL grant the Stream_Lambda read access to the Import_Table stream and read/write access to both the Import_Table and Shop_Table
-4. THE Terraform configuration SHALL define a dead-letter queue (SQS) for failed stream records
-5. THE Terraform configuration SHALL output the Stream_Lambda function name and ARN for observability purposes
+1. THE Item_Import_Handler SHALL remove the `handleItemImportSync` function and its associated route handling logic.
+2. THE Item_Import_Handler SHALL remove the `runSyncPhase` function.
+3. THE Item_Import_Handler SHALL remove the sync branch from `handleResumeInternal` (the `else` branch for `phase === "sync"`).
+4. THE Item_Import_Handler SHALL remove the import of `runSyncLoop` from `item-sync-orchestrator`.
+5. THE `item-sync-orchestrator.ts` file SHALL be deleted from the codebase.
+6. THE Terraform configuration SHALL remove the API Gateway route for `POST /api/import/items/sync`.
+7. THE Step_Function state machine definition SHALL remain unchanged (it continues to handle the fetch loop).
+
+### Requirement 6: Direct Completion After Fetch Phase
+
+**User Story:** As a developer, I want the import job to transition directly to "complete" when fetch finishes, so that there is no dependency on a separate sync phase.
+
+#### Acceptance Criteria
+
+1. WHEN the fetch loop exhausts all pages and no more records remain to fetch, THE Item_Import_Handler SHALL transition the job state to "complete".
+2. WHEN the fetch phase completes successfully, THE Step_Function SHALL receive a "complete" status (not "continue") causing it to reach the Done (Succeed) state.
+3. THE Item_Import_Handler SHALL write an import report upon fetch completion, recording the progress counts (processed, imported, skipped, failed).

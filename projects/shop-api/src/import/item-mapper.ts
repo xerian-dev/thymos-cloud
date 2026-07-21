@@ -3,6 +3,67 @@ import { ConsignCloudItem } from "./item-consigncloud-client";
 export type InventoryType = "Consignment" | "Retail";
 export type Terms = "Return To Consignor" | "Donate" | "Discard";
 
+export type ItemStatus =
+  | "active"
+  | "parked"
+  | "inactive"
+  | "expired"
+  | "to_be_returned"
+  | "sold"
+  | "returned_to_owner"
+  | "donated"
+  | "lost"
+  | "stolen"
+  | "damaged";
+
+export const STATUS_PRIORITY: ItemStatus[] = [
+  "active",
+  "parked",
+  "inactive",
+  "expired",
+  "to_be_returned",
+  "sold",
+  "returned_to_owner",
+  "donated",
+  "lost",
+  "stolen",
+  "damaged",
+];
+
+export const SOLD_VARIANTS = new Set([
+  "sold",
+  "sold_on_shopify",
+  "sold_on_square",
+  "sold_on_third_party",
+]);
+
+export function deriveItemStatus(
+  statusObj: Record<string, number> | null | undefined,
+): ItemStatus {
+  if (!statusObj || Object.keys(statusObj).length === 0) {
+    return "active";
+  }
+
+  // Normalize: collapse sold variants into "sold"
+  const normalized = new Map<ItemStatus, number>();
+  for (const [key, count] of Object.entries(statusObj)) {
+    if (count <= 0) continue;
+    const normalizedKey: ItemStatus = SOLD_VARIANTS.has(key)
+      ? "sold"
+      : (key as ItemStatus);
+    normalized.set(normalizedKey, (normalized.get(normalizedKey) ?? 0) + count);
+  }
+
+  // Return highest priority status with non-zero count
+  for (const status of STATUS_PRIORITY) {
+    if ((normalized.get(status) ?? 0) > 0) {
+      return status;
+    }
+  }
+
+  return "active";
+}
+
 export interface MappedItemFields {
   title: string;
   tagPrice: number;
@@ -11,13 +72,24 @@ export interface MappedItemFields {
   inventoryType: InventoryType;
   terms: Terms;
   taxExempt: boolean;
+  status: ItemStatus;
   tags?: string[];
   description?: string;
+  details?: string;
   brand?: string;
   color?: string;
   size?: string;
   shelf?: string;
+  location?: string;
   imageKeys?: string[];
+  scheduleStart?: string;
+  expirationDate?: string;
+  lastSold?: string;
+  lastViewed?: string;
+  labelPrintedAt?: string;
+  daysOnShelf?: number;
+  deleted?: string;
+  createdAt: string;
 }
 
 export type ItemMappingResult =
@@ -95,6 +167,8 @@ export function mapConsignCloudItem(item: ConsignCloudItem): ItemMappingResult {
     inventoryType: mapInventoryType(item.inventory_type),
     terms: mapTerms(item.terms),
     taxExempt: item.tax_exempt ?? false,
+    status: deriveItemStatus(item.status),
+    createdAt: item.created,
   };
 
   // Optional fields — only include if present
@@ -131,6 +205,43 @@ export function mapConsignCloudItem(item: ConsignCloudItem): ItemMappingResult {
 
   if (item.images && item.images.length > 0) {
     mapped.imageKeys = item.images.map((img) => img.url);
+  }
+
+  // New optional fields
+  if (item.location?.name) {
+    mapped.location = item.location.name;
+  }
+
+  if (item.details) {
+    mapped.details = item.details.slice(0, 5000);
+  }
+
+  if (item.schedule_start) {
+    mapped.scheduleStart = item.schedule_start;
+  }
+
+  if (item.expires) {
+    mapped.expirationDate = item.expires;
+  }
+
+  if (item.last_sold) {
+    mapped.lastSold = item.last_sold;
+  }
+
+  if (item.last_viewed) {
+    mapped.lastViewed = item.last_viewed;
+  }
+
+  if (item.printed) {
+    mapped.labelPrintedAt = item.printed;
+  }
+
+  if (item.days_on_shelf != null) {
+    mapped.daysOnShelf = item.days_on_shelf;
+  }
+
+  if (item.deleted) {
+    mapped.deleted = item.deleted;
   }
 
   return { success: true, mapped };

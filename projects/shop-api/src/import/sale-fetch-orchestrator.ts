@@ -75,6 +75,7 @@ export async function runSaleFetchLoop(
     startTime,
     timeoutThresholdMs,
     pageLimit: PAGE_LIMIT,
+    completionState: "paused",
     fetchPage: async (
       cursor: string | null,
       limit: number,

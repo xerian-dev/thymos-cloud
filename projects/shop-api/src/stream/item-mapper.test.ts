@@ -112,25 +112,55 @@ describe("mapItem", () => {
 
   it("maps inventory_type correctly", () => {
     expect(
-      (mapItem({ ...validRaw, inventory_type: "buy_outright" }) as { success: true; mapped: { inventoryType: string } }).mapped.inventoryType
+      (
+        mapItem({ ...validRaw, inventory_type: "buy_outright" }) as {
+          success: true;
+          mapped: { inventoryType: string };
+        }
+      ).mapped.inventoryType,
     ).toBe("Retail");
     expect(
-      (mapItem({ ...validRaw, inventory_type: "retail" }) as { success: true; mapped: { inventoryType: string } }).mapped.inventoryType
+      (
+        mapItem({ ...validRaw, inventory_type: "retail" }) as {
+          success: true;
+          mapped: { inventoryType: string };
+        }
+      ).mapped.inventoryType,
     ).toBe("Retail");
     expect(
-      (mapItem({ ...validRaw, inventory_type: "unknown" }) as { success: true; mapped: { inventoryType: string } }).mapped.inventoryType
+      (
+        mapItem({ ...validRaw, inventory_type: "unknown" }) as {
+          success: true;
+          mapped: { inventoryType: string };
+        }
+      ).mapped.inventoryType,
     ).toBe("Consignment");
   });
 
   it("maps terms correctly", () => {
     expect(
-      (mapItem({ ...validRaw, terms: "donate" }) as { success: true; mapped: { terms: string } }).mapped.terms
+      (
+        mapItem({ ...validRaw, terms: "donate" }) as {
+          success: true;
+          mapped: { terms: string };
+        }
+      ).mapped.terms,
     ).toBe("Donate");
     expect(
-      (mapItem({ ...validRaw, terms: "discard" }) as { success: true; mapped: { terms: string } }).mapped.terms
+      (
+        mapItem({ ...validRaw, terms: "discard" }) as {
+          success: true;
+          mapped: { terms: string };
+        }
+      ).mapped.terms,
     ).toBe("Discard");
     expect(
-      (mapItem({ ...validRaw, terms: "unknown" }) as { success: true; mapped: { terms: string } }).mapped.terms
+      (
+        mapItem({ ...validRaw, terms: "unknown" }) as {
+          success: true;
+          mapped: { terms: string };
+        }
+      ).mapped.terms,
     ).toBe("Donate");
   });
 
@@ -181,7 +211,11 @@ describe("mapItem", () => {
   });
 
   it("filters tags to strings only, max 20", () => {
-    const tags = [...Array.from({ length: 25 }, (_, i) => `tag-${i}`), 123, null];
+    const tags = [
+      ...Array.from({ length: 25 }, (_, i) => `tag-${i}`),
+      123,
+      null,
+    ];
     const raw = { ...validRaw, tags };
     const result = mapItem(raw);
     expect(result.success).toBe(true);
@@ -201,6 +235,15 @@ describe("mapItem", () => {
     expect(result.mapped.shelf).toBeUndefined();
     expect(result.mapped.tags).toBeUndefined();
     expect(result.mapped.imageKeys).toBeUndefined();
+    expect(result.mapped.location).toBeUndefined();
+    expect(result.mapped.details).toBeUndefined();
+    expect(result.mapped.scheduleStart).toBeUndefined();
+    expect(result.mapped.expirationDate).toBeUndefined();
+    expect(result.mapped.lastSold).toBeUndefined();
+    expect(result.mapped.lastViewed).toBeUndefined();
+    expect(result.mapped.labelPrintedAt).toBeUndefined();
+    expect(result.mapped.daysOnShelf).toBeUndefined();
+    expect(result.mapped.deleted).toBeUndefined();
   });
 
   it("is idempotent — same input produces same output", () => {
@@ -231,5 +274,145 @@ describe("mapItem", () => {
     expect(result.success).toBe(true);
     if (!result.success) return;
     expect(result.mapped.split).toBe(0);
+  });
+
+  it("derives status from raw.status object", () => {
+    const raw = { ...validRaw, status: { active: 1 } };
+    const result = mapItem(raw);
+    expect(result.success).toBe(true);
+    if (!result.success) return;
+    expect(result.mapped.status).toBe("active");
+  });
+
+  it("defaults status to active when raw.status is missing", () => {
+    const result = mapItem(validRaw);
+    expect(result.success).toBe(true);
+    if (!result.success) return;
+    expect(result.mapped.status).toBe("active");
+  });
+
+  it("defaults status to active when raw.status is not an object", () => {
+    const raw = { ...validRaw, status: "invalid" };
+    const result = mapItem(raw);
+    expect(result.success).toBe(true);
+    if (!result.success) return;
+    expect(result.mapped.status).toBe("active");
+  });
+
+  it("defaults status to active when raw.status is an array", () => {
+    const raw = { ...validRaw, status: [1, 2, 3] };
+    const result = mapItem(raw);
+    expect(result.success).toBe(true);
+    if (!result.success) return;
+    expect(result.mapped.status).toBe("active");
+  });
+
+  it("extracts location from raw.location.name", () => {
+    const raw = { ...validRaw, location: { name: "Main Floor" } };
+    const result = mapItem(raw);
+    expect(result.success).toBe(true);
+    if (!result.success) return;
+    expect(result.mapped.location).toBe("Main Floor");
+  });
+
+  it("does not extract location when location.name is not a string", () => {
+    const raw = { ...validRaw, location: { name: 123 } };
+    const result = mapItem(raw);
+    expect(result.success).toBe(true);
+    if (!result.success) return;
+    expect(result.mapped.location).toBeUndefined();
+  });
+
+  it("extracts details from raw.details, max 5000 chars", () => {
+    const raw = { ...validRaw, details: "D".repeat(6000) };
+    const result = mapItem(raw);
+    expect(result.success).toBe(true);
+    if (!result.success) return;
+    expect(result.mapped.details?.length).toBe(5000);
+  });
+
+  it("extracts scheduleStart from raw.schedule_start", () => {
+    const raw = { ...validRaw, schedule_start: "2024-03-01T00:00:00Z" };
+    const result = mapItem(raw);
+    expect(result.success).toBe(true);
+    if (!result.success) return;
+    expect(result.mapped.scheduleStart).toBe("2024-03-01T00:00:00Z");
+  });
+
+  it("extracts expirationDate from raw.expires", () => {
+    const raw = { ...validRaw, expires: "2024-12-31T23:59:59Z" };
+    const result = mapItem(raw);
+    expect(result.success).toBe(true);
+    if (!result.success) return;
+    expect(result.mapped.expirationDate).toBe("2024-12-31T23:59:59Z");
+  });
+
+  it("extracts lastSold from raw.last_sold", () => {
+    const raw = { ...validRaw, last_sold: "2024-02-15T14:00:00Z" };
+    const result = mapItem(raw);
+    expect(result.success).toBe(true);
+    if (!result.success) return;
+    expect(result.mapped.lastSold).toBe("2024-02-15T14:00:00Z");
+  });
+
+  it("extracts lastViewed from raw.last_viewed", () => {
+    const raw = { ...validRaw, last_viewed: "2024-06-01T10:00:00Z" };
+    const result = mapItem(raw);
+    expect(result.success).toBe(true);
+    if (!result.success) return;
+    expect(result.mapped.lastViewed).toBe("2024-06-01T10:00:00Z");
+  });
+
+  it("extracts labelPrintedAt from raw.printed", () => {
+    const raw = { ...validRaw, printed: "2024-01-20T09:00:00Z" };
+    const result = mapItem(raw);
+    expect(result.success).toBe(true);
+    if (!result.success) return;
+    expect(result.mapped.labelPrintedAt).toBe("2024-01-20T09:00:00Z");
+  });
+
+  it("extracts daysOnShelf from raw.days_on_shelf", () => {
+    const raw = { ...validRaw, days_on_shelf: 42 };
+    const result = mapItem(raw);
+    expect(result.success).toBe(true);
+    if (!result.success) return;
+    expect(result.mapped.daysOnShelf).toBe(42);
+  });
+
+  it("extracts deleted from raw.deleted", () => {
+    const raw = { ...validRaw, deleted: "2024-05-10T12:00:00Z" };
+    const result = mapItem(raw);
+    expect(result.success).toBe(true);
+    if (!result.success) return;
+    expect(result.mapped.deleted).toBe("2024-05-10T12:00:00Z");
+  });
+
+  it("ignores non-string optional date fields", () => {
+    const raw = {
+      ...validRaw,
+      schedule_start: 12345,
+      expires: null,
+      last_sold: undefined,
+      last_viewed: false,
+      printed: { time: "now" },
+      deleted: 0,
+    };
+    const result = mapItem(raw);
+    expect(result.success).toBe(true);
+    if (!result.success) return;
+    expect(result.mapped.scheduleStart).toBeUndefined();
+    expect(result.mapped.expirationDate).toBeUndefined();
+    expect(result.mapped.lastSold).toBeUndefined();
+    expect(result.mapped.lastViewed).toBeUndefined();
+    expect(result.mapped.labelPrintedAt).toBeUndefined();
+    expect(result.mapped.deleted).toBeUndefined();
+  });
+
+  it("ignores non-number daysOnShelf", () => {
+    const raw = { ...validRaw, days_on_shelf: "thirty" };
+    const result = mapItem(raw);
+    expect(result.success).toBe(true);
+    if (!result.success) return;
+    expect(result.mapped.daysOnShelf).toBeUndefined();
   });
 });

@@ -277,8 +277,8 @@ describe("generic-fetch-orchestrator", () => {
     });
   });
 
-  describe("cursor exhaustion transitions to 'paused' and returns 'complete'", () => {
-    it("transitions job to 'paused' when cursor is null", async () => {
+  describe("cursor exhaustion transitions to 'complete' and returns 'complete'", () => {
+    it("transitions job to 'complete' when cursor is null", async () => {
       const config = createMockConfig();
       const fetchPage = config.fetchPage as ReturnType<typeof vi.fn>;
       const stageRecords = config.stageRecords as ReturnType<typeof vi.fn>;
@@ -296,7 +296,7 @@ describe("generic-fetch-orchestrator", () => {
 
       expect(result).toEqual({ status: "complete", jobId: "test-job-id" });
       expect(transitionJob).toHaveBeenCalledTimes(1);
-      expect(transitionJob).toHaveBeenCalledWith("test-job-id", "paused", {
+      expect(transitionJob).toHaveBeenCalledWith("test-job-id", "complete", {
         processed: 1,
         imported: 1,
         skipped: 0,
@@ -350,7 +350,7 @@ describe("generic-fetch-orchestrator", () => {
       await runGenericFetchLoop(config);
 
       // Final progress: page1 (3 records: 2 staged, 1 skipped) + page2 (2 records: 1 staged, 1 skipped)
-      expect(transitionJob).toHaveBeenCalledWith("test-job-id", "paused", {
+      expect(transitionJob).toHaveBeenCalledWith("test-job-id", "complete", {
         processed: 5,
         imported: 3,
         skipped: 2,

@@ -6,9 +6,9 @@ import { fetchFromConsignCloud } from "./import/fetch-from-consigncloud";
 import { syncToShopTable } from "./import/sync-to-shop-table";
 import {
   handleItemImportStart,
-  handleItemImportSync,
   handleItemImportResume,
   handleItemImportStatus,
+  handleItemImportCancel,
   handleResumeInternal,
 } from "./import/item-import-handler";
 import {
@@ -71,10 +71,7 @@ export async function handler(
       };
     }
 
-    const result = await handleResumeInternal(
-      rawEvent.jobId,
-      rawEvent.phase ?? "fetch",
-    );
+    const result = await handleResumeInternal(rawEvent.jobId);
     return {
       statusCode: 200,
       body: JSON.stringify(result),
@@ -139,16 +136,6 @@ export async function handler(
     return handleItemImportStart(event);
   }
 
-  if (path === "/api/import/items/sync") {
-    if (method !== "POST") {
-      return {
-        statusCode: 405,
-        body: JSON.stringify({ message: "Method Not Allowed" }),
-      };
-    }
-    return handleItemImportSync(event);
-  }
-
   if (path === "/api/import/items/resume") {
     if (method !== "POST") {
       return {
@@ -167,6 +154,16 @@ export async function handler(
       };
     }
     return handleItemImportStatus(event);
+  }
+
+  if (path === "/api/import/items/cancel") {
+    if (method !== "POST") {
+      return {
+        statusCode: 405,
+        body: JSON.stringify({ message: "Method Not Allowed" }),
+      };
+    }
+    return handleItemImportCancel(event);
   }
 
   if (path === "/api/import/sales/start") {
