@@ -22,6 +22,18 @@ vi.mock("../../src/import/job-manager", () => ({
   transitionJob: (...args: unknown[]) => mockTransitionJob(...args),
 }));
 
+vi.mock("../../src/import/generic-job-manager", async (importOriginal) => {
+  const actual =
+    await importOriginal<
+      typeof import("../../src/import/generic-job-manager")
+    >();
+  return {
+    ...actual,
+    buildPointerSK: (prefix: string, lastUpdatedAt: string, jobId: string) =>
+      `${prefix}#${lastUpdatedAt}#${jobId}`,
+  };
+});
+
 const mockInvokeSelf = vi.fn();
 
 vi.mock("../../src/import/self-invoker", () => ({
@@ -84,6 +96,12 @@ vi.mock("@aws-sdk/lib-dynamodb", () => ({
     from: () => ({ send: mockDocClientSend }),
   },
   GetCommand: class MockGetCommand {
+    input: unknown;
+    constructor(input: unknown) {
+      this.input = input;
+    }
+  },
+  TransactWriteCommand: class MockTransactWriteCommand {
     input: unknown;
     constructor(input: unknown) {
       this.input = input;
@@ -448,6 +466,250 @@ describe("item-import-handler unit tests", () => {
       const body = JSON.parse(result.body as string);
       expect(body.message).toContain("not found");
     });
+  });
+});
+
+describe("handleItemImportCancel", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("transitions running job to cancelled state via TransactWriteCommand, returns 200", async () => {
+    mockGetJob.mockResolvedValue({
+      jobId: "cancel-job-001",
+      state: "running",
+      phase: "fetch",
+      startedAt: "2026-01-15T10:00:00.000Z",
+      lastUpdatedAt: "2026-01-15T10:15:00.000Z",
+      filterParams: {},
+      progress: { processed: 50, imported: 40, skipped: 5, failed: 5 },
+    });
+
+    mockDocClientSend.mockResolvedValue({});
+
+    const { handleItemImportCancel } =
+      await import("../../src/import/item-import-handler");
+
+    const event = buildApiEvent({
+      path: "/api/import/items/cancel",
+      body: JSON.stringify({ jobId: "cancel-job-001" }),
+    });
+
+    const result = await handleItemImportCancel(event);
+
+    expect(result.statusCode).toBe(200);
+    const body = JSON.parse(result.body as string);
+    expect(body.message).toContain("cancelled");
+    expect(body.jobId).toBe("cancel-job-001");
+
+    // Verify TransactWriteCommand was sent with 3 items
+    expect(mockDocClientSend).toHaveBeenCalledTimes(1);
+
+    const transactInput = (
+      mockDocClientSend.mock.calls[0][0] as {
+        input: { TransactItems: unknown[] };
+      }
+    ).input;
+    expect(transactInput.TransactItems).toHaveLength(3);
+
+    // Verify metadata update sets state to cancelled
+    const updateItem = transactInput.TransactItems[0] as {
+      Update: {
+        Key: { PK: string; SK: string };
+        ExpressionAttributeValues: Record<string, string>;
+      };
+    };
+    expect(updateItem.Update.Key.PK).toBe("ITEM_IMPORT#cancel-job-001");
+    expect(updateItem.Update.Key.SK).toBe("METADATA");
+    expect(updateItem.Update.ExpressionAttributeValues[":state"]).toBe(
+      "cancelled",
+    );
+
+    // Verify old pointer is deleted
+    const deleteItem = transactInput.TransactItems[1] as {
+      Delete: { Key: { PK: string; SK: string } };
+    };
+    expect(deleteItem.Delete.Key.PK).toBe("JOBS");
+    expect(deleteItem.Delete.Key.SK).toBe(
+      "ITEM_IMPORT#2026-01-15T10:15:00.000Z#cancel-job-001",
+    );
+
+    // Verify new pointer is created with cancelled state and fresh lastUpdatedAt
+    const putItem = transactInput.TransactItems[2] as {
+      Put: {
+        Item: {
+          PK: string;
+          SK: string;
+          state: string;
+          jobId: string;
+          prefix: string;
+          lastUpdatedAt: string;
+        };
+      };
+    };
+    expect(putItem.Put.Item.PK).toBe("JOBS");
+    expect(putItem.Put.Item.state).toBe("cancelled");
+    expect(putItem.Put.Item.jobId).toBe("cancel-job-001");
+    expect(putItem.Put.Item.prefix).toBe("ITEM_IMPORT");
+    // New pointer SK should NOT equal old pointer SK (fresh timestamp)
+    expect(putItem.Put.Item.SK).not.toBe(deleteItem.Delete.Key.SK);
+    // lastUpdatedAt should be a fresh ISO timestamp (different from original)
+    expect(putItem.Put.Item.lastUpdatedAt).not.toBe("2026-01-15T10:15:00.000Z");
+  });
+
+  it("transitions paused job to cancelled state, returns 200", async () => {
+    mockGetJob.mockResolvedValue({
+      jobId: "cancel-job-002",
+      state: "paused",
+      phase: "fetch",
+      startedAt: "2026-01-15T10:00:00.000Z",
+      lastUpdatedAt: "2026-01-15T10:30:00.000Z",
+      filterParams: {},
+      progress: { processed: 80, imported: 70, skipped: 5, failed: 5 },
+    });
+
+    mockDocClientSend.mockResolvedValue({});
+
+    const { handleItemImportCancel } =
+      await import("../../src/import/item-import-handler");
+
+    const event = buildApiEvent({
+      path: "/api/import/items/cancel",
+      body: JSON.stringify({ jobId: "cancel-job-002" }),
+    });
+
+    const result = await handleItemImportCancel(event);
+
+    expect(result.statusCode).toBe(200);
+    const body = JSON.parse(result.body as string);
+    expect(body.message).toContain("cancelled");
+    expect(body.jobId).toBe("cancel-job-002");
+
+    expect(mockDocClientSend).toHaveBeenCalledTimes(1);
+  });
+
+  it("transitions failed job to cancelled state, returns 200", async () => {
+    mockGetJob.mockResolvedValue({
+      jobId: "cancel-job-003",
+      state: "failed",
+      phase: "fetch",
+      startedAt: "2026-01-15T10:00:00.000Z",
+      lastUpdatedAt: "2026-01-15T10:45:00.000Z",
+      filterParams: {},
+      error: "Some error occurred",
+      progress: { processed: 30, imported: 20, skipped: 5, failed: 5 },
+    });
+
+    mockDocClientSend.mockResolvedValue({});
+
+    const { handleItemImportCancel } =
+      await import("../../src/import/item-import-handler");
+
+    const event = buildApiEvent({
+      path: "/api/import/items/cancel",
+      body: JSON.stringify({ jobId: "cancel-job-003" }),
+    });
+
+    const result = await handleItemImportCancel(event);
+
+    expect(result.statusCode).toBe(200);
+    const body = JSON.parse(result.body as string);
+    expect(body.message).toContain("cancelled");
+    expect(body.jobId).toBe("cancel-job-003");
+
+    expect(mockDocClientSend).toHaveBeenCalledTimes(1);
+  });
+
+  it("returns 400 when job is in complete state (cannot cancel)", async () => {
+    mockGetJob.mockResolvedValue({
+      jobId: "cancel-job-complete",
+      state: "complete",
+      phase: "fetch",
+      startedAt: "2026-01-15T10:00:00.000Z",
+      lastUpdatedAt: "2026-01-15T11:00:00.000Z",
+      filterParams: {},
+      progress: { processed: 100, imported: 90, skipped: 5, failed: 5 },
+    });
+
+    const { handleItemImportCancel } =
+      await import("../../src/import/item-import-handler");
+
+    const event = buildApiEvent({
+      path: "/api/import/items/cancel",
+      body: JSON.stringify({ jobId: "cancel-job-complete" }),
+    });
+
+    const result = await handleItemImportCancel(event);
+
+    expect(result.statusCode).toBe(400);
+    const body = JSON.parse(result.body as string);
+    expect(body.message).toContain("Cannot cancel");
+    expect(body.message).toContain("complete");
+    expect(body.currentState).toBe("complete");
+    expect(mockDocClientSend).not.toHaveBeenCalled();
+  });
+
+  it("returns 400 when job is already in cancelled state", async () => {
+    mockGetJob.mockResolvedValue({
+      jobId: "cancel-job-already",
+      state: "cancelled",
+      phase: "fetch",
+      startedAt: "2026-01-15T10:00:00.000Z",
+      lastUpdatedAt: "2026-01-15T10:45:00.000Z",
+      filterParams: {},
+      progress: { processed: 50, imported: 40, skipped: 5, failed: 5 },
+    });
+
+    const { handleItemImportCancel } =
+      await import("../../src/import/item-import-handler");
+
+    const event = buildApiEvent({
+      path: "/api/import/items/cancel",
+      body: JSON.stringify({ jobId: "cancel-job-already" }),
+    });
+
+    const result = await handleItemImportCancel(event);
+
+    expect(result.statusCode).toBe(400);
+    const body = JSON.parse(result.body as string);
+    expect(body.message).toContain("Cannot cancel");
+    expect(body.message).toContain("cancelled");
+    expect(body.currentState).toBe("cancelled");
+    expect(mockDocClientSend).not.toHaveBeenCalled();
+  });
+
+  it("returns 404 when job does not exist", async () => {
+    mockGetJob.mockResolvedValue(null);
+
+    const { handleItemImportCancel } =
+      await import("../../src/import/item-import-handler");
+
+    const event = buildApiEvent({
+      path: "/api/import/items/cancel",
+      body: JSON.stringify({ jobId: "nonexistent-job" }),
+    });
+
+    const result = await handleItemImportCancel(event);
+
+    expect(result.statusCode).toBe(404);
+    const body = JSON.parse(result.body as string);
+    expect(body.message).toContain("not found");
+  });
+
+  it("returns 400 when jobId is missing from body", async () => {
+    const { handleItemImportCancel } =
+      await import("../../src/import/item-import-handler");
+
+    const event = buildApiEvent({
+      path: "/api/import/items/cancel",
+      body: JSON.stringify({}),
+    });
+
+    const result = await handleItemImportCancel(event);
+
+    expect(result.statusCode).toBe(400);
+    const body = JSON.parse(result.body as string);
+    expect(body.message).toContain("jobId is required");
   });
 });
 

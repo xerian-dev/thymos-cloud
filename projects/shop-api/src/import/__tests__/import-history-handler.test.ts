@@ -26,7 +26,7 @@ vi.mock("@aws-sdk/lib-dynamodb", () => {
     GetCommand: class {
       constructor(public input: unknown) {}
     },
-    ScanCommand: class {
+    QueryCommand: class {
       constructor(public input: unknown) {}
     },
   };
@@ -74,14 +74,14 @@ function createJobItem(
   overrides?: Record<string, unknown>,
 ) {
   return {
-    PK: `ITEM_IMPORT#${jobId}`,
-    SK: "METADATA",
+    PK: "JOBS",
+    SK: `ITEM_IMPORT#${lastUpdatedAt}#${jobId}`,
     jobId,
     state,
     phase: "sync",
     startedAt: "2025-01-15T08:00:00.000Z",
     lastUpdatedAt,
-    filterParams: {},
+    prefix: "ITEM_IMPORT",
     progress: { processed: 100, imported: 80, skipped: 15, failed: 5 },
     ...overrides,
   };
@@ -129,8 +129,9 @@ describe("import-history-handler", () => {
               },
             });
           }
+          // DynamoDB Query returns items in descending SK order (most recent first)
           return Promise.resolve({
-            Items: [job2, job1],
+            Items: [job1, job2],
             LastEvaluatedKey: undefined,
           });
         },
@@ -200,13 +201,14 @@ describe("import-history-handler", () => {
   });
 
   describe("jobs are sorted by lastUpdatedAt descending", () => {
-    it("returns jobs sorted most recent first", async () => {
-      const oldJob = createJobItem(
-        "old-job",
+    it("returns jobs in the order provided by DynamoDB query (reverse chronological)", async () => {
+      // With ScanIndexForward: false, DynamoDB returns items in descending SK order
+      const newJob = createJobItem(
+        "new-job",
         "failed",
-        "2025-01-10T08:00:00.000Z",
+        "2025-01-15T08:00:00.000Z",
         {
-          error: "Old error",
+          error: "New error",
         },
       );
       const midJob = createJobItem(
@@ -217,17 +219,18 @@ describe("import-history-handler", () => {
           error: "Mid error",
         },
       );
-      const newJob = createJobItem(
-        "new-job",
+      const oldJob = createJobItem(
+        "old-job",
         "failed",
-        "2025-01-15T08:00:00.000Z",
+        "2025-01-10T08:00:00.000Z",
         {
-          error: "New error",
+          error: "Old error",
         },
       );
 
+      // DynamoDB returns them pre-sorted descending by SK
       mockSend.mockResolvedValue({
-        Items: [midJob, oldJob, newJob],
+        Items: [newJob, midJob, oldJob],
         LastEvaluatedKey: undefined,
       });
 
@@ -245,19 +248,26 @@ describe("import-history-handler", () => {
 
   describe("pageSize defaults to 20 for invalid values", () => {
     it("defaults to 20 for string 'abc'", async () => {
-      // Create 25 jobs to verify only 20 are returned
-      const jobs = Array.from({ length: 25 }, (_, i) =>
+      // With Query + Limit, DynamoDB returns at most pageSize items.
+      // We mock the response to return 20 items (simulating Limit: 20).
+      const jobs = Array.from({ length: 20 }, (_, i) =>
         createJobItem(
           `job-${i}`,
           "failed",
-          `2025-01-${String(i + 1).padStart(2, "0")}T08:00:00.000Z`,
+          `2025-01-${String(20 - i).padStart(2, "0")}T08:00:00.000Z`,
           {
             error: "Some error",
           },
         ),
       );
 
-      mockSend.mockResolvedValue({ Items: jobs, LastEvaluatedKey: undefined });
+      mockSend.mockResolvedValue({
+        Items: jobs,
+        LastEvaluatedKey: {
+          PK: "JOBS",
+          SK: "ITEM_IMPORT#2025-01-01T08:00:00.000Z#job-extra",
+        },
+      });
 
       const event = createMockEvent("items", { pageSize: "abc" });
       const result = (await handleImportHistory(
@@ -266,21 +276,28 @@ describe("import-history-handler", () => {
 
       const body = JSON.parse(result.body as string);
       expect(body.jobs).toHaveLength(20);
+      expect(body.nextToken).toBeDefined();
     });
 
     it("defaults to 20 for negative value '-5'", async () => {
-      const jobs = Array.from({ length: 25 }, (_, i) =>
+      const jobs = Array.from({ length: 20 }, (_, i) =>
         createJobItem(
           `job-${i}`,
           "failed",
-          `2025-01-${String(i + 1).padStart(2, "0")}T08:00:00.000Z`,
+          `2025-01-${String(20 - i).padStart(2, "0")}T08:00:00.000Z`,
           {
             error: "Some error",
           },
         ),
       );
 
-      mockSend.mockResolvedValue({ Items: jobs, LastEvaluatedKey: undefined });
+      mockSend.mockResolvedValue({
+        Items: jobs,
+        LastEvaluatedKey: {
+          PK: "JOBS",
+          SK: "ITEM_IMPORT#2025-01-01T08:00:00.000Z#job-extra",
+        },
+      });
 
       const event = createMockEvent("items", { pageSize: "-5" });
       const result = (await handleImportHistory(
@@ -292,18 +309,24 @@ describe("import-history-handler", () => {
     });
 
     it("defaults to 20 for value '10' (not valid page size)", async () => {
-      const jobs = Array.from({ length: 25 }, (_, i) =>
+      const jobs = Array.from({ length: 20 }, (_, i) =>
         createJobItem(
           `job-${i}`,
           "failed",
-          `2025-01-${String(i + 1).padStart(2, "0")}T08:00:00.000Z`,
+          `2025-01-${String(20 - i).padStart(2, "0")}T08:00:00.000Z`,
           {
             error: "Some error",
           },
         ),
       );
 
-      mockSend.mockResolvedValue({ Items: jobs, LastEvaluatedKey: undefined });
+      mockSend.mockResolvedValue({
+        Items: jobs,
+        LastEvaluatedKey: {
+          PK: "JOBS",
+          SK: "ITEM_IMPORT#2025-01-01T08:00:00.000Z#job-extra",
+        },
+      });
 
       const event = createMockEvent("items", { pageSize: "10" });
       const result = (await handleImportHistory(
@@ -315,18 +338,24 @@ describe("import-history-handler", () => {
     });
 
     it("defaults to 20 for value '25' (not valid page size)", async () => {
-      const jobs = Array.from({ length: 30 }, (_, i) =>
+      const jobs = Array.from({ length: 20 }, (_, i) =>
         createJobItem(
           `job-${i}`,
           "failed",
-          `2025-01-${String(i + 1).padStart(2, "0")}T08:00:00.000Z`,
+          `2025-01-${String(20 - i).padStart(2, "0")}T08:00:00.000Z`,
           {
             error: "Some error",
           },
         ),
       );
 
-      mockSend.mockResolvedValue({ Items: jobs, LastEvaluatedKey: undefined });
+      mockSend.mockResolvedValue({
+        Items: jobs,
+        LastEvaluatedKey: {
+          PK: "JOBS",
+          SK: "ITEM_IMPORT#2025-01-01T08:00:00.000Z#job-extra",
+        },
+      });
 
       const event = createMockEvent("items", { pageSize: "25" });
       const result = (await handleImportHistory(
@@ -339,19 +368,25 @@ describe("import-history-handler", () => {
   });
 
   describe("pageSize correctly limits results", () => {
-    it("returns 20 results when pageSize is 20", async () => {
-      const jobs = Array.from({ length: 30 }, (_, i) =>
+    it("returns 20 results when pageSize is 20 and more exist", async () => {
+      const jobs = Array.from({ length: 20 }, (_, i) =>
         createJobItem(
           `job-${i}`,
           "failed",
-          `2025-01-${String(i + 1).padStart(2, "0")}T08:00:00.000Z`,
+          `2025-01-${String(20 - i).padStart(2, "0")}T08:00:00.000Z`,
           {
             error: "Error",
           },
         ),
       );
 
-      mockSend.mockResolvedValue({ Items: jobs, LastEvaluatedKey: undefined });
+      mockSend.mockResolvedValue({
+        Items: jobs,
+        LastEvaluatedKey: {
+          PK: "JOBS",
+          SK: "ITEM_IMPORT#2025-01-01T00:00:00.000Z#job-next",
+        },
+      });
 
       const event = createMockEvent("items", { pageSize: "20" });
       const result = (await handleImportHistory(
@@ -363,8 +398,8 @@ describe("import-history-handler", () => {
       expect(body.nextToken).toBeDefined();
     });
 
-    it("returns 50 results when pageSize is 50", async () => {
-      const jobs = Array.from({ length: 60 }, (_, i) =>
+    it("returns 50 results when pageSize is 50 and more exist", async () => {
+      const jobs = Array.from({ length: 50 }, (_, i) =>
         createJobItem(
           `job-${i}`,
           "failed",
@@ -375,7 +410,13 @@ describe("import-history-handler", () => {
         ),
       );
 
-      mockSend.mockResolvedValue({ Items: jobs, LastEvaluatedKey: undefined });
+      mockSend.mockResolvedValue({
+        Items: jobs,
+        LastEvaluatedKey: {
+          PK: "JOBS",
+          SK: "ITEM_IMPORT#2025-01-01T00:00:00.000Z#job-next",
+        },
+      });
 
       const event = createMockEvent("items", { pageSize: "50" });
       const result = (await handleImportHistory(
@@ -387,8 +428,8 @@ describe("import-history-handler", () => {
       expect(body.nextToken).toBeDefined();
     });
 
-    it("returns 100 results when pageSize is 100", async () => {
-      const jobs = Array.from({ length: 110 }, (_, i) =>
+    it("returns 100 results when pageSize is 100 and more exist", async () => {
+      const jobs = Array.from({ length: 100 }, (_, i) =>
         createJobItem(
           `job-${i}`,
           "failed",
@@ -399,7 +440,13 @@ describe("import-history-handler", () => {
         ),
       );
 
-      mockSend.mockResolvedValue({ Items: jobs, LastEvaluatedKey: undefined });
+      mockSend.mockResolvedValue({
+        Items: jobs,
+        LastEvaluatedKey: {
+          PK: "JOBS",
+          SK: "ITEM_IMPORT#2025-01-01T00:00:00.000Z#job-next",
+        },
+      });
 
       const event = createMockEvent("items", { pageSize: "100" });
       const result = (await handleImportHistory(
@@ -414,7 +461,8 @@ describe("import-history-handler", () => {
 
   describe("nextToken pagination", () => {
     it("returns second page of results when nextToken is provided", async () => {
-      const jobs = Array.from({ length: 25 }, (_, i) =>
+      // First page: 20 items with LastEvaluatedKey
+      const firstPageJobs = Array.from({ length: 20 }, (_, i) =>
         createJobItem(
           `job-${i}`,
           "failed",
@@ -424,10 +472,16 @@ describe("import-history-handler", () => {
           },
         ),
       );
+      const lastEvaluatedKey = {
+        PK: "JOBS",
+        SK: "ITEM_IMPORT#2025-01-05T08:00:00.000Z#job-20",
+      };
 
-      mockSend.mockResolvedValue({ Items: jobs, LastEvaluatedKey: undefined });
+      mockSend.mockResolvedValueOnce({
+        Items: firstPageJobs,
+        LastEvaluatedKey: lastEvaluatedKey,
+      });
 
-      // First request to get nextToken
       const event1 = createMockEvent("items", { pageSize: "20" });
       const result1 = (await handleImportHistory(
         event1,
@@ -436,7 +490,29 @@ describe("import-history-handler", () => {
       expect(body1.jobs).toHaveLength(20);
       expect(body1.nextToken).toBeDefined();
 
-      // Second request using nextToken
+      // Verify nextToken is the base64-encoded LastEvaluatedKey
+      const decodedToken = JSON.parse(
+        Buffer.from(body1.nextToken, "base64").toString("utf-8"),
+      );
+      expect(decodedToken).toEqual(lastEvaluatedKey);
+
+      // Second page: remaining 5 items, no LastEvaluatedKey
+      const secondPageJobs = Array.from({ length: 5 }, (_, i) =>
+        createJobItem(
+          `job-${20 + i}`,
+          "failed",
+          `2025-01-${String(5 - i).padStart(2, "0")}T08:00:00.000Z`,
+          {
+            error: "Error",
+          },
+        ),
+      );
+
+      mockSend.mockResolvedValueOnce({
+        Items: secondPageJobs,
+        LastEvaluatedKey: undefined,
+      });
+
       const event2 = createMockEvent("items", {
         pageSize: "20",
         nextToken: body1.nextToken,
@@ -450,24 +526,18 @@ describe("import-history-handler", () => {
       expect(body2.nextToken).toBeUndefined();
     });
 
-    it("returns empty page when nextToken offset exceeds total jobs", async () => {
-      const jobs = Array.from({ length: 5 }, (_, i) =>
-        createJobItem(
-          `job-${i}`,
-          "failed",
-          `2025-01-${String(i + 1).padStart(2, "0")}T08:00:00.000Z`,
-          {
-            error: "Error",
-          },
-        ),
-      );
+    it("returns empty page when no items match on subsequent page", async () => {
+      mockSend.mockResolvedValue({
+        Items: [],
+        LastEvaluatedKey: undefined,
+      });
 
-      mockSend.mockResolvedValue({ Items: jobs, LastEvaluatedKey: undefined });
-
-      // Token with offset beyond total
-      const nextToken = Buffer.from(JSON.stringify({ offset: 100 })).toString(
-        "base64",
-      );
+      const nextToken = Buffer.from(
+        JSON.stringify({
+          PK: "JOBS",
+          SK: "ITEM_IMPORT#2025-01-01T00:00:00.000Z#job-999",
+        }),
+      ).toString("base64");
       const event = createMockEvent("items", { pageSize: "20", nextToken });
       const result = (await handleImportHistory(
         event,
@@ -668,8 +738,8 @@ describe("import-history-handler", () => {
     });
   });
 
-  describe("DynamoDB scan error returns 500", () => {
-    it("returns 500 when DynamoDB scan fails", async () => {
+  describe("DynamoDB query error returns 500", () => {
+    it("returns 500 when DynamoDB query fails", async () => {
       mockSend.mockRejectedValue(new Error("DynamoDB service unavailable"));
 
       const event = createMockEvent("items");
@@ -698,7 +768,7 @@ describe("import-history-handler", () => {
       expect(body.nextToken).toBeUndefined();
     });
 
-    it("returns empty jobs array when scan returns no items", async () => {
+    it("returns empty jobs array when query returns no items", async () => {
       mockSend.mockResolvedValue({
         Items: undefined,
         LastEvaluatedKey: undefined,

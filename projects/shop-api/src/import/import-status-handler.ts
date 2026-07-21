@@ -6,11 +6,12 @@ import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import {
   DynamoDBDocumentClient,
   GetCommand,
-  ScanCommand,
+  QueryCommand,
 } from "@aws-sdk/lib-dynamodb";
 import { getRunningOrPausedJob } from "./job-manager";
 import { getRunningSaleJob } from "./sale-job-manager";
 import { accountJobManager } from "./account-fetch-orchestrator";
+import { mapPointerToImportJob } from "./generic-job-manager";
 import type { ImportJob } from "./generic-job-manager";
 
 interface ImportJobStatus {
@@ -145,54 +146,24 @@ function mapJobToStatus(job: ImportJob): ImportJobStatus {
 }
 
 async function getMostRecentJob(prefix: string): Promise<ImportJob | null> {
-  const jobs: ImportJob[] = [];
-  let exclusiveStartKey: Record<string, unknown> | undefined;
+  const result = await docClient.send(
+    new QueryCommand({
+      TableName: IMPORT_TABLE_NAME,
+      KeyConditionExpression: "PK = :pk AND begins_with(SK, :skPrefix)",
+      ExpressionAttributeValues: {
+        ":pk": "JOBS",
+        ":skPrefix": `${prefix}#`,
+      },
+      ScanIndexForward: false,
+      Limit: 1,
+    }),
+  );
 
-  do {
-    const result = await docClient.send(
-      new ScanCommand({
-        TableName: IMPORT_TABLE_NAME,
-        FilterExpression: "begins_with(PK, :pkPrefix) AND SK = :sk",
-        ExpressionAttributeValues: {
-          ":pkPrefix": `${prefix}#`,
-          ":sk": "METADATA",
-        },
-        ExclusiveStartKey: exclusiveStartKey,
-      }),
-    );
-
-    if (result.Items) {
-      for (const item of result.Items) {
-        jobs.push({
-          jobId: item.jobId as string,
-          state: item.state as ImportJob["state"],
-          phase: (item.phase as ImportJob["phase"]) ?? "fetch",
-          startedAt: item.startedAt as string,
-          lastUpdatedAt: item.lastUpdatedAt as string,
-          filterParams: item.filterParams as { createdAfter?: string },
-          error: item.error as string | undefined,
-          progress: item.progress as ImportJob["progress"],
-        });
-      }
-    }
-
-    exclusiveStartKey = result.LastEvaluatedKey as
-      | Record<string, unknown>
-      | undefined;
-  } while (exclusiveStartKey);
-
-  if (jobs.length === 0) {
+  if (!result.Items || result.Items.length === 0) {
     return null;
   }
 
-  // Sort by lastUpdatedAt descending and return the most recent
-  jobs.sort(
-    (a, b) =>
-      new Date(b.lastUpdatedAt).getTime() -
-      new Date(a.lastUpdatedAt).getTime(),
-  );
-
-  return jobs[0];
+  return mapPointerToImportJob(result.Items[0]);
 }
 
 async function getImportReport(

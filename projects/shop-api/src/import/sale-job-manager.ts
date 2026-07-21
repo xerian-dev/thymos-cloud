@@ -1,7 +1,12 @@
 import { createJobManager } from "./generic-job-manager";
 import type { ImportPhase, ProgressCounts } from "./job-manager";
 
-export type SaleJobState = "running" | "paused" | "failed" | "complete";
+export type SaleJobState =
+  | "running"
+  | "paused"
+  | "failed"
+  | "complete"
+  | "cancelled";
 
 export interface SaleImportJob {
   jobId: string;

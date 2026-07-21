@@ -6,7 +6,7 @@ import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import {
   DynamoDBDocumentClient,
   GetCommand,
-  DeleteCommand,
+  TransactWriteCommand,
 } from "@aws-sdk/lib-dynamodb";
 import {
   createSaleJob,
@@ -15,6 +15,7 @@ import {
   transitionSaleJob,
   updateSaleJobPhase,
 } from "./sale-job-manager";
+import { buildPointerSK } from "./generic-job-manager";
 import { getConsignCloudApiKey } from "./ssm-client";
 import { createRateLimiter } from "./rate-limiter";
 import { runSaleFetchLoop } from "./sale-fetch-orchestrator";
@@ -418,35 +419,70 @@ export async function handleSaleImportCancel(
     };
   }
 
-  // 3. Validate state — can only cancel paused or failed jobs
-  if (job.state !== "paused" && job.state !== "failed") {
+  // 3. Validate state — can cancel running, paused, or failed jobs
+  if (
+    job.state !== "running" &&
+    job.state !== "paused" &&
+    job.state !== "failed"
+  ) {
     return {
       statusCode: 400,
       body: JSON.stringify({
-        message: `Cannot cancel job in '${job.state}' state. Job must be in 'paused' or 'failed' state.`,
+        message: `Cannot cancel job in '${job.state}' state. Job must be in 'running', 'paused', or 'failed' state.`,
         jobId,
         currentState: job.state,
       }),
     };
   }
 
-  // 4. Delete job record, checkpoint, and sync checkpoint
-  const pk = `SALE_IMPORT#${jobId}`;
-  const sortKeys = ["METADATA", "CHECKPOINT", "SYNC_CHECKPOINT"];
+  // 4. Transition to cancelled state with pointer update
+  const now = new Date().toISOString();
+  const oldPointerSK = buildPointerSK("SALE_IMPORT", job.lastUpdatedAt, jobId);
+  const newPointerSK = buildPointerSK("SALE_IMPORT", now, jobId);
 
-  for (const sk of sortKeys) {
-    await docClient.send(
-      new DeleteCommand({
-        TableName: IMPORT_TABLE_NAME,
-        Key: { PK: pk, SK: sk },
-      }),
-    );
-  }
+  await docClient.send(
+    new TransactWriteCommand({
+      TransactItems: [
+        {
+          Update: {
+            TableName: IMPORT_TABLE_NAME,
+            Key: { PK: `SALE_IMPORT#${jobId}`, SK: "METADATA" },
+            UpdateExpression: "SET #state = :state, lastUpdatedAt = :now",
+            ExpressionAttributeNames: { "#state": "state" },
+            ExpressionAttributeValues: { ":state": "cancelled", ":now": now },
+          },
+        },
+        {
+          Delete: {
+            TableName: IMPORT_TABLE_NAME,
+            Key: { PK: "JOBS", SK: oldPointerSK },
+          },
+        },
+        {
+          Put: {
+            TableName: IMPORT_TABLE_NAME,
+            Item: {
+              PK: "JOBS",
+              SK: newPointerSK,
+              jobId,
+              state: "cancelled",
+              phase: job.phase,
+              progress: job.progress,
+              startedAt: job.startedAt,
+              lastUpdatedAt: now,
+              prefix: "SALE_IMPORT",
+              ...(job.error ? { error: job.error } : {}),
+            },
+          },
+        },
+      ],
+    }),
+  );
 
   console.info(
     JSON.stringify({
       level: "INFO",
-      message: "Sale import job cancelled and records deleted",
+      message: "Sale import job cancelled",
       jobId,
     }),
   );

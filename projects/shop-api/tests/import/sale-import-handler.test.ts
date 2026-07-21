@@ -71,6 +71,17 @@ vi.mock("@aws-sdk/lib-dynamodb", () => ({
       this.input = input;
     }
   },
+  TransactWriteCommand: class MockTransactWriteCommand {
+    input: unknown;
+    constructor(input: unknown) {
+      this.input = input;
+    }
+  },
+}));
+
+vi.mock("../../src/import/generic-job-manager", () => ({
+  buildPointerSK: (prefix: string, lastUpdatedAt: string, jobId: string) =>
+    `${prefix}#${lastUpdatedAt}#${jobId}`,
 }));
 
 // --- Helpers ---
@@ -523,7 +534,7 @@ describe("sale-import-handler unit tests", () => {
   });
 
   describe("handleSaleImportCancel", () => {
-    it("deletes METADATA, CHECKPOINT, and SYNC_CHECKPOINT records for paused job, returns 200", async () => {
+    it("transitions to cancelled state via TransactWriteCommand for paused job, returns 200", async () => {
       mockGetSaleJob.mockResolvedValue({
         jobId: "sale-job-cancel",
         state: "paused",
@@ -548,26 +559,51 @@ describe("sale-import-handler unit tests", () => {
       expect(body.message).toContain("cancelled");
       expect(body.jobId).toBe("sale-job-cancel");
 
-      // Verify all three records are deleted
-      expect(mockDocClientSend).toHaveBeenCalledTimes(3);
+      // Verify TransactWriteCommand was sent (single call with transaction)
+      expect(mockDocClientSend).toHaveBeenCalledTimes(1);
 
-      const calls = mockDocClientSend.mock.calls;
-      const deletedSKs = calls.map(
-        (call: unknown[]) =>
-          (call[0] as { input: { Key: { SK: string } } }).input.Key.SK,
+      const transactInput = (
+        mockDocClientSend.mock.calls[0][0] as {
+          input: { TransactItems: unknown[] };
+        }
+      ).input;
+      expect(transactInput.TransactItems).toHaveLength(3);
+
+      // Verify the update sets state to cancelled
+      const updateItem = transactInput.TransactItems[0] as {
+        Update: {
+          Key: { PK: string; SK: string };
+          ExpressionAttributeValues: Record<string, string>;
+        };
+      };
+      expect(updateItem.Update.Key.PK).toBe("SALE_IMPORT#sale-job-cancel");
+      expect(updateItem.Update.Key.SK).toBe("METADATA");
+      expect(updateItem.Update.ExpressionAttributeValues[":state"]).toBe(
+        "cancelled",
       );
-      expect(deletedSKs).toContain("METADATA");
-      expect(deletedSKs).toContain("CHECKPOINT");
-      expect(deletedSKs).toContain("SYNC_CHECKPOINT");
 
-      // Verify all deletes use the correct PK
-      for (const call of calls) {
-        const input = (call[0] as { input: { Key: { PK: string } } }).input;
-        expect(input.Key.PK).toBe("SALE_IMPORT#sale-job-cancel");
-      }
+      // Verify old pointer is deleted
+      const deleteItem = transactInput.TransactItems[1] as {
+        Delete: { Key: { PK: string; SK: string } };
+      };
+      expect(deleteItem.Delete.Key.PK).toBe("JOBS");
+      expect(deleteItem.Delete.Key.SK).toBe(
+        "SALE_IMPORT#2026-01-15T10:30:00.000Z#sale-job-cancel",
+      );
+
+      // Verify new pointer is created with cancelled state
+      const putItem = transactInput.TransactItems[2] as {
+        Put: {
+          Item: { PK: string; state: string; jobId: string; prefix: string };
+        };
+      };
+      expect(putItem.Put.Item.PK).toBe("JOBS");
+      expect(putItem.Put.Item.state).toBe("cancelled");
+      expect(putItem.Put.Item.jobId).toBe("sale-job-cancel");
+      expect(putItem.Put.Item.prefix).toBe("SALE_IMPORT");
     });
 
-    it("returns 400 when job is in running state (cannot cancel)", async () => {
+    it("allows cancellation of running jobs, returns 200", async () => {
       mockGetSaleJob.mockResolvedValue({
         jobId: "sale-job-running",
         state: "running",
@@ -578,6 +614,8 @@ describe("sale-import-handler unit tests", () => {
         progress: { processed: 30, imported: 25, skipped: 3, failed: 2 },
       });
 
+      mockDocClientSend.mockResolvedValue({});
+
       const { handleSaleImportCancel } =
         await import("../../src/import/sale-import-handler");
 
@@ -585,11 +623,96 @@ describe("sale-import-handler unit tests", () => {
 
       const result = await handleSaleImportCancel(event);
 
+      expect(result.statusCode).toBe(200);
+      const body = JSON.parse(result.body as string);
+      expect(body.message).toContain("cancelled");
+    });
+
+    it("returns 400 when job is in complete state (cannot cancel)", async () => {
+      mockGetSaleJob.mockResolvedValue({
+        jobId: "sale-job-complete",
+        state: "complete",
+        phase: "sync",
+        startedAt: "2026-01-15T10:00:00.000Z",
+        lastUpdatedAt: "2026-01-15T11:00:00.000Z",
+        filterParams: {},
+        progress: { processed: 100, imported: 90, skipped: 5, failed: 5 },
+      });
+
+      const { handleSaleImportCancel } =
+        await import("../../src/import/sale-import-handler");
+
+      const event = makeEvent({ jobId: "sale-job-complete" });
+
+      const result = await handleSaleImportCancel(event);
+
       expect(result.statusCode).toBe(400);
       const body = JSON.parse(result.body as string);
       expect(body.message).toContain("Cannot cancel");
-      expect(body.message).toContain("running");
       expect(mockDocClientSend).not.toHaveBeenCalled();
+    });
+
+    it("returns 400 when job is already in cancelled state", async () => {
+      mockGetSaleJob.mockResolvedValue({
+        jobId: "sale-job-cancelled",
+        state: "cancelled",
+        phase: "fetch",
+        startedAt: "2026-01-15T10:00:00.000Z",
+        lastUpdatedAt: "2026-01-15T10:45:00.000Z",
+        filterParams: {},
+        progress: { processed: 50, imported: 40, skipped: 5, failed: 5 },
+      });
+
+      const { handleSaleImportCancel } =
+        await import("../../src/import/sale-import-handler");
+
+      const event = makeEvent({ jobId: "sale-job-cancelled" });
+
+      const result = await handleSaleImportCancel(event);
+
+      expect(result.statusCode).toBe(400);
+      const body = JSON.parse(result.body as string);
+      expect(body.message).toContain("Cannot cancel");
+      expect(body.message).toContain("cancelled");
+      expect(mockDocClientSend).not.toHaveBeenCalled();
+    });
+
+    it("cancels failed job and preserves error in pointer record", async () => {
+      mockGetSaleJob.mockResolvedValue({
+        jobId: "sale-job-failed",
+        state: "failed",
+        phase: "sync",
+        startedAt: "2026-01-15T10:00:00.000Z",
+        lastUpdatedAt: "2026-01-15T10:45:00.000Z",
+        filterParams: {},
+        error: "Network timeout",
+        progress: { processed: 80, imported: 60, skipped: 10, failed: 10 },
+      });
+
+      mockDocClientSend.mockResolvedValue({});
+
+      const { handleSaleImportCancel } =
+        await import("../../src/import/sale-import-handler");
+
+      const event = makeEvent({ jobId: "sale-job-failed" });
+
+      const result = await handleSaleImportCancel(event);
+
+      expect(result.statusCode).toBe(200);
+      const body = JSON.parse(result.body as string);
+      expect(body.message).toContain("cancelled");
+
+      // Verify pointer record preserves error from previous state
+      const transactInput = (
+        mockDocClientSend.mock.calls[0][0] as {
+          input: { TransactItems: unknown[] };
+        }
+      ).input;
+      const putItem = transactInput.TransactItems[2] as {
+        Put: { Item: { error?: string; state: string } };
+      };
+      expect(putItem.Put.Item.state).toBe("cancelled");
+      expect(putItem.Put.Item.error).toBe("Network timeout");
     });
   });
 });

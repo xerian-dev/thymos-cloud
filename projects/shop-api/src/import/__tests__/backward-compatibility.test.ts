@@ -32,6 +32,12 @@ vi.mock("@aws-sdk/lib-dynamodb", () => ({
   DeleteCommand: class {
     constructor(public input: unknown) {}
   },
+  QueryCommand: class {
+    constructor(public input: unknown) {}
+  },
+  TransactWriteCommand: class {
+    constructor(public input: unknown) {}
+  },
 }));
 
 vi.stubGlobal("crypto", { randomUUID: () => "test-uuid-1234" });
@@ -66,8 +72,10 @@ describe("Backward Compatibility - Migrated Modules", () => {
       await createJob({});
 
       const call = mockSend.mock.calls[0][0];
-      expect(call.input.Item.PK).toMatch(/^ITEM_IMPORT#/);
-      expect(call.input.Item.SK).toBe("METADATA");
+      // TransactWriteCommand: first item is the metadata record
+      const metadataItem = call.input.TransactItems[0].Put.Item;
+      expect(metadataItem.PK).toMatch(/^ITEM_IMPORT#/);
+      expect(metadataItem.SK).toBe("METADATA");
     });
   });
 
@@ -89,8 +97,10 @@ describe("Backward Compatibility - Migrated Modules", () => {
       await createSaleJob({});
 
       const call = mockSend.mock.calls[0][0];
-      expect(call.input.Item.PK).toMatch(/^SALE_IMPORT#/);
-      expect(call.input.Item.SK).toBe("METADATA");
+      // TransactWriteCommand: first item is the metadata record
+      const metadataItem = call.input.TransactItems[0].Put.Item;
+      expect(metadataItem.PK).toMatch(/^SALE_IMPORT#/);
+      expect(metadataItem.SK).toBe("METADATA");
     });
   });
 
@@ -123,16 +133,25 @@ describe("Backward Compatibility - Migrated Modules", () => {
     it("exports saveSaleFetchCheckpoint, loadSaleFetchCheckpoint, saveSaleSyncCheckpoint, loadSaleSyncCheckpoint", async () => {
       const saleCheckpointManager = await import("../sale-checkpoint-manager");
 
-      expect(typeof saleCheckpointManager.saveSaleFetchCheckpoint).toBe("function");
-      expect(typeof saleCheckpointManager.loadSaleFetchCheckpoint).toBe("function");
-      expect(typeof saleCheckpointManager.saveSaleSyncCheckpoint).toBe("function");
-      expect(typeof saleCheckpointManager.loadSaleSyncCheckpoint).toBe("function");
+      expect(typeof saleCheckpointManager.saveSaleFetchCheckpoint).toBe(
+        "function",
+      );
+      expect(typeof saleCheckpointManager.loadSaleFetchCheckpoint).toBe(
+        "function",
+      );
+      expect(typeof saleCheckpointManager.saveSaleSyncCheckpoint).toBe(
+        "function",
+      );
+      expect(typeof saleCheckpointManager.loadSaleSyncCheckpoint).toBe(
+        "function",
+      );
     });
 
     it("uses SALE_IMPORT prefix for fetch checkpoints", async () => {
       mockSend.mockResolvedValueOnce({});
 
-      const { saveSaleFetchCheckpoint } = await import("../sale-checkpoint-manager");
+      const { saveSaleFetchCheckpoint } =
+        await import("../sale-checkpoint-manager");
       await saveSaleFetchCheckpoint({
         jobId: "test-sale-job-456",
         cursor: "sale-cursor",

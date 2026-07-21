@@ -26,7 +26,7 @@ vi.mock("@aws-sdk/lib-dynamodb", () => {
     GetCommand: class {
       constructor(public input: unknown) {}
     },
-    ScanCommand: class {
+    QueryCommand: class {
       constructor(public input: unknown) {}
     },
   };
@@ -47,6 +47,19 @@ vi.mock("../account-fetch-orchestrator", () => ({
   accountJobManager: {
     getRunningOrPausedJob: mockAccountGetRunningOrPausedJob,
   },
+}));
+
+vi.mock("../generic-job-manager", () => ({
+  mapPointerToImportJob: (item: Record<string, unknown>) => ({
+    jobId: item.jobId as string,
+    state: item.state as string,
+    phase: (item.phase as string) ?? "fetch",
+    startedAt: item.startedAt as string,
+    lastUpdatedAt: item.lastUpdatedAt as string,
+    filterParams: {},
+    error: item.error as string | undefined,
+    progress: item.progress,
+  }),
 }));
 
 import { handleImportStatusAll } from "../import-status-handler";
@@ -160,7 +173,7 @@ describe("import-status-handler", () => {
       mockGetRunningOrPausedJob.mockResolvedValue(createRunningJob("items"));
       mockGetRunningSaleJob.mockResolvedValue(null);
       mockAccountGetRunningOrPausedJob.mockResolvedValue(null);
-      mockSend.mockResolvedValue({ Items: [], LastEvaluatedKey: undefined });
+      mockSend.mockResolvedValue({ Items: [] });
 
       const result = (await handleImportStatusAll(
         event,
@@ -171,62 +184,58 @@ describe("import-status-handler", () => {
   });
 
   describe("includes report data when job is complete", () => {
-    it("fetches and includes report for a completed job found via scan", async () => {
+    it("fetches and includes report for a completed job found via query", async () => {
       const completeJob = createCompleteJob("items");
       mockGetRunningOrPausedJob.mockResolvedValue(null);
       mockGetRunningSaleJob.mockResolvedValue(null);
       mockAccountGetRunningOrPausedJob.mockResolvedValue(null);
 
-      // For items: scan returns the complete job
-      // For sales: scan returns empty
-      // For accounts: scan returns empty
       mockSend.mockImplementation(
         (command: { input: Record<string, unknown> }) => {
           const input = command.input as Record<string, unknown>;
 
-          // ScanCommand for items type
+          // QueryCommand for items type (getMostRecentJob)
           if (
-            input.FilterExpression &&
+            input.KeyConditionExpression &&
             (input.ExpressionAttributeValues as Record<string, string>)[
-              ":pkPrefix"
+              ":skPrefix"
             ] === "ITEM_IMPORT#"
           ) {
             return Promise.resolve({
               Items: [
                 {
-                  PK: `ITEM_IMPORT#${completeJob.jobId}`,
-                  SK: "METADATA",
+                  PK: "JOBS",
+                  SK: `ITEM_IMPORT#${completeJob.lastUpdatedAt}#${completeJob.jobId}`,
                   jobId: completeJob.jobId,
                   state: "complete",
                   phase: "sync",
                   startedAt: completeJob.startedAt,
                   lastUpdatedAt: completeJob.lastUpdatedAt,
-                  filterParams: {},
                   progress: completeJob.progress,
+                  prefix: "ITEM_IMPORT",
                 },
               ],
-              LastEvaluatedKey: undefined,
             });
           }
 
-          // ScanCommand for sales type
+          // QueryCommand for sales type
           if (
-            input.FilterExpression &&
+            input.KeyConditionExpression &&
             (input.ExpressionAttributeValues as Record<string, string>)[
-              ":pkPrefix"
+              ":skPrefix"
             ] === "SALE_IMPORT#"
           ) {
-            return Promise.resolve({ Items: [], LastEvaluatedKey: undefined });
+            return Promise.resolve({ Items: [] });
           }
 
-          // ScanCommand for accounts type
+          // QueryCommand for accounts type
           if (
-            input.FilterExpression &&
+            input.KeyConditionExpression &&
             (input.ExpressionAttributeValues as Record<string, string>)[
-              ":pkPrefix"
+              ":skPrefix"
             ] === "ACCOUNT_IMPORT#"
           ) {
-            return Promise.resolve({ Items: [], LastEvaluatedKey: undefined });
+            return Promise.resolve({ Items: [] });
           }
 
           // GetCommand for report
@@ -256,7 +265,7 @@ describe("import-status-handler", () => {
             return Promise.resolve({ Item: undefined });
           }
 
-          return Promise.resolve({ Items: [], LastEvaluatedKey: undefined });
+          return Promise.resolve({ Items: [] });
         },
       );
 
@@ -292,9 +301,9 @@ describe("import-status-handler", () => {
           const input = command.input as Record<string, unknown>;
 
           if (
-            input.FilterExpression &&
+            input.KeyConditionExpression &&
             (input.ExpressionAttributeValues as Record<string, string>)[
-              ":pkPrefix"
+              ":skPrefix"
             ] === "ITEM_IMPORT#"
           ) {
             return Promise.resolve({
@@ -305,16 +314,15 @@ describe("import-status-handler", () => {
                   phase: "sync",
                   startedAt: completeJob.startedAt,
                   lastUpdatedAt: completeJob.lastUpdatedAt,
-                  filterParams: {},
                   progress: completeJob.progress,
+                  prefix: "ITEM_IMPORT",
                 },
               ],
-              LastEvaluatedKey: undefined,
             });
           }
 
-          if (input.FilterExpression) {
-            return Promise.resolve({ Items: [], LastEvaluatedKey: undefined });
+          if (input.KeyConditionExpression) {
+            return Promise.resolve({ Items: [] });
           }
 
           // GetCommand — report not found
@@ -347,9 +355,9 @@ describe("import-status-handler", () => {
           const input = command.input as Record<string, unknown>;
 
           if (
-            input.FilterExpression &&
+            input.KeyConditionExpression &&
             (input.ExpressionAttributeValues as Record<string, string>)[
-              ":pkPrefix"
+              ":skPrefix"
             ] === "ITEM_IMPORT#"
           ) {
             return Promise.resolve({
@@ -360,17 +368,16 @@ describe("import-status-handler", () => {
                   phase: "sync",
                   startedAt: failedJob.startedAt,
                   lastUpdatedAt: failedJob.lastUpdatedAt,
-                  filterParams: {},
                   error: "Timeout occurred",
                   progress: failedJob.progress,
+                  prefix: "ITEM_IMPORT",
                 },
               ],
-              LastEvaluatedKey: undefined,
             });
           }
 
-          if (input.FilterExpression) {
-            return Promise.resolve({ Items: [], LastEvaluatedKey: undefined });
+          if (input.KeyConditionExpression) {
+            return Promise.resolve({ Items: [] });
           }
 
           // GetCommand should not be called for non-complete jobs
@@ -392,11 +399,11 @@ describe("import-status-handler", () => {
   });
 
   describe("returns null for types with no job", () => {
-    it("returns null when job manager returns null and scan finds no jobs", async () => {
+    it("returns null when job manager returns null and query finds no jobs", async () => {
       mockGetRunningOrPausedJob.mockResolvedValue(null);
       mockGetRunningSaleJob.mockResolvedValue(null);
       mockAccountGetRunningOrPausedJob.mockResolvedValue(null);
-      mockSend.mockResolvedValue({ Items: [], LastEvaluatedKey: undefined });
+      mockSend.mockResolvedValue({ Items: [] });
 
       const result = (await handleImportStatusAll(
         event,
@@ -413,7 +420,7 @@ describe("import-status-handler", () => {
       mockGetRunningOrPausedJob.mockResolvedValue(itemJob);
       mockGetRunningSaleJob.mockResolvedValue(null);
       mockAccountGetRunningOrPausedJob.mockResolvedValue(null);
-      mockSend.mockResolvedValue({ Items: [], LastEvaluatedKey: undefined });
+      mockSend.mockResolvedValue({ Items: [] });
 
       const result = (await handleImportStatusAll(
         event,
@@ -457,7 +464,7 @@ describe("import-status-handler", () => {
       mockGetRunningOrPausedJob.mockResolvedValue(itemJob);
       mockGetRunningSaleJob.mockRejectedValue(new Error("Connection refused"));
       mockAccountGetRunningOrPausedJob.mockResolvedValue(null);
-      mockSend.mockResolvedValue({ Items: [], LastEvaluatedKey: undefined });
+      mockSend.mockResolvedValue({ Items: [] });
 
       const result = (await handleImportStatusAll(
         event,
@@ -476,7 +483,7 @@ describe("import-status-handler", () => {
       mockAccountGetRunningOrPausedJob.mockRejectedValue(
         new Error("Internal error"),
       );
-      mockSend.mockResolvedValue({ Items: [], LastEvaluatedKey: undefined });
+      mockSend.mockResolvedValue({ Items: [] });
 
       const result = (await handleImportStatusAll(
         event,
@@ -504,7 +511,7 @@ describe("import-status-handler", () => {
       expect(body.accounts).toBeNull();
     });
 
-    it("returns null when scan fails after job manager returns null", async () => {
+    it("returns null when query fails after job manager returns null", async () => {
       mockGetRunningOrPausedJob.mockResolvedValue(null);
       mockGetRunningSaleJob.mockResolvedValue(createRunningJob("sales"));
       mockAccountGetRunningOrPausedJob.mockResolvedValue(null);
@@ -514,16 +521,16 @@ describe("import-status-handler", () => {
           const input = command.input as Record<string, unknown>;
 
           if (
-            input.FilterExpression &&
+            input.KeyConditionExpression &&
             (input.ExpressionAttributeValues as Record<string, string>)[
-              ":pkPrefix"
+              ":skPrefix"
             ] === "ITEM_IMPORT#"
           ) {
-            return Promise.reject(new Error("Scan failed"));
+            return Promise.reject(new Error("Query failed"));
           }
 
-          if (input.FilterExpression) {
-            return Promise.resolve({ Items: [], LastEvaluatedKey: undefined });
+          if (input.KeyConditionExpression) {
+            return Promise.resolve({ Items: [] });
           }
 
           return Promise.resolve({ Item: undefined });
@@ -542,20 +549,10 @@ describe("import-status-handler", () => {
   });
 
   describe("DynamoDB interactions", () => {
-    it("scans most recent job sorted by lastUpdatedAt descending", async () => {
+    it("returns the most recent job via query with ScanIndexForward false and Limit 1", async () => {
       mockGetRunningOrPausedJob.mockResolvedValue(null);
       mockGetRunningSaleJob.mockResolvedValue(null);
       mockAccountGetRunningOrPausedJob.mockResolvedValue(null);
-
-      const olderJob = {
-        jobId: "older-job",
-        state: "complete",
-        phase: "sync",
-        startedAt: "2025-01-14T08:00:00.000Z",
-        lastUpdatedAt: "2025-01-14T08:45:00.000Z",
-        filterParams: {},
-        progress: { processed: 100, imported: 90, skipped: 5, failed: 5 },
-      };
 
       const newerJob = {
         jobId: "newer-job",
@@ -563,8 +560,8 @@ describe("import-status-handler", () => {
         phase: "sync",
         startedAt: "2025-01-15T08:00:00.000Z",
         lastUpdatedAt: "2025-01-15T08:45:00.000Z",
-        filterParams: {},
         progress: { processed: 500, imported: 480, skipped: 15, failed: 5 },
+        prefix: "ITEM_IMPORT",
       };
 
       mockSend.mockImplementation(
@@ -572,19 +569,27 @@ describe("import-status-handler", () => {
           const input = command.input as Record<string, unknown>;
 
           if (
-            input.FilterExpression &&
+            input.KeyConditionExpression &&
             (input.ExpressionAttributeValues as Record<string, string>)[
-              ":pkPrefix"
+              ":skPrefix"
             ] === "ITEM_IMPORT#"
           ) {
+            // Verify query parameters
+            expect(input.ScanIndexForward).toBe(false);
+            expect(input.Limit).toBe(1);
+            expect(
+              (input.ExpressionAttributeValues as Record<string, string>)[
+                ":pk"
+              ],
+            ).toBe("JOBS");
+
             return Promise.resolve({
-              Items: [olderJob, newerJob],
-              LastEvaluatedKey: undefined,
+              Items: [newerJob],
             });
           }
 
-          if (input.FilterExpression) {
-            return Promise.resolve({ Items: [], LastEvaluatedKey: undefined });
+          if (input.KeyConditionExpression) {
+            return Promise.resolve({ Items: [] });
           }
 
           // GetCommand for report
@@ -605,93 +610,6 @@ describe("import-status-handler", () => {
       const body = JSON.parse(result.body as string);
 
       expect(body.items.jobId).toBe("newer-job");
-    });
-
-    it("handles paginated scan results", async () => {
-      mockGetRunningOrPausedJob.mockResolvedValue(null);
-      mockGetRunningSaleJob.mockResolvedValue(null);
-      mockAccountGetRunningOrPausedJob.mockResolvedValue(null);
-
-      let callCount = 0;
-      mockSend.mockImplementation(
-        (command: { input: Record<string, unknown> }) => {
-          const input = command.input as Record<string, unknown>;
-
-          if (
-            input.FilterExpression &&
-            (input.ExpressionAttributeValues as Record<string, string>)[
-              ":pkPrefix"
-            ] === "ITEM_IMPORT#"
-          ) {
-            callCount++;
-            if (callCount === 1) {
-              return Promise.resolve({
-                Items: [
-                  {
-                    jobId: "page1-job",
-                    state: "complete",
-                    phase: "sync",
-                    startedAt: "2025-01-14T08:00:00.000Z",
-                    lastUpdatedAt: "2025-01-14T08:45:00.000Z",
-                    filterParams: {},
-                    progress: {
-                      processed: 100,
-                      imported: 90,
-                      skipped: 5,
-                      failed: 5,
-                    },
-                  },
-                ],
-                LastEvaluatedKey: {
-                  PK: "ITEM_IMPORT#page1-job",
-                  SK: "METADATA",
-                },
-              });
-            }
-            return Promise.resolve({
-              Items: [
-                {
-                  jobId: "page2-job",
-                  state: "complete",
-                  phase: "sync",
-                  startedAt: "2025-01-15T10:00:00.000Z",
-                  lastUpdatedAt: "2025-01-15T10:45:00.000Z",
-                  filterParams: {},
-                  progress: {
-                    processed: 200,
-                    imported: 190,
-                    skipped: 5,
-                    failed: 5,
-                  },
-                },
-              ],
-              LastEvaluatedKey: undefined,
-            });
-          }
-
-          if (input.FilterExpression) {
-            return Promise.resolve({ Items: [], LastEvaluatedKey: undefined });
-          }
-
-          // GetCommand for report
-          return Promise.resolve({
-            Item: {
-              PK: "ITEM_IMPORT#REPORT",
-              SK: "page2-job",
-              jobId: "page2-job",
-              totalProcessed: 200,
-            },
-          });
-        },
-      );
-
-      const result = (await handleImportStatusAll(
-        event,
-      )) as APIGatewayProxyStructuredResultV2;
-      const body = JSON.parse(result.body as string);
-
-      // Should return the newer job from second page
-      expect(body.items.jobId).toBe("page2-job");
     });
   });
 });

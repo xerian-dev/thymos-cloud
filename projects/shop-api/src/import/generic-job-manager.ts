@@ -2,12 +2,16 @@ import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import {
   DynamoDBDocumentClient,
   GetCommand,
-  PutCommand,
-  ScanCommand,
-  UpdateCommand,
+  QueryCommand,
+  TransactWriteCommand,
 } from "@aws-sdk/lib-dynamodb";
 
-export type JobState = "running" | "paused" | "failed" | "complete";
+export type JobState =
+  | "running"
+  | "paused"
+  | "failed"
+  | "complete"
+  | "cancelled";
 
 export type ImportPhase = "fetch" | "sync";
 
@@ -29,6 +33,40 @@ export interface ImportJob {
   progress: ProgressCounts;
 }
 
+export interface PointerRecord {
+  jobId: string;
+  state: JobState;
+  phase: ImportPhase;
+  progress: ProgressCounts;
+  startedAt: string;
+  lastUpdatedAt: string;
+  error?: string;
+  prefix: string;
+}
+
+export function buildPointerSK(
+  prefix: string,
+  lastUpdatedAt: string,
+  jobId: string,
+): string {
+  return `${prefix}#${lastUpdatedAt}#${jobId}`;
+}
+
+export function mapPointerToImportJob(
+  item: Record<string, unknown>,
+): ImportJob {
+  return {
+    jobId: item.jobId as string,
+    state: item.state as JobState,
+    phase: (item.phase as ImportPhase) ?? "fetch",
+    startedAt: item.startedAt as string,
+    lastUpdatedAt: item.lastUpdatedAt as string,
+    filterParams: {},
+    error: item.error as string | undefined,
+    progress: item.progress as ProgressCounts,
+  };
+}
+
 export interface GenericJobManagerConfig {
   prefix: string;
   entityLabel?: string;
@@ -39,6 +77,7 @@ const VALID_TRANSITIONS: Record<JobState, JobState[]> = {
   paused: ["running"],
   failed: ["running"],
   complete: [],
+  cancelled: [],
 };
 
 const client = new DynamoDBClient({});
@@ -83,14 +122,38 @@ export function createJobManager(config: GenericJobManagerConfig): {
       },
     };
 
+    const pointerSK = buildPointerSK(prefix, now, jobId);
+
     await docClient.send(
-      new PutCommand({
-        TableName: IMPORT_TABLE_NAME,
-        Item: {
-          PK: `${prefix}#${jobId}`,
-          SK: "METADATA",
-          ...job,
-        },
+      new TransactWriteCommand({
+        TransactItems: [
+          {
+            Put: {
+              TableName: IMPORT_TABLE_NAME,
+              Item: {
+                PK: `${prefix}#${jobId}`,
+                SK: "METADATA",
+                ...job,
+              },
+            },
+          },
+          {
+            Put: {
+              TableName: IMPORT_TABLE_NAME,
+              Item: {
+                PK: "JOBS",
+                SK: pointerSK,
+                jobId,
+                state: "running" as JobState,
+                phase: "fetch" as ImportPhase,
+                progress: job.progress,
+                startedAt: now,
+                lastUpdatedAt: now,
+                prefix,
+              },
+            },
+          },
+        ],
       }),
     );
 
@@ -125,47 +188,27 @@ export function createJobManager(config: GenericJobManagerConfig): {
   }
 
   async function getRunningOrPausedJob(): Promise<ImportJob | null> {
-    let exclusiveStartKey: Record<string, unknown> | undefined;
+    const result = await docClient.send(
+      new QueryCommand({
+        TableName: IMPORT_TABLE_NAME,
+        KeyConditionExpression: "PK = :pk AND begins_with(SK, :skPrefix)",
+        FilterExpression: "#state = :running OR #state = :paused",
+        ExpressionAttributeNames: { "#state": "state" },
+        ExpressionAttributeValues: {
+          ":pk": "JOBS",
+          ":skPrefix": `${prefix}#`,
+          ":running": "running",
+          ":paused": "paused",
+        },
+        ScanIndexForward: false,
+      }),
+    );
 
-    do {
-      const result = await docClient.send(
-        new ScanCommand({
-          TableName: IMPORT_TABLE_NAME,
-          FilterExpression:
-            "begins_with(PK, :pkPrefix) AND SK = :sk AND (#state = :running OR #state = :paused)",
-          ExpressionAttributeNames: {
-            "#state": "state",
-          },
-          ExpressionAttributeValues: {
-            ":pkPrefix": `${prefix}#`,
-            ":running": "running",
-            ":paused": "paused",
-            ":sk": "METADATA",
-          },
-          ExclusiveStartKey: exclusiveStartKey,
-        }),
-      );
+    if (!result.Items || result.Items.length === 0) {
+      return null;
+    }
 
-      if (result.Items && result.Items.length > 0) {
-        const item = result.Items[0];
-        return {
-          jobId: item.jobId as string,
-          state: item.state as JobState,
-          phase: (item.phase as ImportPhase) ?? "fetch",
-          startedAt: item.startedAt as string,
-          lastUpdatedAt: item.lastUpdatedAt as string,
-          filterParams: item.filterParams as { createdAfter?: string },
-          error: item.error as string | undefined,
-          progress: item.progress as ProgressCounts,
-        };
-      }
-
-      exclusiveStartKey = result.LastEvaluatedKey as
-        | Record<string, unknown>
-        | undefined;
-    } while (exclusiveStartKey);
-
-    return null;
+    return mapPointerToImportJob(result.Items[0]);
   }
 
   async function transitionJob(
@@ -187,28 +230,64 @@ export function createJobManager(config: GenericJobManagerConfig): {
     }
 
     const now = new Date().toISOString();
+    const oldPointerSK = buildPointerSK(
+      prefix,
+      currentJob.lastUpdatedAt,
+      jobId,
+    );
+    const newPointerSK = buildPointerSK(prefix, now, jobId);
     const truncatedError = error ? error.slice(0, 500) : undefined;
 
     await docClient.send(
-      new UpdateCommand({
-        TableName: IMPORT_TABLE_NAME,
-        Key: {
-          PK: `${prefix}#${jobId}`,
-          SK: "METADATA",
-        },
-        UpdateExpression:
-          "SET #state = :state, progress = :progress, lastUpdatedAt = :lastUpdatedAt" +
-          (truncatedError !== undefined ? ", #error = :error" : ""),
-        ExpressionAttributeNames: {
-          "#state": "state",
-          ...(truncatedError !== undefined ? { "#error": "error" } : {}),
-        },
-        ExpressionAttributeValues: {
-          ":state": state,
-          ":progress": progress,
-          ":lastUpdatedAt": now,
-          ...(truncatedError !== undefined ? { ":error": truncatedError } : {}),
-        },
+      new TransactWriteCommand({
+        TransactItems: [
+          {
+            Update: {
+              TableName: IMPORT_TABLE_NAME,
+              Key: { PK: `${prefix}#${jobId}`, SK: "METADATA" },
+              UpdateExpression:
+                "SET #state = :state, progress = :progress, lastUpdatedAt = :now" +
+                (truncatedError !== undefined ? ", #error = :error" : ""),
+              ExpressionAttributeNames: {
+                "#state": "state",
+                ...(truncatedError !== undefined ? { "#error": "error" } : {}),
+              },
+              ExpressionAttributeValues: {
+                ":state": state,
+                ":progress": progress,
+                ":now": now,
+                ...(truncatedError !== undefined
+                  ? { ":error": truncatedError }
+                  : {}),
+              },
+            },
+          },
+          {
+            Delete: {
+              TableName: IMPORT_TABLE_NAME,
+              Key: { PK: "JOBS", SK: oldPointerSK },
+            },
+          },
+          {
+            Put: {
+              TableName: IMPORT_TABLE_NAME,
+              Item: {
+                PK: "JOBS",
+                SK: newPointerSK,
+                jobId,
+                state,
+                phase: currentJob.phase,
+                progress,
+                startedAt: currentJob.startedAt,
+                lastUpdatedAt: now,
+                prefix,
+                ...(truncatedError !== undefined
+                  ? { error: truncatedError }
+                  : {}),
+              },
+            },
+          },
+        ],
       }),
     );
   }
@@ -217,23 +296,55 @@ export function createJobManager(config: GenericJobManagerConfig): {
     jobId: string,
     phase: ImportPhase,
   ): Promise<void> {
+    const currentJob = await getJob(jobId);
+    if (!currentJob) {
+      throw new Error(`${entityLabel} ${jobId} not found`);
+    }
+
     const now = new Date().toISOString();
+    const oldPointerSK = buildPointerSK(
+      prefix,
+      currentJob.lastUpdatedAt,
+      jobId,
+    );
+    const newPointerSK = buildPointerSK(prefix, now, jobId);
 
     await docClient.send(
-      new UpdateCommand({
-        TableName: IMPORT_TABLE_NAME,
-        Key: {
-          PK: `${prefix}#${jobId}`,
-          SK: "METADATA",
-        },
-        UpdateExpression: "SET #phase = :phase, lastUpdatedAt = :lastUpdatedAt",
-        ExpressionAttributeNames: {
-          "#phase": "phase",
-        },
-        ExpressionAttributeValues: {
-          ":phase": phase,
-          ":lastUpdatedAt": now,
-        },
+      new TransactWriteCommand({
+        TransactItems: [
+          {
+            Update: {
+              TableName: IMPORT_TABLE_NAME,
+              Key: { PK: `${prefix}#${jobId}`, SK: "METADATA" },
+              UpdateExpression: "SET #phase = :phase, lastUpdatedAt = :now",
+              ExpressionAttributeNames: { "#phase": "phase" },
+              ExpressionAttributeValues: { ":phase": phase, ":now": now },
+            },
+          },
+          {
+            Delete: {
+              TableName: IMPORT_TABLE_NAME,
+              Key: { PK: "JOBS", SK: oldPointerSK },
+            },
+          },
+          {
+            Put: {
+              TableName: IMPORT_TABLE_NAME,
+              Item: {
+                PK: "JOBS",
+                SK: newPointerSK,
+                jobId,
+                state: currentJob.state,
+                phase,
+                progress: currentJob.progress,
+                startedAt: currentJob.startedAt,
+                lastUpdatedAt: now,
+                prefix,
+                ...(currentJob.error ? { error: currentJob.error } : {}),
+              },
+            },
+          },
+        ],
       }),
     );
   }
