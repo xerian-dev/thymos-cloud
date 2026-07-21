@@ -43,7 +43,7 @@ resource "aws_apigatewayv2_authorizer" "cognito" {
   authorizer_type                   = "REQUEST"
   authorizer_uri                    = aws_lambda_function.shop_api_authorizer.invoke_arn
   authorizer_payload_format_version = "2.0"
-  authorizer_result_ttl_in_seconds  = 300
+  authorizer_result_ttl_in_seconds  = 3600
   identity_sources                  = ["$request.header.Authorization"]
   name                              = "${var.project_name}-${var.environment}-cognito-authorizer"
   enable_simple_responses           = true
