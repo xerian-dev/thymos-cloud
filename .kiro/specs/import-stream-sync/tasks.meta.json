@@ -1,5 +1,22 @@
 {
-  "pbtResults": {},
+  "pbtResults": {
+    "1.3 Write property tests for status derivation": {
+      "status": "passed",
+      "lastRunTimestamp": 1784463200770
+    },
+    "1.4 Write property tests for mapItem field parity": {
+      "status": "passed",
+      "lastRunTimestamp": 1784463099966
+    },
+    "3.6 Write property tests for SKU resolution and GSI formatting": {
+      "status": "passed",
+      "lastRunTimestamp": 1784463781843
+    },
+    "3.7 Write property test for account source ID extraction": {
+      "status": "passed",
+      "lastRunTimestamp": 1784463724562
+    }
+  },
   "executionHistory": {
     "1.1 Enable DynamoDB Streams on Import_Table and create DLQ": [
       {
@@ -330,6 +347,367 @@
         "executionId": "b022e291-108c-46a6-9109-ddc0826f6931",
         "chatSessionId": "sess_70644c7d-41d2-45b9-9e77-bf9d9ca5aa7c",
         "timestamp": 1784199055003
+      }
+    ],
+    "1.1 Add status derivation to stream item-mapper": [
+      {
+        "executionId": "8dbbdb23-901a-4205-9a62-2d1c2ca89517",
+        "chatSessionId": "sess_54a42883-e7a5-4793-a123-c4fb06c437b3",
+        "timestamp": 1784462723458
+      },
+      {
+        "executionId": "8dbbdb23-901a-4205-9a62-2d1c2ca89517",
+        "chatSessionId": "sess_54a42883-e7a5-4793-a123-c4fb06c437b3",
+        "timestamp": 1784462731540
+      },
+      {
+        "executionId": "8dbbdb23-901a-4205-9a62-2d1c2ca89517",
+        "chatSessionId": "sess_54a42883-e7a5-4793-a123-c4fb06c437b3",
+        "timestamp": 1784462813798
+      }
+    ],
+    "1.2 Add new optional fields to MappedItem and mapItem": [
+      {
+        "executionId": "8dbbdb23-901a-4205-9a62-2d1c2ca89517",
+        "chatSessionId": "sess_54a42883-e7a5-4793-a123-c4fb06c437b3",
+        "timestamp": 1784462723523
+      },
+      {
+        "executionId": "8dbbdb23-901a-4205-9a62-2d1c2ca89517",
+        "chatSessionId": "sess_54a42883-e7a5-4793-a123-c4fb06c437b3",
+        "timestamp": 1784462817406
+      },
+      {
+        "executionId": "8dbbdb23-901a-4205-9a62-2d1c2ca89517",
+        "chatSessionId": "sess_54a42883-e7a5-4793-a123-c4fb06c437b3",
+        "timestamp": 1784462976206
+      }
+    ],
+    "1.3 Write property tests for status derivation": [
+      {
+        "executionId": "8dbbdb23-901a-4205-9a62-2d1c2ca89517",
+        "chatSessionId": "sess_54a42883-e7a5-4793-a123-c4fb06c437b3",
+        "timestamp": 1784462723582
+      },
+      {
+        "executionId": "8dbbdb23-901a-4205-9a62-2d1c2ca89517",
+        "chatSessionId": "sess_54a42883-e7a5-4793-a123-c4fb06c437b3",
+        "timestamp": 1784462980002
+      },
+      {
+        "executionId": "8dbbdb23-901a-4205-9a62-2d1c2ca89517",
+        "chatSessionId": "sess_54a42883-e7a5-4793-a123-c4fb06c437b3",
+        "timestamp": 1784463211346
+      }
+    ],
+    "1.4 Write property tests for mapItem field parity": [
+      {
+        "executionId": "8dbbdb23-901a-4205-9a62-2d1c2ca89517",
+        "chatSessionId": "sess_54a42883-e7a5-4793-a123-c4fb06c437b3",
+        "timestamp": 1784462723647
+      },
+      {
+        "executionId": "8dbbdb23-901a-4205-9a62-2d1c2ca89517",
+        "chatSessionId": "sess_54a42883-e7a5-4793-a123-c4fb06c437b3",
+        "timestamp": 1784462980847
+      },
+      {
+        "executionId": "8dbbdb23-901a-4205-9a62-2d1c2ca89517",
+        "chatSessionId": "sess_54a42883-e7a5-4793-a123-c4fb06c437b3",
+        "timestamp": 1784463131096
+      }
+    ],
+    "2. Checkpoint - Ensure stream item-mapper tests pass": [
+      {
+        "executionId": "8dbbdb23-901a-4205-9a62-2d1c2ca89517",
+        "chatSessionId": "sess_54a42883-e7a5-4793-a123-c4fb06c437b3",
+        "timestamp": 1784462723725
+      },
+      {
+        "executionId": "8dbbdb23-901a-4205-9a62-2d1c2ca89517",
+        "chatSessionId": "sess_54a42883-e7a5-4793-a123-c4fb06c437b3",
+        "timestamp": 1784463223927
+      },
+      {
+        "executionId": "8dbbdb23-901a-4205-9a62-2d1c2ca89517",
+        "chatSessionId": "sess_54a42883-e7a5-4793-a123-c4fb06c437b3",
+        "timestamp": 1784463247914
+      }
+    ],
+    "3.1 Add account source ID extraction and graceful skip logic": [
+      {
+        "executionId": "8dbbdb23-901a-4205-9a62-2d1c2ca89517",
+        "chatSessionId": "sess_54a42883-e7a5-4793-a123-c4fb06c437b3",
+        "timestamp": 1784462723783
+      },
+      {
+        "executionId": "8dbbdb23-901a-4205-9a62-2d1c2ca89517",
+        "chatSessionId": "sess_54a42883-e7a5-4793-a123-c4fb06c437b3",
+        "timestamp": 1784463251756
+      },
+      {
+        "executionId": "8dbbdb23-901a-4205-9a62-2d1c2ca89517",
+        "chatSessionId": "sess_54a42883-e7a5-4793-a123-c4fb06c437b3",
+        "timestamp": 1784463368210
+      }
+    ],
+    "3.2 Add CC SKU passthrough and sequence counter seeding": [
+      {
+        "executionId": "8dbbdb23-901a-4205-9a62-2d1c2ca89517",
+        "chatSessionId": "sess_54a42883-e7a5-4793-a123-c4fb06c437b3",
+        "timestamp": 1784462723846
+      },
+      {
+        "executionId": "8dbbdb23-901a-4205-9a62-2d1c2ca89517",
+        "chatSessionId": "sess_54a42883-e7a5-4793-a123-c4fb06c437b3",
+        "timestamp": 1784463372132
+      },
+      {
+        "executionId": "8dbbdb23-901a-4205-9a62-2d1c2ca89517",
+        "chatSessionId": "sess_54a42883-e7a5-4793-a123-c4fb06c437b3",
+        "timestamp": 1784463483795
+      }
+    ],
+    "3.3 Add seedSequenceCounter to sequence-service": [
+      {
+        "executionId": "8dbbdb23-901a-4205-9a62-2d1c2ca89517",
+        "chatSessionId": "sess_54a42883-e7a5-4793-a123-c4fb06c437b3",
+        "timestamp": 1784462723905
+      },
+      {
+        "executionId": "8dbbdb23-901a-4205-9a62-2d1c2ca89517",
+        "chatSessionId": "sess_54a42883-e7a5-4793-a123-c4fb06c437b3",
+        "timestamp": 1784463253159
+      },
+      {
+        "executionId": "8dbbdb23-901a-4205-9a62-2d1c2ca89517",
+        "chatSessionId": "sess_54a42883-e7a5-4793-a123-c4fb06c437b3",
+        "timestamp": 1784463366703
+      }
+    ],
+    "3.4 Add GSI2/GSI3 keys and new fields to upsert creation path": [
+      {
+        "executionId": "8dbbdb23-901a-4205-9a62-2d1c2ca89517",
+        "chatSessionId": "sess_54a42883-e7a5-4793-a123-c4fb06c437b3",
+        "timestamp": 1784462723963
+      },
+      {
+        "executionId": "8dbbdb23-901a-4205-9a62-2d1c2ca89517",
+        "chatSessionId": "sess_54a42883-e7a5-4793-a123-c4fb06c437b3",
+        "timestamp": 1784463372887
+      },
+      {
+        "executionId": "8dbbdb23-901a-4205-9a62-2d1c2ca89517",
+        "chatSessionId": "sess_54a42883-e7a5-4793-a123-c4fb06c437b3",
+        "timestamp": 1784463485293
+      }
+    ],
+    "3.5 Expand upsert update path with new fields and GSI keys": [
+      {
+        "executionId": "8dbbdb23-901a-4205-9a62-2d1c2ca89517",
+        "chatSessionId": "sess_54a42883-e7a5-4793-a123-c4fb06c437b3",
+        "timestamp": 1784462724016
+      },
+      {
+        "executionId": "8dbbdb23-901a-4205-9a62-2d1c2ca89517",
+        "chatSessionId": "sess_54a42883-e7a5-4793-a123-c4fb06c437b3",
+        "timestamp": 1784463489373
+      },
+      {
+        "executionId": "8dbbdb23-901a-4205-9a62-2d1c2ca89517",
+        "chatSessionId": "sess_54a42883-e7a5-4793-a123-c4fb06c437b3",
+        "timestamp": 1784463584232
+      }
+    ],
+    "3.6 Write property tests for SKU resolution and GSI formatting": [
+      {
+        "executionId": "8dbbdb23-901a-4205-9a62-2d1c2ca89517",
+        "chatSessionId": "sess_54a42883-e7a5-4793-a123-c4fb06c437b3",
+        "timestamp": 1784462724097
+      },
+      {
+        "executionId": "8dbbdb23-901a-4205-9a62-2d1c2ca89517",
+        "chatSessionId": "sess_54a42883-e7a5-4793-a123-c4fb06c437b3",
+        "timestamp": 1784463588946
+      },
+      {
+        "executionId": "8dbbdb23-901a-4205-9a62-2d1c2ca89517",
+        "chatSessionId": "sess_54a42883-e7a5-4793-a123-c4fb06c437b3",
+        "timestamp": 1784463792006
+      }
+    ],
+    "3.7 Write property test for account source ID extraction": [
+      {
+        "executionId": "8dbbdb23-901a-4205-9a62-2d1c2ca89517",
+        "chatSessionId": "sess_54a42883-e7a5-4793-a123-c4fb06c437b3",
+        "timestamp": 1784462724158
+      },
+      {
+        "executionId": "8dbbdb23-901a-4205-9a62-2d1c2ca89517",
+        "chatSessionId": "sess_54a42883-e7a5-4793-a123-c4fb06c437b3",
+        "timestamp": 1784463589622
+      },
+      {
+        "executionId": "8dbbdb23-901a-4205-9a62-2d1c2ca89517",
+        "chatSessionId": "sess_54a42883-e7a5-4793-a123-c4fb06c437b3",
+        "timestamp": 1784463792854
+      }
+    ],
+    "3.8 Write unit tests for upsert-service expansion": [
+      {
+        "executionId": "8dbbdb23-901a-4205-9a62-2d1c2ca89517",
+        "chatSessionId": "sess_54a42883-e7a5-4793-a123-c4fb06c437b3",
+        "timestamp": 1784462724215
+      },
+      {
+        "executionId": "8dbbdb23-901a-4205-9a62-2d1c2ca89517",
+        "chatSessionId": "sess_54a42883-e7a5-4793-a123-c4fb06c437b3",
+        "timestamp": 1784463591285
+      },
+      {
+        "executionId": "8dbbdb23-901a-4205-9a62-2d1c2ca89517",
+        "chatSessionId": "sess_54a42883-e7a5-4793-a123-c4fb06c437b3",
+        "timestamp": 1784463793706
+      }
+    ],
+    "4. Checkpoint - Ensure upsert-service tests pass": [
+      {
+        "executionId": "8dbbdb23-901a-4205-9a62-2d1c2ca89517",
+        "chatSessionId": "sess_54a42883-e7a5-4793-a123-c4fb06c437b3",
+        "timestamp": 1784462724280
+      },
+      {
+        "executionId": "8dbbdb23-901a-4205-9a62-2d1c2ca89517",
+        "chatSessionId": "sess_54a42883-e7a5-4793-a123-c4fb06c437b3",
+        "timestamp": 1784463798509
+      },
+      {
+        "executionId": "8dbbdb23-901a-4205-9a62-2d1c2ca89517",
+        "chatSessionId": "sess_54a42883-e7a5-4793-a123-c4fb06c437b3",
+        "timestamp": 1784463823435
+      }
+    ],
+    "5.1 Modify generic-fetch-orchestrator for direct completion": [
+      {
+        "executionId": "8dbbdb23-901a-4205-9a62-2d1c2ca89517",
+        "chatSessionId": "sess_54a42883-e7a5-4793-a123-c4fb06c437b3",
+        "timestamp": 1784462724343
+      },
+      {
+        "executionId": "8dbbdb23-901a-4205-9a62-2d1c2ca89517",
+        "chatSessionId": "sess_54a42883-e7a5-4793-a123-c4fb06c437b3",
+        "timestamp": 1784463827460
+      },
+      {
+        "executionId": "8dbbdb23-901a-4205-9a62-2d1c2ca89517",
+        "chatSessionId": "sess_54a42883-e7a5-4793-a123-c4fb06c437b3",
+        "timestamp": 1784463934251
+      }
+    ],
+    "5.2 Remove sync handling from item-import-handler": [
+      {
+        "executionId": "8dbbdb23-901a-4205-9a62-2d1c2ca89517",
+        "chatSessionId": "sess_54a42883-e7a5-4793-a123-c4fb06c437b3",
+        "timestamp": 1784462724400
+      },
+      {
+        "executionId": "8dbbdb23-901a-4205-9a62-2d1c2ca89517",
+        "chatSessionId": "sess_54a42883-e7a5-4793-a123-c4fb06c437b3",
+        "timestamp": 1784463940338
+      },
+      {
+        "executionId": "8dbbdb23-901a-4205-9a62-2d1c2ca89517",
+        "chatSessionId": "sess_54a42883-e7a5-4793-a123-c4fb06c437b3",
+        "timestamp": 1784464154887
+      }
+    ],
+    "5.3 Delete item-sync-orchestrator": [
+      {
+        "executionId": "8dbbdb23-901a-4205-9a62-2d1c2ca89517",
+        "chatSessionId": "sess_54a42883-e7a5-4793-a123-c4fb06c437b3",
+        "timestamp": 1784462724463
+      },
+      {
+        "executionId": "8dbbdb23-901a-4205-9a62-2d1c2ca89517",
+        "chatSessionId": "sess_54a42883-e7a5-4793-a123-c4fb06c437b3",
+        "timestamp": 1784464161116
+      },
+      {
+        "executionId": "8dbbdb23-901a-4205-9a62-2d1c2ca89517",
+        "chatSessionId": "sess_54a42883-e7a5-4793-a123-c4fb06c437b3",
+        "timestamp": 1784472791714
+      }
+    ],
+    "5.4 Remove Terraform API Gateway route for items/sync": [
+      {
+        "executionId": "8dbbdb23-901a-4205-9a62-2d1c2ca89517",
+        "chatSessionId": "sess_54a42883-e7a5-4793-a123-c4fb06c437b3",
+        "timestamp": 1784462724525
+      },
+      {
+        "executionId": "8dbbdb23-901a-4205-9a62-2d1c2ca89517",
+        "chatSessionId": "sess_54a42883-e7a5-4793-a123-c4fb06c437b3",
+        "timestamp": 1784463829185
+      },
+      {
+        "executionId": "8dbbdb23-901a-4205-9a62-2d1c2ca89517",
+        "chatSessionId": "sess_54a42883-e7a5-4793-a123-c4fb06c437b3",
+        "timestamp": 1784463936274
+      }
+    ],
+    "5.5 Write unit tests for fetch completion flow": [
+      {
+        "executionId": "8dbbdb23-901a-4205-9a62-2d1c2ca89517",
+        "chatSessionId": "sess_54a42883-e7a5-4793-a123-c4fb06c437b3",
+        "timestamp": 1784462724582
+      },
+      {
+        "executionId": "8dbbdb23-901a-4205-9a62-2d1c2ca89517",
+        "chatSessionId": "sess_54a42883-e7a5-4793-a123-c4fb06c437b3",
+        "timestamp": 1784464159348
+      },
+      {
+        "executionId": "8dbbdb23-901a-4205-9a62-2d1c2ca89517",
+        "chatSessionId": "sess_54a42883-e7a5-4793-a123-c4fb06c437b3",
+        "timestamp": 1784472791007
+      }
+    ],
+    "6. Final checkpoint - Ensure all tests pass": [
+      {
+        "executionId": "8dbbdb23-901a-4205-9a62-2d1c2ca89517",
+        "chatSessionId": "sess_54a42883-e7a5-4793-a123-c4fb06c437b3",
+        "timestamp": 1784462724660
+      },
+      {
+        "executionId": "8dbbdb23-901a-4205-9a62-2d1c2ca89517",
+        "chatSessionId": "sess_54a42883-e7a5-4793-a123-c4fb06c437b3",
+        "timestamp": 1784472795974
+      },
+      {
+        "executionId": "8dbbdb23-901a-4205-9a62-2d1c2ca89517",
+        "chatSessionId": "sess_54a42883-e7a5-4793-a123-c4fb06c437b3",
+        "timestamp": 1784473014387
+      }
+    ],
+    "1. Stream item-mapper field parity": [
+      {
+        "executionId": "8dbbdb23-901a-4205-9a62-2d1c2ca89517",
+        "chatSessionId": "sess_54a42883-e7a5-4793-a123-c4fb06c437b3",
+        "timestamp": 1784463211425
+      }
+    ],
+    "3. Upsert service expansion": [
+      {
+        "executionId": "8dbbdb23-901a-4205-9a62-2d1c2ca89517",
+        "chatSessionId": "sess_54a42883-e7a5-4793-a123-c4fb06c437b3",
+        "timestamp": 1784463793769
+      }
+    ],
+    "5. Remove sync phase from import flow": [
+      {
+        "executionId": "8dbbdb23-901a-4205-9a62-2d1c2ca89517",
+        "chatSessionId": "sess_54a42883-e7a5-4793-a123-c4fb06c437b3",
+        "timestamp": 1784472791783
       }
     ]
   }

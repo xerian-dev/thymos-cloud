@@ -19,8 +19,10 @@ const mockGetSyncState = vi.hoisted(() => vi.fn());
 const mockUpdateSyncStateField = vi.hoisted(() => vi.fn());
 const mockStartStepFunctionForSync = vi.hoisted(() => vi.fn());
 const mockRandomUUID = vi.hoisted(() => vi.fn());
-const mockGetRunningOrPausedJob = vi.hoisted(() => vi.fn());
-const mockCreateJob = vi.hoisted(() => vi.fn());
+const mockAccountGetRunningOrPausedJob = vi.hoisted(() => vi.fn());
+const mockAccountCreateJob = vi.hoisted(() => vi.fn());
+const mockItemGetRunningOrPausedJob = vi.hoisted(() => vi.fn());
+const mockItemCreateJob = vi.hoisted(() => vi.fn());
 
 vi.mock("../sync-lock-manager", () => ({
   acquireLock: mockAcquireLock,
@@ -35,10 +37,24 @@ vi.mock("../step-function-starter", () => ({
   startStepFunctionForSync: mockStartStepFunctionForSync,
 }));
 vi.mock("../generic-job-manager", () => ({
-  createJobManager: () => ({
-    getRunningOrPausedJob: mockGetRunningOrPausedJob,
-    createJob: mockCreateJob,
-  }),
+  createJobManager: (config: { prefix: string }) => {
+    if (config.prefix === "ACCOUNT_IMPORT") {
+      return {
+        getRunningOrPausedJob: mockAccountGetRunningOrPausedJob,
+        createJob: mockAccountCreateJob,
+      };
+    }
+    if (config.prefix === "ITEM_IMPORT") {
+      return {
+        getRunningOrPausedJob: mockItemGetRunningOrPausedJob,
+        createJob: mockItemCreateJob,
+      };
+    }
+    return {
+      getRunningOrPausedJob: vi.fn().mockResolvedValue(null),
+      createJob: vi.fn(),
+    };
+  },
 }));
 vi.mock("crypto", () => ({
   randomUUID: mockRandomUUID,
@@ -72,17 +88,28 @@ function setupSyncState(
   }
 }
 
-// Helper: configure step function outcomes for account phase only
-function setupAccountStepFunction(success: boolean): void {
-  if (success) {
-    mockStartStepFunctionForSync.mockResolvedValue("arn:exec:account");
-  } else {
-    mockStartStepFunctionForSync.mockImplementation(async () => {
-      const err = new Error("Account start failed");
-      err.name = "UnauthorizedException";
-      throw err;
-    });
-  }
+// Helper: configure default job manager mocks for both account and item
+function setupDefaultJobManagers(): void {
+  mockAccountGetRunningOrPausedJob.mockResolvedValue(null);
+  mockItemGetRunningOrPausedJob.mockResolvedValue(null);
+  mockAccountCreateJob.mockResolvedValue({
+    jobId: "account-job-uuid",
+    state: "running",
+    phase: "fetch",
+    startedAt: "2025-01-15T12:00:00.000Z",
+    lastUpdatedAt: "2025-01-15T12:00:00.000Z",
+    filterParams: {},
+    progress: { processed: 0, imported: 0, skipped: 0, failed: 0 },
+  });
+  mockItemCreateJob.mockResolvedValue({
+    jobId: "item-job-uuid",
+    state: "running",
+    phase: "fetch",
+    startedAt: "2025-01-15T12:00:00.000Z",
+    lastUpdatedAt: "2025-01-15T12:00:00.000Z",
+    filterParams: {},
+    progress: { processed: 0, imported: 0, skipped: 0, failed: 0 },
+  });
 }
 
 describe("Property 3: Sync state timestamps are only updated on phase success", () => {
@@ -92,23 +119,14 @@ describe("Property 3: Sync state timestamps are only updated on phase success", 
     vi.clearAllMocks();
     mockRandomUUID.mockReturnValueOnce("corr-id-1").mockReturnValue("job-uuid");
     mockUpdateSyncStateField.mockResolvedValue(undefined);
-    mockGetRunningOrPausedJob.mockResolvedValue(null);
-    mockCreateJob.mockResolvedValue({
-      jobId: "account-job-uuid",
-      state: "running",
-      phase: "fetch",
-      startedAt: "2025-01-15T12:00:00.000Z",
-      lastUpdatedAt: "2025-01-15T12:00:00.000Z",
-      filterParams: {},
-      progress: { processed: 0, imported: 0, skipped: 0, failed: 0 },
-    });
+    setupDefaultJobManagers();
   });
 
   afterEach(() => {
     vi.useRealTimers();
   });
 
-  it("lastAccountSyncAt is only updated when account phase succeeds", async () => {
+  it("lastAccountSyncAt is only updated when account phase succeeds, lastItemSyncAt only when items succeed", async () => {
     await fc.assert(
       fc.asyncProperty(fc.boolean(), async (accountSuccess) => {
         vi.clearAllMocks();
@@ -116,19 +134,24 @@ describe("Property 3: Sync state timestamps are only updated on phase success", 
           .mockReturnValueOnce("corr-id-1")
           .mockReturnValue("job-uuid");
         mockUpdateSyncStateField.mockResolvedValue(undefined);
-        mockGetRunningOrPausedJob.mockResolvedValue(null);
-        mockCreateJob.mockResolvedValue({
-          jobId: "account-job-uuid",
-          state: "running",
-          phase: "fetch",
-          startedAt: "2025-01-15T12:00:00.000Z",
-          lastUpdatedAt: "2025-01-15T12:00:00.000Z",
-          filterParams: {},
-          progress: { processed: 0, imported: 0, skipped: 0, failed: 0 },
-        });
+        setupDefaultJobManagers();
         setupLockAcquired();
         setupSyncState(null);
-        setupAccountStepFunction(accountSuccess);
+
+        if (accountSuccess) {
+          mockStartStepFunctionForSync.mockResolvedValue("arn:exec:success");
+        } else {
+          mockStartStepFunctionForSync.mockImplementation(
+            async (options: { type: string }) => {
+              if (options.type === "account") {
+                const err = new Error("Account start failed");
+                err.name = "UnauthorizedException";
+                throw err;
+              }
+              return `arn:exec:${options.type}`;
+            },
+          );
+        }
 
         const resultPromise = handleScheduledSync();
         await vi.runAllTimersAsync();
@@ -141,13 +164,16 @@ describe("Property 3: Sync state timestamps are only updated on phase success", 
         const updatedFields = updateCalls.map((call) => call[0]);
 
         if (!accountSuccess) {
+          // Account failed -> no timestamps updated (items skipped due to account failure)
           expect(updatedFields).not.toContain("lastAccountSyncAt");
+          expect(updatedFields).not.toContain("lastItemSyncAt");
         } else {
+          // Account succeeded -> both account and item timestamps updated
           expect(updatedFields).toContain("lastAccountSyncAt");
+          expect(updatedFields).toContain("lastItemSyncAt");
         }
 
-        // Items and sales timestamps are never updated (disabled)
-        expect(updatedFields).not.toContain("lastItemSyncAt");
+        // Sales timestamps are never updated (disabled)
         expect(updatedFields).not.toContain("lastSaleSyncAt");
       }),
       { numRuns: 100 },
@@ -162,16 +188,7 @@ describe("Property 4: Sync timestamp is captured before phase execution", () => 
     vi.clearAllMocks();
     mockRandomUUID.mockReturnValueOnce("corr-id-1").mockReturnValue("job-uuid");
     mockUpdateSyncStateField.mockResolvedValue(undefined);
-    mockGetRunningOrPausedJob.mockResolvedValue(null);
-    mockCreateJob.mockResolvedValue({
-      jobId: "account-job-uuid",
-      state: "running",
-      phase: "fetch",
-      startedAt: "2025-01-15T12:00:00.000Z",
-      lastUpdatedAt: "2025-01-15T12:00:00.000Z",
-      filterParams: {},
-      progress: { processed: 0, imported: 0, skipped: 0, failed: 0 },
-    });
+    setupDefaultJobManagers();
   });
 
   afterEach(() => {
@@ -189,16 +206,7 @@ describe("Property 4: Sync timestamp is captured before phase execution", () => 
             .mockReturnValueOnce("corr-id-1")
             .mockReturnValue("job-uuid");
           mockUpdateSyncStateField.mockResolvedValue(undefined);
-          mockGetRunningOrPausedJob.mockResolvedValue(null);
-          mockCreateJob.mockResolvedValue({
-            jobId: "account-job-uuid",
-            state: "running",
-            phase: "fetch",
-            startedAt: "2025-01-15T12:00:00.000Z",
-            lastUpdatedAt: "2025-01-15T12:00:00.000Z",
-            filterParams: {},
-            progress: { processed: 0, imported: 0, skipped: 0, failed: 0 },
-          });
+          setupDefaultJobManagers();
           setupLockAcquired();
           setupSyncState(null);
 
@@ -217,7 +225,6 @@ describe("Property 4: Sync timestamp is captured before phase execution", () => 
             string,
           ][];
 
-          // Should have exactly 1 call (lastAccountSyncAt)
           if (updateCalls.length > 0) {
             const timestamps = updateCalls.map((call) => call[1]);
             const uniqueTimestamps = [...new Set(timestamps)];
@@ -233,30 +240,21 @@ describe("Property 4: Sync timestamp is captured before phase execution", () => 
   });
 });
 
-describe("Property 5: Only account phase calls Step Functions (items/sales disabled)", () => {
+describe("Property 5: Account and item phases call Step Functions, sales disabled", () => {
   beforeEach(() => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2025-01-15T12:00:00.000Z"));
     vi.clearAllMocks();
     mockRandomUUID.mockReturnValueOnce("corr-id-1").mockReturnValue("job-uuid");
     mockUpdateSyncStateField.mockResolvedValue(undefined);
-    mockGetRunningOrPausedJob.mockResolvedValue(null);
-    mockCreateJob.mockResolvedValue({
-      jobId: "account-job-uuid",
-      state: "running",
-      phase: "fetch",
-      startedAt: "2025-01-15T12:00:00.000Z",
-      lastUpdatedAt: "2025-01-15T12:00:00.000Z",
-      filterParams: {},
-      progress: { processed: 0, imported: 0, skipped: 0, failed: 0 },
-    });
+    setupDefaultJobManagers();
   });
 
   afterEach(() => {
     vi.useRealTimers();
   });
 
-  it("only the account step function is called, never item or sale", async () => {
+  it("account and item step functions are called, never sale", async () => {
     await fc.assert(
       fc.asyncProperty(
         fc.boolean(), // whether account succeeds
@@ -266,16 +264,7 @@ describe("Property 5: Only account phase calls Step Functions (items/sales disab
             .mockReturnValueOnce("corr-id-1")
             .mockReturnValue("job-uuid");
           mockUpdateSyncStateField.mockResolvedValue(undefined);
-          mockGetRunningOrPausedJob.mockResolvedValue(null);
-          mockCreateJob.mockResolvedValue({
-            jobId: "account-job-uuid",
-            state: "running",
-            phase: "fetch",
-            startedAt: "2025-01-15T12:00:00.000Z",
-            lastUpdatedAt: "2025-01-15T12:00:00.000Z",
-            filterParams: {},
-            progress: { processed: 0, imported: 0, skipped: 0, failed: 0 },
-          });
+          setupDefaultJobManagers();
           setupLockAcquired();
           setupSyncState(null);
 
@@ -283,7 +272,7 @@ describe("Property 5: Only account phase calls Step Functions (items/sales disab
           mockStartStepFunctionForSync.mockImplementation(
             async (options: { type: string }) => {
               calledTypes.push(options.type);
-              if (!accountSuccess) {
+              if (!accountSuccess && options.type === "account") {
                 const err = new Error("fail");
                 err.name = "AccessDeniedException";
                 throw err;
@@ -296,9 +285,16 @@ describe("Property 5: Only account phase calls Step Functions (items/sales disab
           await vi.runAllTimersAsync();
           await resultPromise;
 
-          // Only account is ever called
-          expect(calledTypes.every((t) => t === "account")).toBe(true);
-          expect(calledTypes).not.toContain("item");
+          if (accountSuccess) {
+            // Both account and item step functions called
+            expect(calledTypes).toContain("account");
+            expect(calledTypes).toContain("item");
+          } else {
+            // Only account called (items skipped due to account failure)
+            expect(calledTypes).toContain("account");
+            expect(calledTypes).not.toContain("item");
+          }
+          // Sale is never called (disabled)
           expect(calledTypes).not.toContain("sale");
         },
       ),
@@ -307,83 +303,62 @@ describe("Property 5: Only account phase calls Step Functions (items/sales disab
   });
 });
 
-describe("Property 6: Account failure does not prevent completion — items/sales are always disabled", () => {
+describe("Property 6: Account failure skips items phase", () => {
   beforeEach(() => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2025-01-15T12:00:00.000Z"));
     vi.clearAllMocks();
     mockRandomUUID.mockReturnValueOnce("corr-id-1").mockReturnValue("job-uuid");
     mockUpdateSyncStateField.mockResolvedValue(undefined);
-    mockGetRunningOrPausedJob.mockResolvedValue(null);
-    mockCreateJob.mockResolvedValue({
-      jobId: "account-job-uuid",
-      state: "running",
-      phase: "fetch",
-      startedAt: "2025-01-15T12:00:00.000Z",
-      lastUpdatedAt: "2025-01-15T12:00:00.000Z",
-      filterParams: {},
-      progress: { processed: 0, imported: 0, skipped: 0, failed: 0 },
-    });
+    setupDefaultJobManagers();
   });
 
   afterEach(() => {
     vi.useRealTimers();
   });
 
-  it("when accounts fail, the orchestrator still completes and the account step function IS called", async () => {
+  it("when accounts fail, the orchestrator still completes and items are skipped", async () => {
     await fc.assert(
-      fc.asyncProperty(
-        fc.boolean(), // whether account succeeds (we always test the failure case)
-        async () => {
-          vi.clearAllMocks();
-          mockRandomUUID
-            .mockReturnValueOnce("corr-id-1")
-            .mockReturnValue("job-uuid");
-          mockUpdateSyncStateField.mockResolvedValue(undefined);
-          mockGetRunningOrPausedJob.mockResolvedValue(null);
-          mockCreateJob.mockResolvedValue({
-            jobId: "account-job-uuid",
-            state: "running",
-            phase: "fetch",
-            startedAt: "2025-01-15T12:00:00.000Z",
-            lastUpdatedAt: "2025-01-15T12:00:00.000Z",
-            filterParams: {},
-            progress: { processed: 0, imported: 0, skipped: 0, failed: 0 },
-          });
-          setupLockAcquired();
-          setupSyncState(null);
+      fc.asyncProperty(fc.boolean(), async () => {
+        vi.clearAllMocks();
+        mockRandomUUID
+          .mockReturnValueOnce("corr-id-1")
+          .mockReturnValue("job-uuid");
+        mockUpdateSyncStateField.mockResolvedValue(undefined);
+        setupDefaultJobManagers();
+        setupLockAcquired();
+        setupSyncState(null);
 
-          const calledTypes: string[] = [];
-          mockStartStepFunctionForSync.mockImplementation(
-            async (options: { type: string }) => {
-              calledTypes.push(options.type);
-              if (options.type === "account") {
-                const err = new Error("Account start failed");
-                err.name = "UnauthorizedException";
-                throw err;
-              }
-              return `arn:exec:${options.type}`;
-            },
-          );
+        const calledTypes: string[] = [];
+        mockStartStepFunctionForSync.mockImplementation(
+          async (options: { type: string }) => {
+            calledTypes.push(options.type);
+            if (options.type === "account") {
+              const err = new Error("Account start failed");
+              err.name = "UnauthorizedException";
+              throw err;
+            }
+            return `arn:exec:${options.type}`;
+          },
+        );
 
-          const resultPromise = handleScheduledSync();
-          await vi.runAllTimersAsync();
-          const result = await resultPromise;
+        const resultPromise = handleScheduledSync();
+        await vi.runAllTimersAsync();
+        const result = await resultPromise;
 
-          // Account step function was called
-          expect(calledTypes).toContain("account");
+        // Account step function was called
+        expect(calledTypes).toContain("account");
 
-          // Items and sales are always disabled regardless of account outcome
-          expect(result.phases.items).toEqual({
-            status: "skipped",
-            reason: "disabled",
-          });
-          expect(result.phases.sales).toEqual({
-            status: "skipped",
-            reason: "disabled",
-          });
-        },
-      ),
+        // Items are skipped because accounts failed
+        expect(result.phases.items).toEqual({
+          status: "skipped",
+          reason: "Skipped: accounts phase failed",
+        });
+        expect(result.phases.sales).toEqual({
+          status: "skipped",
+          reason: "disabled",
+        });
+      }),
       { numRuns: 100 },
     );
   });
@@ -396,16 +371,7 @@ describe("Property 7: Lock is always released in finally block", () => {
     vi.clearAllMocks();
     mockRandomUUID.mockReturnValueOnce("corr-id-1").mockReturnValue("job-uuid");
     mockUpdateSyncStateField.mockResolvedValue(undefined);
-    mockGetRunningOrPausedJob.mockResolvedValue(null);
-    mockCreateJob.mockResolvedValue({
-      jobId: "account-job-uuid",
-      state: "running",
-      phase: "fetch",
-      startedAt: "2025-01-15T12:00:00.000Z",
-      lastUpdatedAt: "2025-01-15T12:00:00.000Z",
-      filterParams: {},
-      progress: { processed: 0, imported: 0, skipped: 0, failed: 0 },
-    });
+    setupDefaultJobManagers();
   });
 
   afterEach(() => {
@@ -422,26 +388,21 @@ describe("Property 7: Lock is always released in finally block", () => {
           .mockReturnValueOnce("corr-id-1")
           .mockReturnValue("job-uuid");
         mockUpdateSyncStateField.mockResolvedValue(undefined);
-        mockGetRunningOrPausedJob.mockResolvedValue(null);
-        mockCreateJob.mockResolvedValue({
-          jobId: "account-job-uuid",
-          state: "running",
-          phase: "fetch",
-          startedAt: "2025-01-15T12:00:00.000Z",
-          lastUpdatedAt: "2025-01-15T12:00:00.000Z",
-          filterParams: {},
-          progress: { processed: 0, imported: 0, skipped: 0, failed: 0 },
-        });
+        setupDefaultJobManagers();
         setupLockAcquired();
         setupSyncState(null);
         mockReleaseLock.mockResolvedValue(undefined);
 
         switch (errorPoint) {
           case "none":
-            setupAccountStepFunction(true);
+            mockStartStepFunctionForSync.mockResolvedValue("arn:exec:success");
             break;
           case "account-step-function":
-            setupAccountStepFunction(false);
+            mockStartStepFunctionForSync.mockImplementation(async () => {
+              const err = new Error("Account start failed");
+              err.name = "UnauthorizedException";
+              throw err;
+            });
             break;
         }
 
@@ -497,16 +458,7 @@ describe("Property 8: Correlation ID is present in all log entries", () => {
     vi.setSystemTime(new Date("2025-01-15T12:00:00.000Z"));
     vi.clearAllMocks();
     mockUpdateSyncStateField.mockResolvedValue(undefined);
-    mockGetRunningOrPausedJob.mockResolvedValue(null);
-    mockCreateJob.mockResolvedValue({
-      jobId: "account-job-uuid",
-      state: "running",
-      phase: "fetch",
-      startedAt: "2025-01-15T12:00:00.000Z",
-      lastUpdatedAt: "2025-01-15T12:00:00.000Z",
-      filterParams: {},
-      progress: { processed: 0, imported: 0, skipped: 0, failed: 0 },
-    });
+    setupDefaultJobManagers();
     logEntries = [];
     console.info = (...args: unknown[]) => {
       logEntries.push(args[0] as string);
@@ -544,8 +496,10 @@ describe("Property 8: Correlation ID is present in all log entries", () => {
           mockGetSyncState.mockReset();
           mockUpdateSyncStateField.mockReset();
           mockStartStepFunctionForSync.mockReset();
-          mockGetRunningOrPausedJob.mockReset();
-          mockCreateJob.mockReset();
+          mockAccountGetRunningOrPausedJob.mockReset();
+          mockAccountCreateJob.mockReset();
+          mockItemGetRunningOrPausedJob.mockReset();
+          mockItemCreateJob.mockReset();
           logEntries = [];
 
           mockRandomUUID
@@ -553,27 +507,24 @@ describe("Property 8: Correlation ID is present in all log entries", () => {
             .mockReturnValue("job-uuid");
           mockUpdateSyncStateField.mockResolvedValue(undefined);
           mockReleaseLock.mockResolvedValue(undefined);
-          mockGetRunningOrPausedJob.mockResolvedValue(null);
-          mockCreateJob.mockResolvedValue({
-            jobId: "account-job-uuid",
-            state: "running",
-            phase: "fetch",
-            startedAt: "2025-01-15T12:00:00.000Z",
-            lastUpdatedAt: "2025-01-15T12:00:00.000Z",
-            filterParams: {},
-            progress: { processed: 0, imported: 0, skipped: 0, failed: 0 },
-          });
+          setupDefaultJobManagers();
 
           switch (scenario) {
             case "success":
               setupLockAcquired();
               setupSyncState(null);
-              setupAccountStepFunction(true);
+              mockStartStepFunctionForSync.mockResolvedValue(
+                "arn:exec:success",
+              );
               break;
             case "account-fail":
               setupLockAcquired();
               setupSyncState(null);
-              setupAccountStepFunction(false);
+              mockStartStepFunctionForSync.mockImplementation(async () => {
+                const err = new Error("Account start failed");
+                err.name = "UnauthorizedException";
+                throw err;
+              });
               break;
             case "skip-fresh-lock":
               mockAcquireLock.mockResolvedValue({
@@ -613,23 +564,14 @@ describe("Property 9: Step Function retry follows defined policy", () => {
     mockRandomUUID.mockReturnValueOnce("corr-id-1").mockReturnValue("job-uuid");
     mockUpdateSyncStateField.mockResolvedValue(undefined);
     mockReleaseLock.mockResolvedValue(undefined);
-    mockGetRunningOrPausedJob.mockResolvedValue(null);
-    mockCreateJob.mockResolvedValue({
-      jobId: "account-job-uuid",
-      state: "running",
-      phase: "fetch",
-      startedAt: "2025-01-15T12:00:00.000Z",
-      lastUpdatedAt: "2025-01-15T12:00:00.000Z",
-      filterParams: {},
-      progress: { processed: 0, imported: 0, skipped: 0, failed: 0 },
-    });
+    setupDefaultJobManagers();
   });
 
   afterEach(() => {
     vi.useRealTimers();
   });
 
-  it("retryable errors cause exactly 2 calls (original + 1 retry)", async () => {
+  it("retryable errors cause exactly 2 calls (original + 1 retry) for account", async () => {
     const retryableErrorNames = [
       "ServiceUnavailableException",
       "ThrottlingException",
@@ -647,16 +589,7 @@ describe("Property 9: Step Function retry follows defined policy", () => {
             .mockReturnValue("job-uuid");
           mockUpdateSyncStateField.mockResolvedValue(undefined);
           mockReleaseLock.mockResolvedValue(undefined);
-          mockGetRunningOrPausedJob.mockResolvedValue(null);
-          mockCreateJob.mockResolvedValue({
-            jobId: "account-job-uuid",
-            state: "running",
-            phase: "fetch",
-            startedAt: "2025-01-15T12:00:00.000Z",
-            lastUpdatedAt: "2025-01-15T12:00:00.000Z",
-            filterParams: {},
-            progress: { processed: 0, imported: 0, skipped: 0, failed: 0 },
-          });
+          setupDefaultJobManagers();
           setupLockAcquired();
           setupSyncState(null);
 
@@ -683,7 +616,7 @@ describe("Property 9: Step Function retry follows defined policy", () => {
     );
   });
 
-  it("non-retryable errors cause exactly 1 call (no retry)", async () => {
+  it("non-retryable errors cause exactly 1 call (no retry) for account", async () => {
     const nonRetryableErrorNames = [
       "AccessDeniedException",
       "InvalidArnException",
@@ -702,16 +635,7 @@ describe("Property 9: Step Function retry follows defined policy", () => {
             .mockReturnValue("job-uuid");
           mockUpdateSyncStateField.mockResolvedValue(undefined);
           mockReleaseLock.mockResolvedValue(undefined);
-          mockGetRunningOrPausedJob.mockResolvedValue(null);
-          mockCreateJob.mockResolvedValue({
-            jobId: "account-job-uuid",
-            state: "running",
-            phase: "fetch",
-            startedAt: "2025-01-15T12:00:00.000Z",
-            lastUpdatedAt: "2025-01-15T12:00:00.000Z",
-            filterParams: {},
-            progress: { processed: 0, imported: 0, skipped: 0, failed: 0 },
-          });
+          setupDefaultJobManagers();
           setupLockAcquired();
           setupSyncState(null);
 

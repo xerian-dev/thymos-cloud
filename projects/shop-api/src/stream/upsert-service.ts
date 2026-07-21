@@ -4,7 +4,7 @@ import { randomUUID } from "node:crypto";
 
 import { docClient, TABLE_NAME } from "./dynamodb-client";
 import { findBySourceId } from "./source-id-lookup";
-import { getNextSequenceNumber } from "./sequence-service";
+import { getNextSequenceNumber, seedSequenceCounter } from "./sequence-service";
 import type { MappedAccount } from "./account-mapper";
 import type { MappedItem } from "./item-mapper";
 import type { MappedSale, MappedLineItem } from "./sale-mapper";
@@ -122,6 +122,28 @@ async function resolveOrCreateCategory(
     }
     throw error;
   }
+}
+
+function extractAccountSourceId(
+  raw: Record<string, unknown>,
+): string | undefined {
+  // Try nested object: raw.account.id
+  const account = raw.account;
+  if (
+    account != null &&
+    typeof account === "object" &&
+    !Array.isArray(account)
+  ) {
+    const accountObj = account as Record<string, unknown>;
+    if (typeof accountObj.id === "string" && accountObj.id) {
+      return accountObj.id;
+    }
+  }
+  // Fallback: raw.account_id (flat string)
+  if (typeof raw.account_id === "string" && raw.account_id) {
+    return raw.account_id;
+  }
+  return undefined;
 }
 
 export async function upsertAccount(
@@ -323,57 +345,176 @@ export async function upsertItem(
 
   if (existing) {
     const now = new Date().toISOString();
+
+    // Resolve account for GSI2 update
+    const accountSourceId = extractAccountSourceId(raw);
+    let accountId = "";
+    if (accountSourceId) {
+      const accountRecord = await findBySourceId(accountSourceId);
+      if (accountRecord) {
+        accountId = accountRecord.PK.replace("ACCOUNT#", "");
+      }
+    }
+
+    // Resolve category for GSI3 update
+    let categoryId = "";
+    const rawCategory = raw.category;
+    if (
+      rawCategory != null &&
+      typeof rawCategory === "object" &&
+      !Array.isArray(rawCategory)
+    ) {
+      const category = rawCategory as Record<string, unknown>;
+      const categorySourceId =
+        typeof category.id === "string" ? category.id : "";
+      const categoryName =
+        typeof category.name === "string" ? category.name : "Unknown";
+      if (categorySourceId) {
+        categoryId = await resolveOrCreateCategory(
+          categorySourceId,
+          categoryName,
+        );
+      }
+    }
+
+    // Build update expression dynamically
+    let updateExpression =
+      "SET title = :title, tagPrice = :tagPrice, quantity = :quantity, " +
+      "split = :split, inventoryType = :inventoryType, terms = :terms, " +
+      "taxExempt = :taxExempt, #st = :status, updatedAt = :updatedAt";
+
+    const expressionValues: Record<string, unknown> = {
+      ":title": mapped.title,
+      ":tagPrice": mapped.tagPrice,
+      ":quantity": mapped.quantity,
+      ":split": mapped.split,
+      ":inventoryType": mapped.inventoryType,
+      ":terms": mapped.terms,
+      ":taxExempt": mapped.taxExempt,
+      ":status": mapped.status,
+      ":updatedAt": now,
+    };
+
+    const expressionNames: Record<string, string> = {
+      "#st": "status",
+    };
+
+    // Existing optional fields
+    if (mapped.description) {
+      updateExpression += ", description = :description";
+      expressionValues[":description"] = mapped.description;
+    }
+    if (mapped.brand) {
+      updateExpression += ", brand = :brand";
+      expressionValues[":brand"] = mapped.brand;
+    }
+    if (mapped.color) {
+      updateExpression += ", color = :color";
+      expressionValues[":color"] = mapped.color;
+    }
+    if (mapped.size) {
+      updateExpression += ", size = :size";
+      expressionValues[":size"] = mapped.size;
+    }
+    if (mapped.shelf) {
+      updateExpression += ", shelf = :shelf";
+      expressionValues[":shelf"] = mapped.shelf;
+    }
+    if (mapped.tags) {
+      updateExpression += ", tags = :tags";
+      expressionValues[":tags"] = mapped.tags;
+    }
+    if (mapped.imageKeys) {
+      updateExpression += ", imageKeys = :imageKeys";
+      expressionValues[":imageKeys"] = mapped.imageKeys;
+    }
+
+    // New optional fields
+    if (mapped.location) {
+      updateExpression += ", #loc = :location";
+      expressionValues[":location"] = mapped.location;
+      expressionNames["#loc"] = "location";
+    }
+    if (mapped.details) {
+      updateExpression += ", details = :details";
+      expressionValues[":details"] = mapped.details;
+    }
+    if (mapped.scheduleStart) {
+      updateExpression += ", scheduleStart = :scheduleStart";
+      expressionValues[":scheduleStart"] = mapped.scheduleStart;
+    }
+    if (mapped.expirationDate) {
+      updateExpression += ", expirationDate = :expirationDate";
+      expressionValues[":expirationDate"] = mapped.expirationDate;
+    }
+    if (mapped.lastSold) {
+      updateExpression += ", lastSold = :lastSold";
+      expressionValues[":lastSold"] = mapped.lastSold;
+    }
+    if (mapped.lastViewed) {
+      updateExpression += ", lastViewed = :lastViewed";
+      expressionValues[":lastViewed"] = mapped.lastViewed;
+    }
+    if (mapped.labelPrintedAt) {
+      updateExpression += ", labelPrintedAt = :labelPrintedAt";
+      expressionValues[":labelPrintedAt"] = mapped.labelPrintedAt;
+    }
+    if (mapped.daysOnShelf != null) {
+      updateExpression += ", daysOnShelf = :daysOnShelf";
+      expressionValues[":daysOnShelf"] = mapped.daysOnShelf;
+    }
+    if (mapped.deleted) {
+      updateExpression += ", deleted = :deleted";
+      expressionValues[":deleted"] = mapped.deleted;
+    }
+
+    // GSI2 keys (account)
+    if (accountId) {
+      updateExpression += ", GSI2PK = :gsi2pk, GSI2SK = :gsi2sk";
+      expressionValues[":gsi2pk"] = `ACCOUNT#${accountId}`;
+      expressionValues[":gsi2sk"] = `ITEM#${mapped.createdAt || now}`;
+    }
+
+    // GSI3 keys (category)
+    if (categoryId) {
+      updateExpression += ", GSI3PK = :gsi3pk, GSI3SK = :gsi3sk";
+      expressionValues[":gsi3pk"] = `CATEGORY#${categoryId}`;
+      expressionValues[":gsi3sk"] = `ITEM#${mapped.createdAt || now}`;
+    }
+
     await docClient.send(
       new UpdateCommand({
         TableName: TABLE_NAME,
         Key: { PK: existing.PK, SK: existing.SK },
-        UpdateExpression:
-          "SET title = :title, tagPrice = :tagPrice, quantity = :quantity, " +
-          "split = :split, inventoryType = :inventoryType, terms = :terms, " +
-          "taxExempt = :taxExempt, updatedAt = :updatedAt" +
-          (mapped.description ? ", description = :description" : "") +
-          (mapped.brand ? ", brand = :brand" : "") +
-          (mapped.color ? ", color = :color" : "") +
-          (mapped.size ? ", size = :size" : "") +
-          (mapped.shelf ? ", shelf = :shelf" : "") +
-          (mapped.tags ? ", tags = :tags" : "") +
-          (mapped.imageKeys ? ", imageKeys = :imageKeys" : ""),
-        ExpressionAttributeValues: {
-          ":title": mapped.title,
-          ":tagPrice": mapped.tagPrice,
-          ":quantity": mapped.quantity,
-          ":split": mapped.split,
-          ":inventoryType": mapped.inventoryType,
-          ":terms": mapped.terms,
-          ":taxExempt": mapped.taxExempt,
-          ":updatedAt": now,
-          ...(mapped.description && { ":description": mapped.description }),
-          ...(mapped.brand && { ":brand": mapped.brand }),
-          ...(mapped.color && { ":color": mapped.color }),
-          ...(mapped.size && { ":size": mapped.size }),
-          ...(mapped.shelf && { ":shelf": mapped.shelf }),
-          ...(mapped.tags && { ":tags": mapped.tags }),
-          ...(mapped.imageKeys && { ":imageKeys": mapped.imageKeys }),
-        },
+        UpdateExpression: updateExpression,
+        ExpressionAttributeNames: expressionNames,
+        ExpressionAttributeValues: expressionValues,
       }),
     );
     return { action: "updated" };
   }
 
   // Resolve owning account
-  const accountSourceId =
-    typeof raw.account_id === "string" ? raw.account_id : "";
+  const accountSourceId = extractAccountSourceId(raw);
   let accountId = "";
   if (accountSourceId) {
     const accountRecord = await findBySourceId(accountSourceId);
     if (accountRecord) {
       accountId = accountRecord.PK.replace("ACCOUNT#", "");
     } else {
-      console.error(
-        `[upsert-service] Account not found for sourceId: ${accountSourceId}`,
+      // Account not yet synced — skip item gracefully (will be retried)
+      console.warn(
+        JSON.stringify({
+          level: "WARN",
+          message: "Account not found, skipping item",
+          itemSourceId: mapped.sourceId,
+          accountSourceId,
+        }),
       );
+      return { action: "skipped" };
     }
   }
+  // When no account source ID is present, proceed without accountId
 
   // Resolve or create Employee (createdBy)
   let createdBy = "";
@@ -414,8 +555,19 @@ export async function upsertItem(
 
   // Create new item
   const uuid = randomUUID();
-  const sku = await getNextSequenceNumber("ITEM");
   const now = new Date().toISOString();
+
+  // SKU resolution: use CC SKU if numeric and positive, else generate from sequence
+  const rawSku = typeof raw.sku === "string" ? raw.sku : "";
+  const parsedSku = rawSku ? parseInt(rawSku, 10) : NaN;
+  let sku: number;
+  if (!isNaN(parsedSku) && parsedSku > 0) {
+    sku = parsedSku;
+    // Seed the sequence counter to stay in sync
+    await seedSequenceCounter("ITEM", sku);
+  } else {
+    sku = await getNextSequenceNumber("ITEM");
+  }
 
   try {
     await docClient.send(
@@ -445,6 +597,31 @@ export async function upsertItem(
           shelf: mapped.shelf,
           tags: mapped.tags,
           imageKeys: mapped.imageKeys,
+          status: mapped.status,
+          ...(accountId && {
+            GSI2PK: `ACCOUNT#${accountId}`,
+            GSI2SK: `ITEM#${mapped.createdAt || now}`,
+          }),
+          ...(categoryId && {
+            GSI3PK: `CATEGORY#${categoryId}`,
+            GSI3SK: `ITEM#${mapped.createdAt || now}`,
+          }),
+          ...(mapped.location && { location: mapped.location }),
+          ...(mapped.details && { details: mapped.details }),
+          ...(mapped.scheduleStart && { scheduleStart: mapped.scheduleStart }),
+          ...(mapped.expirationDate && {
+            expirationDate: mapped.expirationDate,
+          }),
+          ...(mapped.lastSold && { lastSold: mapped.lastSold }),
+          ...(mapped.lastViewed && { lastViewed: mapped.lastViewed }),
+          ...(mapped.labelPrintedAt && {
+            labelPrintedAt: mapped.labelPrintedAt,
+          }),
+          ...(mapped.daysOnShelf != null && {
+            daysOnShelf: mapped.daysOnShelf,
+          }),
+          ...(mapped.deleted && { deleted: mapped.deleted }),
+          ...(rawSku && { sourceSku: rawSku }),
           sourceId: mapped.sourceId,
           createdAt: mapped.createdAt || now,
           updatedAt: now,

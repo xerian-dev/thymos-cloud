@@ -23,7 +23,6 @@ vi.mock("../import/sync-orchestrator", () => ({
 
 vi.mock("../import/item-import-handler", () => ({
   handleItemImportStart: vi.fn(),
-  handleItemImportSync: vi.fn(),
   handleItemImportResume: vi.fn(),
   handleItemImportStatus: vi.fn(),
   handleResumeInternal: mockHandleResumeInternal,
@@ -165,7 +164,7 @@ describe("import-handler", () => {
 
       const result = await handler(event);
 
-      expect(mockHandleResumeInternal).toHaveBeenCalledWith("job-123", "fetch");
+      expect(mockHandleResumeInternal).toHaveBeenCalledWith("job-123");
       expect(result).toEqual({
         statusCode: 200,
         body: JSON.stringify({ status: "resumed" }),
@@ -207,7 +206,7 @@ describe("import-handler", () => {
 
       const result = await handler(event);
 
-      expect(mockHandleResumeInternal).toHaveBeenCalledWith("job-789", "fetch");
+      expect(mockHandleResumeInternal).toHaveBeenCalledWith("job-789");
       expect(mockHandleSaleResumeInternal).not.toHaveBeenCalled();
       expect(result).toEqual({
         statusCode: 200,

@@ -29,6 +29,7 @@ export interface SyncRunResult {
 }
 
 const accountJobManager = createJobManager({ prefix: "ACCOUNT_IMPORT" });
+const itemJobManager = createJobManager({ prefix: "ITEM_IMPORT" });
 
 export async function handleScheduledSync(): Promise<SyncRunResult> {
   const correlationId = randomUUID();
@@ -174,8 +175,67 @@ export async function handleScheduledSync(): Promise<SyncRunResult> {
       );
     }
 
-    // ===== Phase 2: Items (DISABLED) =====
-    phases.items = { status: "skipped", reason: "disabled" };
+    // ===== Phase 2: Items (async via Step Functions) =====
+    if (phases.accounts.status === "error") {
+      phases.items = {
+        status: "skipped",
+        reason: "Skipped: accounts phase failed",
+      };
+      console.info(
+        JSON.stringify({
+          level: "INFO",
+          message: "Items phase skipped due to accounts phase failure",
+          correlationId,
+        }),
+      );
+    } else {
+      try {
+        const existingItemJob = await itemJobManager.getRunningOrPausedJob();
+        if (existingItemJob) {
+          phases.items = {
+            status: "skipped",
+            reason: "Item import already running/paused",
+          };
+          console.info(
+            JSON.stringify({
+              level: "INFO",
+              message: "Item import already in progress, skipping",
+              correlationId,
+              existingJobId: existingItemJob.jobId,
+              existingJobState: existingItemJob.state,
+            }),
+          );
+        } else {
+          const itemJob = await itemJobManager.createJob({
+            createdAfter: syncState?.lastItemSyncAt ?? undefined,
+          });
+          const itemArn = await startStepFunctionWithRetry(
+            {
+              jobId: itemJob.jobId,
+              phase: "fetch",
+              type: "item",
+              createdAfter: syncState?.lastItemSyncAt ?? undefined,
+            },
+            correlationId,
+          );
+          itemExecutionArn = itemArn;
+          phases.items = { status: "success" };
+          await updateSyncStateField("lastItemSyncAt", syncTimestamp);
+        }
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : "Unknown error";
+        phases.items = { status: "error", reason: message };
+        console.error(
+          JSON.stringify({
+            level: "ERROR",
+            message: "Item import Step Function start failed",
+            correlationId,
+            error: message,
+          }),
+        );
+      }
+    }
 
     // ===== Phase 3: Sales (DISABLED) =====
     phases.sales = { status: "skipped", reason: "disabled" };

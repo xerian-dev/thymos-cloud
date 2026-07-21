@@ -1,6 +1,67 @@
 export type InventoryType = "Consignment" | "Retail";
 export type Terms = "Return To Consignor" | "Donate" | "Discard";
 
+export type ItemStatus =
+  | "active"
+  | "parked"
+  | "inactive"
+  | "expired"
+  | "to_be_returned"
+  | "sold"
+  | "returned_to_owner"
+  | "donated"
+  | "lost"
+  | "stolen"
+  | "damaged";
+
+export const STATUS_PRIORITY: ItemStatus[] = [
+  "active",
+  "parked",
+  "inactive",
+  "expired",
+  "to_be_returned",
+  "sold",
+  "returned_to_owner",
+  "donated",
+  "lost",
+  "stolen",
+  "damaged",
+];
+
+export const SOLD_VARIANTS = new Set([
+  "sold",
+  "sold_on_shopify",
+  "sold_on_square",
+  "sold_on_third_party",
+]);
+
+export function deriveItemStatus(
+  statusObj: Record<string, number> | null | undefined,
+): ItemStatus {
+  if (!statusObj || Object.keys(statusObj).length === 0) {
+    return "active";
+  }
+
+  // Normalize: collapse sold variants into "sold"
+  const normalized = new Map<ItemStatus, number>();
+  for (const [key, count] of Object.entries(statusObj)) {
+    if (count <= 0) continue;
+    const normalizedKey: ItemStatus = SOLD_VARIANTS.has(key)
+      ? "sold"
+      : (key as ItemStatus);
+    normalized.set(normalizedKey, (normalized.get(normalizedKey) ?? 0) + count);
+  }
+
+  // Return highest priority status with non-zero count
+  for (const status of STATUS_PRIORITY) {
+    if ((normalized.get(status) ?? 0) > 0) {
+      return status;
+    }
+  }
+
+  return "active";
+}
+
 export interface MappedItem {
   title: string;
   tagPrice: number;
@@ -9,13 +70,23 @@ export interface MappedItem {
   inventoryType: InventoryType;
   terms: Terms;
   taxExempt: boolean;
+  status: ItemStatus;
   description?: string;
   brand?: string;
   color?: string;
   size?: string;
   shelf?: string;
+  location?: string;
+  details?: string;
   tags?: string[];
   imageKeys?: string[];
+  scheduleStart?: string;
+  expirationDate?: string;
+  lastSold?: string;
+  lastViewed?: string;
+  labelPrintedAt?: string;
+  daysOnShelf?: number;
+  deleted?: string;
   sourceId: string;
   createdAt: string;
 }
@@ -103,6 +174,17 @@ export function mapItem(raw: Record<string, unknown>): ItemMappingResult {
   const sourceId = typeof raw.id === "string" ? raw.id : "";
   const createdAt = typeof raw.created === "string" ? raw.created : "";
 
+  // Derive status from raw.status (expected: Record<string, number>)
+  const rawStatus = raw.status;
+  let statusObj: Record<string, number> | null = null;
+  if (
+    rawStatus != null &&
+    typeof rawStatus === "object" &&
+    !Array.isArray(rawStatus)
+  ) {
+    statusObj = rawStatus as Record<string, number>;
+  }
+
   // Map fields
   const mapped: MappedItem = {
     title: itemName.slice(0, 200),
@@ -111,8 +193,8 @@ export function mapItem(raw: Record<string, unknown>): ItemMappingResult {
     split,
     inventoryType: mapInventoryType(raw.inventory_type),
     terms: mapTerms(raw.terms),
-    taxExempt:
-      typeof raw.tax_exempt === "boolean" ? raw.tax_exempt : false,
+    taxExempt: typeof raw.tax_exempt === "boolean" ? raw.tax_exempt : false,
+    status: deriveItemStatus(statusObj),
     sourceId,
     createdAt,
   };
@@ -173,7 +255,7 @@ export function mapItem(raw: Record<string, unknown>): ItemMappingResult {
     const imageKeys = (raw.images as unknown[])
       .filter(
         (img): img is Record<string, unknown> =>
-          img != null && typeof img === "object" && "url" in img
+          img != null && typeof img === "object" && "url" in img,
       )
       .map((img) => img.url)
       .filter((url): url is string => typeof url === "string");
@@ -181,6 +263,56 @@ export function mapItem(raw: Record<string, unknown>): ItemMappingResult {
     if (imageKeys.length > 0) {
       mapped.imageKeys = imageKeys;
     }
+  }
+
+  // location — extract from raw.location.name
+  if (
+    location != null &&
+    typeof location === "object" &&
+    "name" in location &&
+    typeof (location as Record<string, unknown>).name === "string"
+  ) {
+    mapped.location = (location as Record<string, unknown>).name as string;
+  }
+
+  // details — string, max 5000 chars
+  if (typeof raw.details === "string" && raw.details) {
+    mapped.details = raw.details.slice(0, 5000);
+  }
+
+  // scheduleStart — from raw.schedule_start
+  if (typeof raw.schedule_start === "string" && raw.schedule_start) {
+    mapped.scheduleStart = raw.schedule_start;
+  }
+
+  // expirationDate — from raw.expires
+  if (typeof raw.expires === "string" && raw.expires) {
+    mapped.expirationDate = raw.expires;
+  }
+
+  // lastSold — from raw.last_sold
+  if (typeof raw.last_sold === "string" && raw.last_sold) {
+    mapped.lastSold = raw.last_sold;
+  }
+
+  // lastViewed — from raw.last_viewed
+  if (typeof raw.last_viewed === "string" && raw.last_viewed) {
+    mapped.lastViewed = raw.last_viewed;
+  }
+
+  // labelPrintedAt — from raw.printed
+  if (typeof raw.printed === "string" && raw.printed) {
+    mapped.labelPrintedAt = raw.printed;
+  }
+
+  // daysOnShelf — from raw.days_on_shelf (number)
+  if (typeof raw.days_on_shelf === "number") {
+    mapped.daysOnShelf = raw.days_on_shelf;
+  }
+
+  // deleted — from raw.deleted
+  if (typeof raw.deleted === "string" && raw.deleted) {
+    mapped.deleted = raw.deleted;
   }
 
   return { success: true, mapped };

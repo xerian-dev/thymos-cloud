@@ -59,12 +59,6 @@ vi.mock("../../src/import/item-fetch-orchestrator", () => ({
   runFetchLoop: (...args: unknown[]) => mockRunFetchLoop(...args),
 }));
 
-const mockRunSyncLoop = vi.fn();
-
-vi.mock("../../src/import/item-sync-orchestrator", () => ({
-  runSyncLoop: (...args: unknown[]) => mockRunSyncLoop(...args),
-}));
-
 vi.mock("../../src/import/fetch-from-consigncloud", () => ({
   fetchFromConsignCloud: vi.fn().mockResolvedValue({
     statusCode: 200,
@@ -160,7 +154,6 @@ describe("item-import-handler unit tests", () => {
       status: "complete",
       jobId: "job-001",
     });
-    mockRunSyncLoop.mockResolvedValue({ status: "complete", jobId: "job-001" });
   });
 
   describe("handleItemImportStart", () => {
@@ -290,7 +283,7 @@ describe("item-import-handler unit tests", () => {
       );
       expect(mockStartStepFunction).toHaveBeenCalledWith(
         "paused-job-id",
-        undefined,
+        "fetch",
       );
     });
 
@@ -473,10 +466,6 @@ describe("import-handler routing (resume-internal and HTTP routes)", () => {
     mockCreateRateLimiter.mockReturnValue({});
     mockRunImportLoop.mockResolvedValue(undefined);
     mockRunFetchLoop.mockResolvedValue({
-      status: "complete",
-      jobId: "internal-job-id",
-    });
-    mockRunSyncLoop.mockResolvedValue({
       status: "complete",
       jobId: "internal-job-id",
     });

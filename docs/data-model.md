@@ -63,27 +63,37 @@ erDiagram
 
     ITEM {
         string uuid PK "v4 UUID (synthetic key)"
-        number sku "Sequential number (shopUid), auto-generated from counter"
+        number sku "Operator-facing identifier (from CC import or sequence counter)"
+        string sourceSku "Optional, raw CC SKU string preserved"
         string accountId FK "UUID of owning Account"
         string createdBy FK "UUID of Employee who created the item"
         string categoryId FK "UUID of Category"
         string title "Required, max 200 chars"
         number tagPrice "CHF, 0-999999.99"
-        number quantity "1-9999"
+        number quantity "0-9999 (0 for sold items)"
         number split "0-100, consignor percentage"
         string inventoryType "Consignment | Retail"
         string terms "Return To Consignor | Donate | Discard"
+        string status "Required, Item Status enum"
         boolean taxExempt "Default false"
         string description "Optional, max 2000 chars"
-        string category "Optional"
+        string category "Optional, category name for display"
         string brand "Optional"
         string color "Optional"
         string size "Optional"
         string shelf "Optional"
+        string location "Optional, store location name"
         string details "Optional, rich text, max 5000 chars"
         list tags "Optional, max 20 items"
+        string scheduleStart "Optional, consignment start date ISO 8601"
         string expirationDate "Optional, ISO 8601"
-        list imageKeys "Optional, S3 keys, max 10"
+        string lastSold "Optional, ISO 8601 UTC"
+        string lastViewed "Optional, ISO 8601 UTC"
+        string labelPrintedAt "Optional, ISO 8601 UTC"
+        number daysOnShelf "Optional, calculated at import time"
+        list imageKeys "Optional, S3 keys or URLs, max 10"
+        string deleted "Optional, ISO 8601 UTC if soft-deleted"
+        string sourceId "Optional, external system ID (CC item UUID)"
         string createdAt "ISO 8601 UTC"
         string updatedAt "ISO 8601 UTC"
     }
@@ -134,24 +144,26 @@ erDiagram
 
 Both entities live in the same DynamoDB table (`thymos-{environment}-shop`). The ER diagram above shows the logical domain model; below is how it maps to physical key patterns:
 
-| Entity           | PK                    | SK                    | GSI1PK     | GSI1SK                  |
-|------------------|-----------------------|-----------------------|------------|-------------------------|
-| Account          | `ACCOUNT#<uuid>`      | `METADATA`            | `ACCOUNTS` | `ACCOUNT#<shopUid>`     |
-| Employee         | `EMPLOYEE#<uuid>`     | `METADATA`            | —          | —                       |
-| Category         | `CATEGORY#<uuid>`     | `METADATA`            | —          | —                       |
-| Item             | `ITEM#<uuid>`         | `METADATA`            | `ITEMS`    | `ITEM#<sku>`            |
-| Sale             | `SALE#<uuid>`         | `METADATA`            | `SALES`    | `SALE#<number>`         |
-| Sale Line Item   | `SALE#<uuid>`         | `LINE_ITEM#<index>`   | —          | —                       |
-| Account Counter  | `SEQUENCE#ACCOUNT`    | `COUNTER`             | —          | —                       |
-| Item Counter     | `SEQUENCE#ITEM`       | `COUNTER`             | —          | —                       |
-| Sale Counter     | `SEQUENCE#SALE`       | `COUNTER`             | —          | —                       |
+| Entity           | PK                    | SK                    | GSI1PK     | GSI1SK                  | GSI2PK                      | GSI2SK                  | GSI3PK                        | GSI3SK                  |
+|------------------|-----------------------|-----------------------|------------|-------------------------|-----------------------------|-------------------------|-------------------------------|-------------------------|
+| Account          | `ACCOUNT#<uuid>`      | `METADATA`            | `ACCOUNTS` | `ACCOUNT#<shopUid>`     | —                           | —                       | —                             | —                       |
+| Employee         | `EMPLOYEE#<uuid>`     | `METADATA`            | —          | —                       | `EMPLOYEES`                 | `EMPLOYEE#<uuid>`       | —                             | —                       |
+| Category         | `CATEGORY#<uuid>`     | `METADATA`            | —          | —                       | —                           | —                       | —                             | —                       |
+| Item             | `ITEM#<uuid>`         | `METADATA`            | `ITEMS`    | `ITEM#<sku>`            | `ACCOUNT#<accountId>`       | `ITEM#<createdAt>`      | `CATEGORY#<categoryId>`       | `ITEM#<createdAt>`      |
+| Sale             | `SALE#<uuid>`         | `METADATA`            | `SALES`    | `SALE#<number>`         | —                           | —                       | —                             | —                       |
+| Sale Line Item   | `SALE#<uuid>`         | `LINE_ITEM#<index>`   | —          | —                       | —                           | —                       | —                             | —                       |
+| Account Counter  | `SEQUENCE#ACCOUNT`    | `COUNTER`             | —          | —                       | —                           | —                       | —                             | —                       |
+| Item Counter     | `SEQUENCE#ITEM`       | `COUNTER`             | —          | —                       | —                           | —                       | —                             | —                       |
+| Sale Counter     | `SEQUENCE#SALE`       | `COUNTER`             | —          | —                       | —                           | —                       | —                             | —                       |
 
 ### Key Design Principles
 
 - **Synthetic keys only**: UUIDs for identity, never business values (shopUid, SKU) as partition keys
 - **Business identifiers as attributes**: shopUid and SKU are queryable via GSI1 but never used as primary keys
-- **SKU is the item's shopUid**: The SKU is a sequential number (e.g., `42`) auto-generated from the item sequence counter — the same concept as `shopUid` for accounts. It is the operator-facing identifier for items, labelled "SKU" in the UI.
+- **SKU is the item's shopUid**: The SKU is a sequential number (e.g., `42`) — the operator-facing identifier for items, labelled "SKU" in the UI and printed on labels. For imported items, the SKU comes directly from ConsignCloud (not generated). The sequence counter is seeded to max(imported SKU) after the first full import to prevent collisions with future locally-created items.
 - **Relationship via attribute**: Items reference their owning Account by storing `accountId` (the Account's UUID), and their creator by storing `createdBy` (the Employee's UUID)
+- **Items by account (GSI2)**: Items are queryable by owning account via GSI2 (`GSI2PK: ACCOUNT#<accountId>`, `GSI2SK: ITEM#<createdAt>`). Querying with `ScanIndexForward: false` returns items newest-first. GSI2 is overloaded — employees also use it (`GSI2PK: EMPLOYEES`, `GSI2SK: EMPLOYEE#<uuid>`).
+- **Items by category (GSI3)**: Items are queryable by category via GSI3 (`GSI3PK: CATEGORY#<categoryId>`, `GSI3SK: ITEM#<createdAt>`). Querying with `ScanIndexForward: false` returns items newest-first.
 - **Employee lookup**: Employees are looked up by `sourceId` via the `sourceId-index` GSI (same as accounts). No sequential numbering — they're referenced, not browsed.
 - **Sale line items**: Stored under the same PK as the sale (`SALE#<uuid>`) with SK `LINE_ITEM#<index>`. This allows fetching a sale and all its line items in a single Query. Each line item references the Item UUID and stores the price/portions at time of sale.
 - **Sale number**: A sequential number auto-generated from the sale sequence counter — the operator-facing identifier for sales. Queryable via GSI1 (`GSI1PK: SALES`, `GSI1SK: SALE#<number>`).
@@ -183,3 +195,21 @@ Both entities live in the same DynamoDB table (`thymos-{environment}-shop`). The
 | `open`       | Sale is in progress (items added but not yet paid/finalized).                     |
 | `finalized`  | Sale is complete — payment received, items marked as sold.                        |
 | `voided`     | Sale was cancelled after creation.                                                |
+
+### Item Status
+
+Derived from the ConsignCloud status breakdown object. For items with quantity > 1, the highest-priority status with non-zero units wins. ConsignCloud's `sold_on_shopify`, `sold_on_square`, and `sold_on_third_party` are consolidated into `sold`.
+
+| Value                 | Priority | Description                                                                                           |
+| --------------------- | -------- | ----------------------------------------------------------------------------------------------------- |
+| `active`              | 1        | Item is available for sale on the shelf.                                                              |
+| `parked`              | 2        | Item temporarily removed from the sale floor (e.g., reserved, being photographed).                    |
+| `inactive`            | 3        | Item deliberately deactivated by operator.                                                            |
+| `expired`             | 4        | Consignment period ended, pending action per terms (return/donate/discard).                           |
+| `to_be_returned`      | 5        | Item is queued for return to the consignor.                                                           |
+| `sold`                | 6        | Item sold (includes in-store, Shopify, Square, and third-party sales).                                |
+| `returned_to_owner`   | 7        | Item has been returned to the consignor.                                                              |
+| `donated`             | 8        | Item donated per consignment terms.                                                                   |
+| `lost`                | 9        | Item is lost or unaccounted for.                                                                      |
+| `stolen`              | 10       | Item reported stolen.                                                                                 |
+| `damaged`             | 11       | Item damaged and removed from inventory.                                                              |
