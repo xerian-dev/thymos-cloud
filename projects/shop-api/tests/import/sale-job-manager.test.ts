@@ -44,6 +44,20 @@ vi.mock("@aws-sdk/lib-dynamodb", () => ({
       this.input = input;
     }
   },
+  QueryCommand: class MockQueryCommand {
+    input: unknown;
+    _type = "Query";
+    constructor(input: unknown) {
+      this.input = input;
+    }
+  },
+  TransactWriteCommand: class MockTransactWriteCommand {
+    input: unknown;
+    _type = "TransactWrite";
+    constructor(input: unknown) {
+      this.input = input;
+    }
+  },
 }));
 
 describe("sale-job-manager", () => {
@@ -57,7 +71,7 @@ describe("sale-job-manager", () => {
       const { createSaleJob } =
         await import("../../src/import/sale-job-manager");
 
-      sendMock.mockResolvedValueOnce({}); // PutCommand response
+      sendMock.mockResolvedValueOnce({}); // TransactWriteCommand response
 
       const filterParams = { createdAfter: "2024-01-01T00:00:00.000Z" };
       const job = await createSaleJob(filterParams);
@@ -83,10 +97,12 @@ describe("sale-job-manager", () => {
       expect(job.startedAt).toBe(job.lastUpdatedAt);
       expect(new Date(job.startedAt).toISOString()).toBe(job.startedAt);
 
-      // Verify PutCommand was called with correct PK/SK
-      const putCmd = sendMock.mock.calls[0][0];
-      expect(putCmd.input.Item.PK).toBe(`SALE_IMPORT#${job.jobId}`);
-      expect(putCmd.input.Item.SK).toBe("METADATA");
+      // Verify TransactWriteCommand was called with correct PK/SK in metadata item
+      const txCmd = sendMock.mock.calls[0][0];
+      expect(txCmd._type).toBe("TransactWrite");
+      const metadataItem = txCmd.input.TransactItems[0].Put.Item;
+      expect(metadataItem.PK).toBe(`SALE_IMPORT#${job.jobId}`);
+      expect(metadataItem.SK).toBe("METADATA");
     });
 
     it("creates job with empty filterParams when no createdAfter provided", async () => {
@@ -150,23 +166,24 @@ describe("sale-job-manager", () => {
   });
 
   describe("getRunningSaleJob", () => {
-    it("finds an active job when scan returns a running job", async () => {
+    it("finds an active job when query returns a running job", async () => {
       const { getRunningSaleJob } =
         await import("../../src/import/sale-job-manager");
 
       sendMock.mockResolvedValueOnce({
         Items: [
           {
+            PK: "JOBS",
+            SK: "SALE_IMPORT#2024-06-01T00:05:00.000Z#active-job-1",
             jobId: "active-job-1",
             state: "running",
             phase: "fetch",
             startedAt: "2024-06-01T00:00:00.000Z",
             lastUpdatedAt: "2024-06-01T00:05:00.000Z",
-            filterParams: {},
             progress: { processed: 50, imported: 45, skipped: 3, failed: 2 },
+            prefix: "SALE_IMPORT",
           },
         ],
-        LastEvaluatedKey: undefined,
       });
 
       const result = await getRunningSaleJob();
@@ -175,18 +192,13 @@ describe("sale-job-manager", () => {
       expect(result!.jobId).toBe("active-job-1");
       expect(result!.state).toBe("running");
 
-      // Verify scan filter expression
-      const scanCmd = sendMock.mock.calls[0][0];
-      expect(scanCmd.input.FilterExpression).toContain(
-        "begins_with(PK, :pkPrefix)",
-      );
-      expect(scanCmd.input.ExpressionAttributeValues[":pkPrefix"]).toBe(
+      // Verify QueryCommand was used on JOBS partition
+      const queryCmd = sendMock.mock.calls[0][0];
+      expect(queryCmd._type).toBe("Query");
+      expect(queryCmd.input.ExpressionAttributeValues[":pk"]).toBe("JOBS");
+      expect(queryCmd.input.ExpressionAttributeValues[":skPrefix"]).toBe(
         "SALE_IMPORT#",
       );
-      expect(scanCmd.input.ExpressionAttributeValues[":running"]).toBe(
-        "running",
-      );
-      expect(scanCmd.input.ExpressionAttributeValues[":paused"]).toBe("paused");
     });
 
     it("returns null when no running or paused jobs exist", async () => {
@@ -195,44 +207,10 @@ describe("sale-job-manager", () => {
 
       sendMock.mockResolvedValueOnce({
         Items: [],
-        LastEvaluatedKey: undefined,
       });
 
       const result = await getRunningSaleJob();
       expect(result).toBeNull();
-    });
-
-    it("paginates through scan results to find active job", async () => {
-      const { getRunningSaleJob } =
-        await import("../../src/import/sale-job-manager");
-
-      // First page: no results, has LastEvaluatedKey
-      sendMock.mockResolvedValueOnce({
-        Items: [],
-        LastEvaluatedKey: { PK: "SALE_IMPORT#old", SK: "METADATA" },
-      });
-      // Second page: found a job
-      sendMock.mockResolvedValueOnce({
-        Items: [
-          {
-            jobId: "paginated-job",
-            state: "paused",
-            phase: "sync",
-            startedAt: "2024-06-01T00:00:00.000Z",
-            lastUpdatedAt: "2024-06-01T01:00:00.000Z",
-            filterParams: {},
-            progress: { processed: 100, imported: 90, skipped: 5, failed: 5 },
-          },
-        ],
-        LastEvaluatedKey: undefined,
-      });
-
-      const result = await getRunningSaleJob();
-
-      expect(result).not.toBeNull();
-      expect(result!.jobId).toBe("paginated-job");
-      expect(result!.state).toBe("paused");
-      expect(sendMock).toHaveBeenCalledTimes(2);
     });
   });
 
@@ -241,7 +219,7 @@ describe("sale-job-manager", () => {
       const { transitionSaleJob } =
         await import("../../src/import/sale-job-manager");
 
-      // Mock getSaleJob response (running state)
+      // Mock getJob response (running state)
       sendMock.mockResolvedValueOnce({
         Item: {
           jobId: "job-1",
@@ -253,24 +231,24 @@ describe("sale-job-manager", () => {
           progress: { processed: 0, imported: 0, skipped: 0, failed: 0 },
         },
       });
-      // Mock UpdateCommand response
+      // Mock TransactWriteCommand response
       sendMock.mockResolvedValueOnce({});
 
       const progress = { processed: 10, imported: 5, skipped: 2, failed: 3 };
 
       await transitionSaleJob("job-1", "failed", progress, "Something broke");
 
-      // Verify UpdateCommand was called
-      const updateCmd = sendMock.mock.calls[1][0];
-      expect(updateCmd.input.Key.PK).toBe("SALE_IMPORT#job-1");
-      expect(updateCmd.input.Key.SK).toBe("METADATA");
-      expect(updateCmd.input.ExpressionAttributeValues[":state"]).toBe(
-        "failed",
-      );
-      expect(updateCmd.input.ExpressionAttributeValues[":progress"]).toEqual(
+      // Verify TransactWriteCommand was called
+      const txCmd = sendMock.mock.calls[1][0];
+      expect(txCmd._type).toBe("TransactWrite");
+      const updateItem = txCmd.input.TransactItems[0].Update;
+      expect(updateItem.Key.PK).toBe("SALE_IMPORT#job-1");
+      expect(updateItem.Key.SK).toBe("METADATA");
+      expect(updateItem.ExpressionAttributeValues[":state"]).toBe("failed");
+      expect(updateItem.ExpressionAttributeValues[":progress"]).toEqual(
         progress,
       );
-      expect(updateCmd.input.ExpressionAttributeValues[":error"]).toBe(
+      expect(updateItem.ExpressionAttributeValues[":error"]).toBe(
         "Something broke",
       );
     });
@@ -296,12 +274,11 @@ describe("sale-job-manager", () => {
 
       await transitionSaleJob("job-1", "complete", progress);
 
-      const updateCmd = sendMock.mock.calls[1][0];
+      const txCmd = sendMock.mock.calls[1][0];
+      const updateItem = txCmd.input.TransactItems[0].Update;
       // UpdateExpression should NOT contain error
-      expect(updateCmd.input.UpdateExpression).not.toContain("#error");
-      expect(
-        updateCmd.input.ExpressionAttributeValues[":error"],
-      ).toBeUndefined();
+      expect(updateItem.UpdateExpression).not.toContain("#error");
+      expect(updateItem.ExpressionAttributeValues[":error"]).toBeUndefined();
     });
 
     it("truncates error to 500 characters", async () => {
@@ -326,8 +303,9 @@ describe("sale-job-manager", () => {
 
       await transitionSaleJob("job-1", "failed", progress, longError);
 
-      const updateCmd = sendMock.mock.calls[1][0];
-      const storedError = updateCmd.input.ExpressionAttributeValues[":error"];
+      const txCmd = sendMock.mock.calls[1][0];
+      const updateItem = txCmd.input.TransactItems[0].Update;
+      const storedError = updateItem.ExpressionAttributeValues[":error"];
       expect(storedError.length).toBe(500);
       expect(storedError).toBe("x".repeat(500));
     });
@@ -375,22 +353,35 @@ describe("sale-job-manager", () => {
   });
 
   describe("updateSaleJobPhase", () => {
-    it("sets phase via UpdateCommand", async () => {
+    it("sets phase via TransactWriteCommand", async () => {
       const { updateSaleJobPhase } =
         await import("../../src/import/sale-job-manager");
 
-      sendMock.mockResolvedValueOnce({}); // UpdateCommand response
+      // GetCommand to read current job
+      sendMock.mockResolvedValueOnce({
+        Item: {
+          jobId: "job-1",
+          state: "running",
+          phase: "fetch",
+          startedAt: "2024-06-01T00:00:00.000Z",
+          lastUpdatedAt: "2024-06-01T00:00:00.000Z",
+          filterParams: {},
+          progress: { processed: 0, imported: 0, skipped: 0, failed: 0 },
+        },
+      });
+      // TransactWriteCommand response
+      sendMock.mockResolvedValueOnce({});
 
       await updateSaleJobPhase("job-1", "sync");
 
-      const updateCmd = sendMock.mock.calls[0][0];
-      expect(updateCmd.input.Key.PK).toBe("SALE_IMPORT#job-1");
-      expect(updateCmd.input.Key.SK).toBe("METADATA");
-      expect(updateCmd.input.ExpressionAttributeValues[":phase"]).toBe("sync");
-      expect(
-        updateCmd.input.ExpressionAttributeValues[":lastUpdatedAt"],
-      ).toBeDefined();
-      expect(updateCmd.input.UpdateExpression).toContain("#phase = :phase");
+      const txCmd = sendMock.mock.calls[1][0];
+      expect(txCmd._type).toBe("TransactWrite");
+      const updateItem = txCmd.input.TransactItems[0].Update;
+      expect(updateItem.Key.PK).toBe("SALE_IMPORT#job-1");
+      expect(updateItem.Key.SK).toBe("METADATA");
+      expect(updateItem.ExpressionAttributeValues[":phase"]).toBe("sync");
+      expect(updateItem.ExpressionAttributeValues[":now"]).toBeDefined();
+      expect(updateItem.UpdateExpression).toContain("#phase = :phase");
     });
   });
 });

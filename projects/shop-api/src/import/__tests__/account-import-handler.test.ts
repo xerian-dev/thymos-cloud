@@ -32,6 +32,11 @@ vi.mock("../account-fetch-orchestrator", () => ({
   runAccountFetchLoop: mockRunAccountFetchLoop,
 }));
 
+vi.mock("../generic-job-manager", () => ({
+  buildPointerSK: (prefix: string, lastUpdatedAt: string, jobId: string) =>
+    `${prefix}#${lastUpdatedAt}#${jobId}`,
+}));
+
 vi.mock("../step-function-starter", () => ({
   startStepFunction: mockStartStepFunction,
 }));
@@ -57,6 +62,12 @@ vi.mock("@aws-sdk/lib-dynamodb", () => ({
     }
   },
   PutCommand: class {
+    input: unknown;
+    constructor(input: unknown) {
+      this.input = input;
+    }
+  },
+  TransactWriteCommand: class {
     input: unknown;
     constructor(input: unknown) {
       this.input = input;
@@ -349,7 +360,7 @@ describe("account-import-handler unit tests", () => {
   });
 
   describe("handleAccountImportCancel", () => {
-    it("deletes METADATA and CHECKPOINT records for paused job, returns 200", async () => {
+    it("transitions to cancelled state via transaction for paused job, returns 200", async () => {
       mockGetJob.mockResolvedValue({
         jobId: "acc-job-cancel",
         state: "paused",
@@ -372,25 +383,35 @@ describe("account-import-handler unit tests", () => {
       expect(body.message).toContain("cancelled");
       expect(body.jobId).toBe("acc-job-cancel");
 
-      // Verify both records are deleted (METADATA + CHECKPOINT)
-      expect(mockDocClientSend).toHaveBeenCalledTimes(2);
+      // Verify TransactWriteCommand was sent
+      expect(mockDocClientSend).toHaveBeenCalledTimes(1);
 
-      const calls = mockDocClientSend.mock.calls;
-      const deletedSKs = calls.map(
-        (call: unknown[]) =>
-          (call[0] as { input: { Key: { SK: string } } }).input.Key.SK,
+      const transactCall = mockDocClientSend.mock.calls[0][0];
+      const transactItems = transactCall.input.TransactItems;
+      expect(transactItems).toHaveLength(3);
+
+      // Update metadata to cancelled
+      expect(transactItems[0].Update.Key).toEqual({
+        PK: "ACCOUNT_IMPORT#acc-job-cancel",
+        SK: "METADATA",
+      });
+      expect(transactItems[0].Update.ExpressionAttributeValues[":state"]).toBe(
+        "cancelled",
       );
-      expect(deletedSKs).toContain("METADATA");
-      expect(deletedSKs).toContain("CHECKPOINT");
 
-      // Verify all deletes use the correct PK
-      for (const call of calls) {
-        const input = (call[0] as { input: { Key: { PK: string } } }).input;
-        expect(input.Key.PK).toBe("ACCOUNT_IMPORT#acc-job-cancel");
-      }
+      // Delete old pointer
+      expect(transactItems[1].Delete.Key.PK).toBe("JOBS");
+      expect(transactItems[1].Delete.Key.SK).toContain("ACCOUNT_IMPORT#");
+      expect(transactItems[1].Delete.Key.SK).toContain("acc-job-cancel");
+
+      // Put new pointer with cancelled state
+      expect(transactItems[2].Put.Item.PK).toBe("JOBS");
+      expect(transactItems[2].Put.Item.state).toBe("cancelled");
+      expect(transactItems[2].Put.Item.jobId).toBe("acc-job-cancel");
+      expect(transactItems[2].Put.Item.prefix).toBe("ACCOUNT_IMPORT");
     });
 
-    it("returns 400 when job is in running state (cannot cancel)", async () => {
+    it("allows cancel from running state, returns 200", async () => {
       mockGetJob.mockResolvedValue({
         jobId: "acc-job-running",
         state: "running",
@@ -408,10 +429,62 @@ describe("account-import-handler unit tests", () => {
         event,
       )) as APIGatewayProxyStructuredResultV2;
 
+      expect(result.statusCode).toBe(200);
+      const body = JSON.parse(result.body as string);
+      expect(body.message).toContain("cancelled");
+      expect(body.jobId).toBe("acc-job-running");
+
+      // Verify TransactWriteCommand was sent
+      expect(mockDocClientSend).toHaveBeenCalledTimes(1);
+    });
+
+    it("returns 400 when job is in complete state (cannot cancel)", async () => {
+      mockGetJob.mockResolvedValue({
+        jobId: "acc-job-complete",
+        state: "complete",
+        phase: "fetch",
+        startedAt: "2026-01-15T10:00:00.000Z",
+        lastUpdatedAt: "2026-01-15T10:45:00.000Z",
+        progress: { processed: 100, imported: 95, skipped: 5, failed: 0 },
+      });
+
+      const { handleAccountImportCancel } =
+        await import("../account-import-handler");
+
+      const event = createEvent({ jobId: "acc-job-complete" });
+      const result = (await handleAccountImportCancel(
+        event,
+      )) as APIGatewayProxyStructuredResultV2;
+
       expect(result.statusCode).toBe(400);
       const body = JSON.parse(result.body as string);
       expect(body.message).toContain("Cannot cancel");
-      expect(body.message).toContain("running");
+      expect(body.message).toContain("complete");
+      expect(mockDocClientSend).not.toHaveBeenCalled();
+    });
+
+    it("returns 400 when job is in cancelled state (cannot cancel again)", async () => {
+      mockGetJob.mockResolvedValue({
+        jobId: "acc-job-cancelled",
+        state: "cancelled",
+        phase: "fetch",
+        startedAt: "2026-01-15T10:00:00.000Z",
+        lastUpdatedAt: "2026-01-15T10:45:00.000Z",
+        progress: { processed: 50, imported: 40, skipped: 5, failed: 5 },
+      });
+
+      const { handleAccountImportCancel } =
+        await import("../account-import-handler");
+
+      const event = createEvent({ jobId: "acc-job-cancelled" });
+      const result = (await handleAccountImportCancel(
+        event,
+      )) as APIGatewayProxyStructuredResultV2;
+
+      expect(result.statusCode).toBe(400);
+      const body = JSON.parse(result.body as string);
+      expect(body.message).toContain("Cannot cancel");
+      expect(body.message).toContain("cancelled");
       expect(mockDocClientSend).not.toHaveBeenCalled();
     });
   });

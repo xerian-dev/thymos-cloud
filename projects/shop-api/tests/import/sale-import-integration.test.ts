@@ -153,6 +153,20 @@ function isCounterIncrementTx(items: Array<Record<string, unknown>>): boolean {
   });
 }
 
+/**
+ * Check if a TransactWrite is for job pointer maintenance
+ * (state transitions write to PK: "JOBS").
+ */
+function isPointerMaintenanceTx(
+  items: Array<Record<string, unknown>>,
+): boolean {
+  return items.some((item) => {
+    const put = (item as { Put?: { Item?: Record<string, unknown> } }).Put;
+    const del = (item as { Delete?: { Key?: Record<string, unknown> } }).Delete;
+    return put?.Item?.PK === "JOBS" || del?.Key?.PK === "JOBS";
+  });
+}
+
 // ─── Test suite ────────────────────────────────────────────────────────────────
 
 describe("Sale Import Integration Tests", () => {
@@ -246,16 +260,27 @@ describe("Sale Import Integration Tests", () => {
       mockDocClientSend.mockImplementation((cmd: { input: DynamoInput }) => {
         const input = cmd.input;
 
-        // UpdateCommand for state transitions (has UpdateExpression)
-        if (input.UpdateExpression) {
-          const vals = input.ExpressionAttributeValues as Record<
-            string,
-            unknown
-          >;
-          if (vals[":state"] === "paused") jobState = "paused";
-          if (vals[":state"] === "running") jobState = "running";
-          if (vals[":state"] === "complete") jobState = "complete";
-          if (vals[":phase"]) jobPhase = vals[":phase"] as string;
+        // TransactWriteCommand for state/phase transitions (pointer maintenance)
+        if (input.TransactItems) {
+          const items = input.TransactItems as Array<Record<string, unknown>>;
+          // Check if this is a state/phase transition transaction
+          const updateItem = items.find(
+            (item) => (item as { Update?: unknown }).Update,
+          ) as
+            | {
+                Update: {
+                  ExpressionAttributeValues: Record<string, unknown>;
+                  UpdateExpression: string;
+                };
+              }
+            | undefined;
+          if (updateItem?.Update) {
+            const vals = updateItem.Update.ExpressionAttributeValues;
+            if (vals[":state"] === "paused") jobState = "paused";
+            if (vals[":state"] === "running") jobState = "running";
+            if (vals[":state"] === "complete") jobState = "complete";
+            if (vals[":phase"]) jobPhase = vals[":phase"] as string;
+          }
           return Promise.resolve({});
         }
 
@@ -372,6 +397,7 @@ describe("Sale Import Integration Tests", () => {
         if (input.TransactItems) {
           const items = input.TransactItems as Array<Record<string, unknown>>;
           if (isCounterIncrementTx(items)) return Promise.resolve({});
+          if (isPointerMaintenanceTx(items)) return Promise.resolve({});
           writtenTransactions.push(items);
           return Promise.resolve({});
         }
@@ -470,7 +496,9 @@ describe("Sale Import Integration Tests", () => {
         .map((call: unknown[]) => call[0] as { input: DynamoInput })
         .filter((cmd) => cmd.input.TransactItems != null);
       const saleWriteCalls = transactCalls.filter(
-        (c) => !isCounterIncrementTx(c.input.TransactItems!),
+        (c) =>
+          !isCounterIncrementTx(c.input.TransactItems!) &&
+          !isPointerMaintenanceTx(c.input.TransactItems!),
       );
       expect(saleWriteCalls).toHaveLength(1);
     });
@@ -612,6 +640,7 @@ describe("Sale Import Integration Tests", () => {
         if (input.TransactItems) {
           const items = input.TransactItems as Array<Record<string, unknown>>;
           if (isCounterIncrementTx(items)) return Promise.resolve({});
+          if (isPointerMaintenanceTx(items)) return Promise.resolve({});
           writtenTransactions.push(items);
           return Promise.resolve({});
         }
@@ -710,6 +739,7 @@ describe("Sale Import Integration Tests", () => {
         if (input.TransactItems) {
           const items = input.TransactItems as Array<Record<string, unknown>>;
           if (isCounterIncrementTx(items)) return Promise.resolve({});
+          if (isPointerMaintenanceTx(items)) return Promise.resolve({});
           writtenTransactions.push(items);
           return Promise.resolve({});
         }
@@ -778,6 +808,7 @@ describe("Sale Import Integration Tests", () => {
         if (input.TransactItems) {
           const items = input.TransactItems as Array<Record<string, unknown>>;
           if (isCounterIncrementTx(items)) return Promise.resolve({});
+          if (isPointerMaintenanceTx(items)) return Promise.resolve({});
           writtenTransactions.push(items);
           return Promise.resolve({});
         }
@@ -903,6 +934,7 @@ describe("Sale Import Integration Tests", () => {
         if (input.TransactItems) {
           const items = input.TransactItems as Array<Record<string, unknown>>;
           if (isCounterIncrementTx(items)) return Promise.resolve({});
+          if (isPointerMaintenanceTx(items)) return Promise.resolve({});
           writtenTransactions.push(items);
           return Promise.resolve({});
         }
@@ -1001,6 +1033,7 @@ describe("Sale Import Integration Tests", () => {
         if (input.TransactItems) {
           const items = input.TransactItems as Array<Record<string, unknown>>;
           if (isCounterIncrementTx(items)) return Promise.resolve({});
+          if (isPointerMaintenanceTx(items)) return Promise.resolve({});
           writtenTransactions.push(items);
           return Promise.resolve({});
         }

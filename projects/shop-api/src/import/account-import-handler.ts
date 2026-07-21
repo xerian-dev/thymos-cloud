@@ -5,14 +5,15 @@ import type {
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import {
   DynamoDBDocumentClient,
-  DeleteCommand,
   PutCommand,
+  TransactWriteCommand,
 } from "@aws-sdk/lib-dynamodb";
 import {
   accountJobManager,
   accountCheckpointManager,
   runAccountFetchLoop,
 } from "./account-fetch-orchestrator";
+import { buildPointerSK } from "./generic-job-manager";
 import { getConsignCloudApiKey } from "./ssm-client";
 import { createRateLimiter } from "./rate-limiter";
 import { startStepFunction } from "./step-function-starter";
@@ -306,35 +307,71 @@ export async function handleAccountImportCancel(
     };
   }
 
-  // 3. Validate state — can only cancel paused or failed jobs
-  if (job.state !== "paused" && job.state !== "failed") {
+  // 3. Validate state — can cancel running, paused, or failed jobs
+  if (
+    job.state !== "running" &&
+    job.state !== "paused" &&
+    job.state !== "failed"
+  ) {
     return {
       statusCode: 400,
       body: JSON.stringify({
-        message: `Cannot cancel job in '${job.state}' state. Job must be in 'paused' or 'failed' state.`,
+        message: `Cannot cancel job in '${job.state}' state. Job must be in 'running', 'paused', or 'failed' state.`,
         jobId,
         currentState: job.state,
       }),
     };
   }
 
-  // 4. Delete job record and checkpoint (no SYNC_CHECKPOINT for accounts)
-  const pk = `ACCOUNT_IMPORT#${jobId}`;
-  const sortKeys = ["METADATA", "CHECKPOINT"];
+  // 4. Transition to cancelled state via transaction with pointer update
+  const now = new Date().toISOString();
+  const prefix = "ACCOUNT_IMPORT";
+  const oldPointerSK = buildPointerSK(prefix, job.lastUpdatedAt, jobId);
+  const newPointerSK = buildPointerSK(prefix, now, jobId);
 
-  for (const sk of sortKeys) {
-    await docClient.send(
-      new DeleteCommand({
-        TableName: IMPORT_TABLE_NAME,
-        Key: { PK: pk, SK: sk },
-      }),
-    );
-  }
+  await docClient.send(
+    new TransactWriteCommand({
+      TransactItems: [
+        {
+          Update: {
+            TableName: IMPORT_TABLE_NAME,
+            Key: { PK: `${prefix}#${jobId}`, SK: "METADATA" },
+            UpdateExpression: "SET #state = :state, lastUpdatedAt = :now",
+            ExpressionAttributeNames: { "#state": "state" },
+            ExpressionAttributeValues: { ":state": "cancelled", ":now": now },
+          },
+        },
+        {
+          Delete: {
+            TableName: IMPORT_TABLE_NAME,
+            Key: { PK: "JOBS", SK: oldPointerSK },
+          },
+        },
+        {
+          Put: {
+            TableName: IMPORT_TABLE_NAME,
+            Item: {
+              PK: "JOBS",
+              SK: newPointerSK,
+              jobId,
+              state: "cancelled",
+              phase: job.phase,
+              progress: job.progress,
+              startedAt: job.startedAt,
+              lastUpdatedAt: now,
+              prefix,
+              ...(job.error ? { error: job.error } : {}),
+            },
+          },
+        },
+      ],
+    }),
+  );
 
   console.info(
     JSON.stringify({
       level: "INFO",
-      message: "Account import job cancelled and records deleted",
+      message: "Account import job cancelled",
       jobId,
     }),
   );

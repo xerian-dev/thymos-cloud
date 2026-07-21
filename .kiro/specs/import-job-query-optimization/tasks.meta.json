@@ -1,0 +1,411 @@
+{
+  "pbtResults": {},
+  "executionHistory": {
+    "1.1 Add `cancelled` to `JobState` type and update `VALID_TRANSITIONS` in `generic-job-manager.ts`": [
+      {
+        "executionId": "07219f92-bf4b-4d18-914f-64fea2f5ef67",
+        "chatSessionId": "sess_845fd9c8-de9d-40b8-9bb8-54e8c0aa75ef",
+        "timestamp": 1784620767522
+      },
+      {
+        "executionId": "07219f92-bf4b-4d18-914f-64fea2f5ef67",
+        "chatSessionId": "sess_845fd9c8-de9d-40b8-9bb8-54e8c0aa75ef",
+        "timestamp": 1784620777464
+      },
+      {
+        "executionId": "07219f92-bf4b-4d18-914f-64fea2f5ef67",
+        "chatSessionId": "sess_845fd9c8-de9d-40b8-9bb8-54e8c0aa75ef",
+        "timestamp": 1784620883942
+      }
+    ],
+    "1.2 Add `buildPointerSK` and `mapPointerToImportJob` helper functions in `generic-job-manager.ts`": [
+      {
+        "executionId": "07219f92-bf4b-4d18-914f-64fea2f5ef67",
+        "chatSessionId": "sess_845fd9c8-de9d-40b8-9bb8-54e8c0aa75ef",
+        "timestamp": 1784620767580
+      },
+      {
+        "executionId": "07219f92-bf4b-4d18-914f-64fea2f5ef67",
+        "chatSessionId": "sess_845fd9c8-de9d-40b8-9bb8-54e8c0aa75ef",
+        "timestamp": 1784620778280
+      },
+      {
+        "executionId": "07219f92-bf4b-4d18-914f-64fea2f5ef67",
+        "chatSessionId": "sess_845fd9c8-de9d-40b8-9bb8-54e8c0aa75ef",
+        "timestamp": 1784620884954
+      }
+    ],
+    "2.1 Replace `PutCommand` with `TransactWriteCommand` in `createJob` within `generic-job-manager.ts`": [
+      {
+        "executionId": "07219f92-bf4b-4d18-914f-64fea2f5ef67",
+        "chatSessionId": "sess_845fd9c8-de9d-40b8-9bb8-54e8c0aa75ef",
+        "timestamp": 1784620767672
+      },
+      {
+        "executionId": "07219f92-bf4b-4d18-914f-64fea2f5ef67",
+        "chatSessionId": "sess_845fd9c8-de9d-40b8-9bb8-54e8c0aa75ef",
+        "timestamp": 1784620889402
+      },
+      {
+        "executionId": "07219f92-bf4b-4d18-914f-64fea2f5ef67",
+        "chatSessionId": "sess_845fd9c8-de9d-40b8-9bb8-54e8c0aa75ef",
+        "timestamp": 1784620999276
+      }
+    ],
+    "2.2 Write unit tests for transactional job creation": [
+      {
+        "executionId": "07219f92-bf4b-4d18-914f-64fea2f5ef67",
+        "chatSessionId": "sess_845fd9c8-de9d-40b8-9bb8-54e8c0aa75ef",
+        "timestamp": 1784620767724
+      },
+      {
+        "executionId": "07219f92-bf4b-4d18-914f-64fea2f5ef67",
+        "chatSessionId": "sess_845fd9c8-de9d-40b8-9bb8-54e8c0aa75ef",
+        "timestamp": 1784621003344
+      },
+      {
+        "executionId": "07219f92-bf4b-4d18-914f-64fea2f5ef67",
+        "chatSessionId": "sess_845fd9c8-de9d-40b8-9bb8-54e8c0aa75ef",
+        "timestamp": 1784621192354
+      }
+    ],
+    "3.1 Update `transitionJob` in `generic-job-manager.ts` to use `TransactWriteCommand` with pointer delete/write": [
+      {
+        "executionId": "07219f92-bf4b-4d18-914f-64fea2f5ef67",
+        "chatSessionId": "sess_845fd9c8-de9d-40b8-9bb8-54e8c0aa75ef",
+        "timestamp": 1784620767786
+      },
+      {
+        "executionId": "07219f92-bf4b-4d18-914f-64fea2f5ef67",
+        "chatSessionId": "sess_845fd9c8-de9d-40b8-9bb8-54e8c0aa75ef",
+        "timestamp": 1784621004299
+      },
+      {
+        "executionId": "07219f92-bf4b-4d18-914f-64fea2f5ef67",
+        "chatSessionId": "sess_845fd9c8-de9d-40b8-9bb8-54e8c0aa75ef",
+        "timestamp": 1784621193345
+      }
+    ],
+    "3.2 Update `updateJobPhase` in `generic-job-manager.ts` to use `TransactWriteCommand` with pointer delete/write": [
+      {
+        "executionId": "07219f92-bf4b-4d18-914f-64fea2f5ef67",
+        "chatSessionId": "sess_845fd9c8-de9d-40b8-9bb8-54e8c0aa75ef",
+        "timestamp": 1784620767863
+      },
+      {
+        "executionId": "07219f92-bf4b-4d18-914f-64fea2f5ef67",
+        "chatSessionId": "sess_845fd9c8-de9d-40b8-9bb8-54e8c0aa75ef",
+        "timestamp": 1784621005175
+      },
+      {
+        "executionId": "07219f92-bf4b-4d18-914f-64fea2f5ef67",
+        "chatSessionId": "sess_845fd9c8-de9d-40b8-9bb8-54e8c0aa75ef",
+        "timestamp": 1784621194175
+      }
+    ],
+    "3.3 Write unit tests for state transition pointer maintenance": [
+      {
+        "executionId": "07219f92-bf4b-4d18-914f-64fea2f5ef67",
+        "chatSessionId": "sess_845fd9c8-de9d-40b8-9bb8-54e8c0aa75ef",
+        "timestamp": 1784620767916
+      },
+      {
+        "executionId": "07219f92-bf4b-4d18-914f-64fea2f5ef67",
+        "chatSessionId": "sess_845fd9c8-de9d-40b8-9bb8-54e8c0aa75ef",
+        "timestamp": 1784621198715
+      },
+      {
+        "executionId": "07219f92-bf4b-4d18-914f-64fea2f5ef67",
+        "chatSessionId": "sess_845fd9c8-de9d-40b8-9bb8-54e8c0aa75ef",
+        "timestamp": 1784621367171
+      }
+    ],
+    "4. Checkpoint - Ensure all tests pass": [
+      {
+        "executionId": "07219f92-bf4b-4d18-914f-64fea2f5ef67",
+        "chatSessionId": "sess_845fd9c8-de9d-40b8-9bb8-54e8c0aa75ef",
+        "timestamp": 1784620767972
+      },
+      {
+        "executionId": "07219f92-bf4b-4d18-914f-64fea2f5ef67",
+        "chatSessionId": "sess_845fd9c8-de9d-40b8-9bb8-54e8c0aa75ef",
+        "timestamp": 1784622010106
+      },
+      {
+        "executionId": "07219f92-bf4b-4d18-914f-64fea2f5ef67",
+        "chatSessionId": "sess_845fd9c8-de9d-40b8-9bb8-54e8c0aa75ef",
+        "timestamp": 1784622624486
+      }
+    ],
+    "5.1 Rewrite `getRunningOrPausedJob` in `generic-job-manager.ts` to use `QueryCommand`": [
+      {
+        "executionId": "07219f92-bf4b-4d18-914f-64fea2f5ef67",
+        "chatSessionId": "sess_845fd9c8-de9d-40b8-9bb8-54e8c0aa75ef",
+        "timestamp": 1784620768033
+      },
+      {
+        "executionId": "07219f92-bf4b-4d18-914f-64fea2f5ef67",
+        "chatSessionId": "sess_845fd9c8-de9d-40b8-9bb8-54e8c0aa75ef",
+        "timestamp": 1784621199635
+      },
+      {
+        "executionId": "07219f92-bf4b-4d18-914f-64fea2f5ef67",
+        "chatSessionId": "sess_845fd9c8-de9d-40b8-9bb8-54e8c0aa75ef",
+        "timestamp": 1784621368248
+      }
+    ],
+    "5.2 Rewrite `getMostRecentJob` in `import-status-handler.ts` to use `QueryCommand`": [
+      {
+        "executionId": "07219f92-bf4b-4d18-914f-64fea2f5ef67",
+        "chatSessionId": "sess_845fd9c8-de9d-40b8-9bb8-54e8c0aa75ef",
+        "timestamp": 1784620768101
+      },
+      {
+        "executionId": "07219f92-bf4b-4d18-914f-64fea2f5ef67",
+        "chatSessionId": "sess_845fd9c8-de9d-40b8-9bb8-54e8c0aa75ef",
+        "timestamp": 1784621373163
+      },
+      {
+        "executionId": "07219f92-bf4b-4d18-914f-64fea2f5ef67",
+        "chatSessionId": "sess_845fd9c8-de9d-40b8-9bb8-54e8c0aa75ef",
+        "timestamp": 1784621659757
+      }
+    ],
+    "5.3 Rewrite `getHistoryJobs` in `import-history-handler.ts` to use `QueryCommand` with cursor-based pagination": [
+      {
+        "executionId": "07219f92-bf4b-4d18-914f-64fea2f5ef67",
+        "chatSessionId": "sess_845fd9c8-de9d-40b8-9bb8-54e8c0aa75ef",
+        "timestamp": 1784620768154
+      },
+      {
+        "executionId": "07219f92-bf4b-4d18-914f-64fea2f5ef67",
+        "chatSessionId": "sess_845fd9c8-de9d-40b8-9bb8-54e8c0aa75ef",
+        "timestamp": 1784621374099
+      },
+      {
+        "executionId": "07219f92-bf4b-4d18-914f-64fea2f5ef67",
+        "chatSessionId": "sess_845fd9c8-de9d-40b8-9bb8-54e8c0aa75ef",
+        "timestamp": 1784621660661
+      }
+    ],
+    "5.4 Write unit tests for query-based lookups": [
+      {
+        "executionId": "07219f92-bf4b-4d18-914f-64fea2f5ef67",
+        "chatSessionId": "sess_845fd9c8-de9d-40b8-9bb8-54e8c0aa75ef",
+        "timestamp": 1784620768206
+      },
+      {
+        "executionId": "07219f92-bf4b-4d18-914f-64fea2f5ef67",
+        "chatSessionId": "sess_845fd9c8-de9d-40b8-9bb8-54e8c0aa75ef",
+        "timestamp": 1784621669559
+      },
+      {
+        "executionId": "07219f92-bf4b-4d18-914f-64fea2f5ef67",
+        "chatSessionId": "sess_845fd9c8-de9d-40b8-9bb8-54e8c0aa75ef",
+        "timestamp": 1784621849157
+      }
+    ],
+    "6.1 Refactor `handleItemImportCancel` in `item-import-handler.ts` to use state transition instead of delete": [
+      {
+        "executionId": "07219f92-bf4b-4d18-914f-64fea2f5ef67",
+        "chatSessionId": "sess_845fd9c8-de9d-40b8-9bb8-54e8c0aa75ef",
+        "timestamp": 1784620768282
+      },
+      {
+        "executionId": "07219f92-bf4b-4d18-914f-64fea2f5ef67",
+        "chatSessionId": "sess_845fd9c8-de9d-40b8-9bb8-54e8c0aa75ef",
+        "timestamp": 1784621374989
+      },
+      {
+        "executionId": "07219f92-bf4b-4d18-914f-64fea2f5ef67",
+        "chatSessionId": "sess_845fd9c8-de9d-40b8-9bb8-54e8c0aa75ef",
+        "timestamp": 1784621662378
+      }
+    ],
+    "6.2 Refactor `handleAccountImportCancel` in `account-import-handler.ts` to use state transition instead of delete": [
+      {
+        "executionId": "07219f92-bf4b-4d18-914f-64fea2f5ef67",
+        "chatSessionId": "sess_845fd9c8-de9d-40b8-9bb8-54e8c0aa75ef",
+        "timestamp": 1784620768334
+      },
+      {
+        "executionId": "07219f92-bf4b-4d18-914f-64fea2f5ef67",
+        "chatSessionId": "sess_845fd9c8-de9d-40b8-9bb8-54e8c0aa75ef",
+        "timestamp": 1784621375999
+      },
+      {
+        "executionId": "07219f92-bf4b-4d18-914f-64fea2f5ef67",
+        "chatSessionId": "sess_845fd9c8-de9d-40b8-9bb8-54e8c0aa75ef",
+        "timestamp": 1784621662508
+      }
+    ],
+    "6.3 Add cancel handler for sale imports (if missing) or update existing sale cancel handler": [
+      {
+        "executionId": "07219f92-bf4b-4d18-914f-64fea2f5ef67",
+        "chatSessionId": "sess_845fd9c8-de9d-40b8-9bb8-54e8c0aa75ef",
+        "timestamp": 1784620768385
+      },
+      {
+        "executionId": "07219f92-bf4b-4d18-914f-64fea2f5ef67",
+        "chatSessionId": "sess_845fd9c8-de9d-40b8-9bb8-54e8c0aa75ef",
+        "timestamp": 1784621376735
+      },
+      {
+        "executionId": "07219f92-bf4b-4d18-914f-64fea2f5ef67",
+        "chatSessionId": "sess_845fd9c8-de9d-40b8-9bb8-54e8c0aa75ef",
+        "timestamp": 1784621663909
+      }
+    ],
+    "6.4 Write unit tests for cancel handlers": [
+      {
+        "executionId": "07219f92-bf4b-4d18-914f-64fea2f5ef67",
+        "chatSessionId": "sess_845fd9c8-de9d-40b8-9bb8-54e8c0aa75ef",
+        "timestamp": 1784620768437
+      },
+      {
+        "executionId": "07219f92-bf4b-4d18-914f-64fea2f5ef67",
+        "chatSessionId": "sess_845fd9c8-de9d-40b8-9bb8-54e8c0aa75ef",
+        "timestamp": 1784621670308
+      },
+      {
+        "executionId": "07219f92-bf4b-4d18-914f-64fea2f5ef67",
+        "chatSessionId": "sess_845fd9c8-de9d-40b8-9bb8-54e8c0aa75ef",
+        "timestamp": 1784621849969
+      }
+    ],
+    "7. Checkpoint - Ensure all tests pass": [
+      {
+        "executionId": "07219f92-bf4b-4d18-914f-64fea2f5ef67",
+        "chatSessionId": "sess_845fd9c8-de9d-40b8-9bb8-54e8c0aa75ef",
+        "timestamp": 1784620768491
+      },
+      {
+        "executionId": "07219f92-bf4b-4d18-914f-64fea2f5ef67",
+        "chatSessionId": "sess_845fd9c8-de9d-40b8-9bb8-54e8c0aa75ef",
+        "timestamp": 1784622630138
+      },
+      {
+        "executionId": "07219f92-bf4b-4d18-914f-64fea2f5ef67",
+        "chatSessionId": "sess_845fd9c8-de9d-40b8-9bb8-54e8c0aa75ef",
+        "timestamp": 1784622655453
+      }
+    ],
+    "8.1 Create `projects/shop-api/src/import/scripts/migrate-job-pointers.ts`": [
+      {
+        "executionId": "07219f92-bf4b-4d18-914f-64fea2f5ef67",
+        "chatSessionId": "sess_845fd9c8-de9d-40b8-9bb8-54e8c0aa75ef",
+        "timestamp": 1784620768548
+      },
+      {
+        "executionId": "07219f92-bf4b-4d18-914f-64fea2f5ef67",
+        "chatSessionId": "sess_845fd9c8-de9d-40b8-9bb8-54e8c0aa75ef",
+        "timestamp": 1784621671217
+      },
+      {
+        "executionId": "07219f92-bf4b-4d18-914f-64fea2f5ef67",
+        "chatSessionId": "sess_845fd9c8-de9d-40b8-9bb8-54e8c0aa75ef",
+        "timestamp": 1784621850967
+      }
+    ],
+    "8.2 Write unit tests for migration script logic": [
+      {
+        "executionId": "07219f92-bf4b-4d18-914f-64fea2f5ef67",
+        "chatSessionId": "sess_845fd9c8-de9d-40b8-9bb8-54e8c0aa75ef",
+        "timestamp": 1784620768598
+      },
+      {
+        "executionId": "07219f92-bf4b-4d18-914f-64fea2f5ef67",
+        "chatSessionId": "sess_845fd9c8-de9d-40b8-9bb8-54e8c0aa75ef",
+        "timestamp": 1784621857973
+      },
+      {
+        "executionId": "07219f92-bf4b-4d18-914f-64fea2f5ef67",
+        "chatSessionId": "sess_845fd9c8-de9d-40b8-9bb8-54e8c0aa75ef",
+        "timestamp": 1784622000807
+      }
+    ],
+    "9.1 Update exports from `generic-job-manager.ts` and verify consumers compile": [
+      {
+        "executionId": "07219f92-bf4b-4d18-914f-64fea2f5ef67",
+        "chatSessionId": "sess_845fd9c8-de9d-40b8-9bb8-54e8c0aa75ef",
+        "timestamp": 1784620768654
+      },
+      {
+        "executionId": "07219f92-bf4b-4d18-914f-64fea2f5ef67",
+        "chatSessionId": "sess_845fd9c8-de9d-40b8-9bb8-54e8c0aa75ef",
+        "timestamp": 1784621858867
+      },
+      {
+        "executionId": "07219f92-bf4b-4d18-914f-64fea2f5ef67",
+        "chatSessionId": "sess_845fd9c8-de9d-40b8-9bb8-54e8c0aa75ef",
+        "timestamp": 1784622001812
+      }
+    ],
+    "10. Final checkpoint - Ensure all tests pass": [
+      {
+        "executionId": "07219f92-bf4b-4d18-914f-64fea2f5ef67",
+        "chatSessionId": "sess_845fd9c8-de9d-40b8-9bb8-54e8c0aa75ef",
+        "timestamp": 1784620768706
+      },
+      {
+        "executionId": "07219f92-bf4b-4d18-914f-64fea2f5ef67",
+        "chatSessionId": "sess_845fd9c8-de9d-40b8-9bb8-54e8c0aa75ef",
+        "timestamp": 1784622659244
+      },
+      {
+        "executionId": "07219f92-bf4b-4d18-914f-64fea2f5ef67",
+        "chatSessionId": "sess_845fd9c8-de9d-40b8-9bb8-54e8c0aa75ef",
+        "timestamp": 1784622693767
+      }
+    ],
+    "1. Extend types and add pointer utility functions": [
+      {
+        "executionId": "07219f92-bf4b-4d18-914f-64fea2f5ef67",
+        "chatSessionId": "sess_845fd9c8-de9d-40b8-9bb8-54e8c0aa75ef",
+        "timestamp": 1784620885011
+      }
+    ],
+    "2. Modify job creation to write pointer records transactionally": [
+      {
+        "executionId": "07219f92-bf4b-4d18-914f-64fea2f5ef67",
+        "chatSessionId": "sess_845fd9c8-de9d-40b8-9bb8-54e8c0aa75ef",
+        "timestamp": 1784621192426
+      }
+    ],
+    "3. Modify state transitions to maintain pointer records": [
+      {
+        "executionId": "07219f92-bf4b-4d18-914f-64fea2f5ef67",
+        "chatSessionId": "sess_845fd9c8-de9d-40b8-9bb8-54e8c0aa75ef",
+        "timestamp": 1784621367252
+      }
+    ],
+    "5. Replace scan-based queries with Query operations": [
+      {
+        "executionId": "07219f92-bf4b-4d18-914f-64fea2f5ef67",
+        "chatSessionId": "sess_845fd9c8-de9d-40b8-9bb8-54e8c0aa75ef",
+        "timestamp": 1784621849300
+      }
+    ],
+    "6. Update cancel handlers to transition to `cancelled` state": [
+      {
+        "executionId": "07219f92-bf4b-4d18-914f-64fea2f5ef67",
+        "chatSessionId": "sess_845fd9c8-de9d-40b8-9bb8-54e8c0aa75ef",
+        "timestamp": 1784621850048
+      }
+    ],
+    "8. Create migration script for existing jobs": [
+      {
+        "executionId": "07219f92-bf4b-4d18-914f-64fea2f5ef67",
+        "chatSessionId": "sess_845fd9c8-de9d-40b8-9bb8-54e8c0aa75ef",
+        "timestamp": 1784622000890
+      }
+    ],
+    "9. Wire updated exports and clean up unused imports": [
+      {
+        "executionId": "07219f92-bf4b-4d18-914f-64fea2f5ef67",
+        "chatSessionId": "sess_845fd9c8-de9d-40b8-9bb8-54e8c0aa75ef",
+        "timestamp": 1784622001887
+      }
+    ]
+  }
+}

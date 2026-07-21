@@ -36,6 +36,12 @@ vi.mock("@aws-sdk/lib-dynamodb", () => ({
   UpdateCommand: class MockUpdateCommand {
     constructor(public input: unknown) {}
   },
+  QueryCommand: class MockQueryCommand {
+    constructor(public input: unknown) {}
+  },
+  TransactWriteCommand: class MockTransactWriteCommand {
+    constructor(public input: unknown) {}
+  },
 }));
 
 import type { JobState, ImportJob } from "../../src/import/job-manager";
@@ -52,6 +58,7 @@ const anyJobStateGen = fc.constantFrom<JobState>(
   "paused",
   "failed",
   "complete",
+  "cancelled",
 );
 
 /** Generator for a valid ISO date string */
@@ -104,16 +111,21 @@ describe("Property 7: Single active job invariant", () => {
         async (existingJob, _newFilterParams) => {
           mockSend.mockReset();
 
-          // Mock the scan to return the existing active job
+          // Mock the query to return the existing active job as a pointer record
           mockSend.mockResolvedValueOnce({
             Items: [
               {
-                PK: `ITEM_IMPORT#${existingJob.jobId}`,
-                SK: "METADATA",
-                ...existingJob,
+                PK: "JOBS",
+                SK: `ITEM_IMPORT#${existingJob.lastUpdatedAt}#${existingJob.jobId}`,
+                jobId: existingJob.jobId,
+                state: existingJob.state,
+                phase: "fetch",
+                startedAt: existingJob.startedAt,
+                lastUpdatedAt: existingJob.lastUpdatedAt,
+                progress: existingJob.progress,
+                prefix: "ITEM_IMPORT",
               },
             ],
-            LastEvaluatedKey: undefined,
           });
 
           const { getRunningOrPausedJob } =
@@ -142,11 +154,10 @@ describe("Property 7: Single active job invariant", () => {
         async (_existingJob, _newFilterParams) => {
           mockSend.mockReset();
 
-          // The DynamoDB scan filter only matches running/paused states,
+          // The DynamoDB filter only matches running/paused states,
           // so inactive jobs (failed/complete) won't be in the results
           mockSend.mockResolvedValueOnce({
             Items: [],
-            LastEvaluatedKey: undefined,
           });
 
           const { getRunningOrPausedJob } =
@@ -167,10 +178,9 @@ describe("Property 7: Single active job invariant", () => {
       fc.asyncProperty(filterParamsGen, async (_newFilterParams) => {
         mockSend.mockReset();
 
-        // Mock scan returns completely empty results
+        // Mock query returns completely empty results
         mockSend.mockResolvedValueOnce({
           Items: [],
-          LastEvaluatedKey: undefined,
         });
 
         const { getRunningOrPausedJob } =
@@ -195,33 +205,33 @@ describe("Property 7: Single active job invariant", () => {
           const shouldBlock = jobState === "running" || jobState === "paused";
 
           if (shouldBlock) {
-            // Active state: scan returns the job
+            // Active state: query returns the job as a pointer record
             const existingJobId = crypto.randomUUID();
+            const now = new Date().toISOString();
             mockSend.mockResolvedValueOnce({
               Items: [
                 {
-                  PK: `ITEM_IMPORT#${existingJobId}`,
-                  SK: "METADATA",
+                  PK: "JOBS",
+                  SK: `ITEM_IMPORT#${now}#${existingJobId}`,
                   jobId: existingJobId,
                   state: jobState,
-                  startedAt: new Date().toISOString(),
-                  lastUpdatedAt: new Date().toISOString(),
-                  filterParams: {},
+                  phase: "fetch",
+                  startedAt: now,
+                  lastUpdatedAt: now,
                   progress: {
                     processed: 0,
                     imported: 0,
                     skipped: 0,
                     failed: 0,
                   },
+                  prefix: "ITEM_IMPORT",
                 },
               ],
-              LastEvaluatedKey: undefined,
             });
           } else {
             // Inactive state: DynamoDB filter excludes these, returns empty
             mockSend.mockResolvedValueOnce({
               Items: [],
-              LastEvaluatedKey: undefined,
             });
           }
 

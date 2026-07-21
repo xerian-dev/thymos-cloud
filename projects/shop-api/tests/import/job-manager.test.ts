@@ -44,6 +44,20 @@ vi.mock("@aws-sdk/lib-dynamodb", () => ({
       this.input = input;
     }
   },
+  QueryCommand: class MockQueryCommand {
+    input: unknown;
+    _type = "Query";
+    constructor(input: unknown) {
+      this.input = input;
+    }
+  },
+  TransactWriteCommand: class MockTransactWriteCommand {
+    input: unknown;
+    _type = "TransactWrite";
+    constructor(input: unknown) {
+      this.input = input;
+    }
+  },
 }));
 
 describe("job-manager unit tests", () => {
@@ -54,7 +68,7 @@ describe("job-manager unit tests", () => {
 
   describe("createJob", () => {
     it("returns a valid ImportJob with correct structure", async () => {
-      sendMock.mockResolvedValueOnce({}); // PutCommand response
+      sendMock.mockResolvedValueOnce({}); // TransactWriteCommand response
 
       const { createJob } = await import("../../src/import/job-manager");
       const job = await createJob({});
@@ -74,28 +88,37 @@ describe("job-manager unit tests", () => {
       expect(job.filterParams).toEqual({});
     });
 
-    it("sends correct DynamoDB PutCommand with PK format ITEM_IMPORT#<uuid> and SK METADATA", async () => {
+    it("sends correct DynamoDB TransactWriteCommand with PK format ITEM_IMPORT#<uuid> and SK METADATA", async () => {
       sendMock.mockResolvedValueOnce({});
 
       const { createJob } = await import("../../src/import/job-manager");
       const job = await createJob({});
 
       expect(sendMock).toHaveBeenCalledTimes(1);
-      const putCmd = sendMock.mock.calls[0][0];
-      expect(putCmd._type).toBe("Put");
-      expect(putCmd.input.Item.PK).toBe(`ITEM_IMPORT#${job.jobId}`);
-      expect(putCmd.input.Item.SK).toBe("METADATA");
-      expect(putCmd.input.Item.jobId).toBe(job.jobId);
-      expect(putCmd.input.Item.state).toBe("running");
-      expect(putCmd.input.Item.startedAt).toBe(job.startedAt);
-      expect(putCmd.input.Item.lastUpdatedAt).toBe(job.lastUpdatedAt);
-      expect(putCmd.input.Item.progress).toEqual({
+      const txCmd = sendMock.mock.calls[0][0];
+      expect(txCmd._type).toBe("TransactWrite");
+
+      // First item: metadata record
+      const metadataItem = txCmd.input.TransactItems[0].Put.Item;
+      expect(metadataItem.PK).toBe(`ITEM_IMPORT#${job.jobId}`);
+      expect(metadataItem.SK).toBe("METADATA");
+      expect(metadataItem.jobId).toBe(job.jobId);
+      expect(metadataItem.state).toBe("running");
+      expect(metadataItem.startedAt).toBe(job.startedAt);
+      expect(metadataItem.lastUpdatedAt).toBe(job.lastUpdatedAt);
+      expect(metadataItem.progress).toEqual({
         processed: 0,
         imported: 0,
         skipped: 0,
         failed: 0,
       });
-      expect(putCmd.input.Item.filterParams).toEqual({});
+      expect(metadataItem.filterParams).toEqual({});
+
+      // Second item: pointer record
+      const pointerItem = txCmd.input.TransactItems[1].Put.Item;
+      expect(pointerItem.PK).toBe("JOBS");
+      expect(pointerItem.SK).toContain("ITEM_IMPORT#");
+      expect(pointerItem.jobId).toBe(job.jobId);
     });
 
     it("includes createdAfter in filterParams when provided", async () => {
@@ -106,8 +129,9 @@ describe("job-manager unit tests", () => {
 
       expect(job.filterParams).toEqual({ createdAfter: "2026-01-01" });
 
-      const putCmd = sendMock.mock.calls[0][0];
-      expect(putCmd.input.Item.filterParams).toEqual({
+      const txCmd = sendMock.mock.calls[0][0];
+      const metadataItem = txCmd.input.TransactItems[0].Put.Item;
+      expect(metadataItem.filterParams).toEqual({
         createdAfter: "2026-01-01",
       });
     });
@@ -166,18 +190,20 @@ describe("job-manager unit tests", () => {
 
   describe("getRunningOrPausedJob", () => {
     it("finds an active running job", async () => {
-      const mockJob = {
+      const mockPointer = {
+        PK: "JOBS",
+        SK: "ITEM_IMPORT#2026-01-15T10:05:00.000Z#active-job-id",
         jobId: "active-job-id",
         state: "running",
+        phase: "fetch",
         startedAt: "2026-01-15T10:00:00.000Z",
         lastUpdatedAt: "2026-01-15T10:05:00.000Z",
-        filterParams: {},
         progress: { processed: 10, imported: 8, skipped: 1, failed: 1 },
+        prefix: "ITEM_IMPORT",
       };
 
       sendMock.mockResolvedValueOnce({
-        Items: [mockJob],
-        LastEvaluatedKey: undefined,
+        Items: [mockPointer],
       });
 
       const { getRunningOrPausedJob } =
@@ -187,12 +213,17 @@ describe("job-manager unit tests", () => {
       expect(result).not.toBeNull();
       expect(result!.jobId).toBe("active-job-id");
       expect(result!.state).toBe("running");
+
+      // Verify QueryCommand was used
+      const queryCmd = sendMock.mock.calls[0][0];
+      expect(queryCmd._type).toBe("Query");
+      expect(queryCmd.input.KeyConditionExpression).toContain("PK = :pk");
+      expect(queryCmd.input.ExpressionAttributeValues[":pk"]).toBe("JOBS");
     });
 
     it("returns null when no active jobs exist", async () => {
       sendMock.mockResolvedValueOnce({
         Items: [],
-        LastEvaluatedKey: undefined,
       });
 
       const { getRunningOrPausedJob } =
@@ -210,13 +241,14 @@ describe("job-manager unit tests", () => {
         Item: {
           jobId: "job-123",
           state: "running",
+          phase: "fetch",
           startedAt: "2026-01-15T10:00:00.000Z",
           lastUpdatedAt: "2026-01-15T10:00:00.000Z",
           filterParams: {},
           progress: { processed: 0, imported: 0, skipped: 0, failed: 0 },
         },
       });
-      // UpdateCommand response
+      // TransactWriteCommand response
       sendMock.mockResolvedValueOnce({});
 
       const { transitionJob } = await import("../../src/import/job-manager");
@@ -232,14 +264,15 @@ describe("job-manager unit tests", () => {
       ).resolves.toBeUndefined();
 
       expect(sendMock).toHaveBeenCalledTimes(2);
-      const updateCmd = sendMock.mock.calls[1][0];
-      expect(updateCmd._type).toBe("Update");
-      expect(updateCmd.input.Key.PK).toBe("ITEM_IMPORT#job-123");
-      expect(updateCmd.input.Key.SK).toBe("METADATA");
-      expect(updateCmd.input.ExpressionAttributeValues[":state"]).toBe(
-        "complete",
-      );
-      expect(updateCmd.input.ExpressionAttributeValues[":progress"]).toEqual(
+      const txCmd = sendMock.mock.calls[1][0];
+      expect(txCmd._type).toBe("TransactWrite");
+
+      // First item in transaction: Update metadata
+      const updateItem = txCmd.input.TransactItems[0].Update;
+      expect(updateItem.Key.PK).toBe("ITEM_IMPORT#job-123");
+      expect(updateItem.Key.SK).toBe("METADATA");
+      expect(updateItem.ExpressionAttributeValues[":state"]).toBe("complete");
+      expect(updateItem.ExpressionAttributeValues[":progress"]).toEqual(
         progress,
       );
     });
@@ -249,6 +282,7 @@ describe("job-manager unit tests", () => {
         Item: {
           jobId: "job-456",
           state: "complete",
+          phase: "sync",
           startedAt: "2026-01-15T10:00:00.000Z",
           lastUpdatedAt: "2026-01-15T11:00:00.000Z",
           filterParams: {},
@@ -268,7 +302,7 @@ describe("job-manager unit tests", () => {
         transitionJob("job-456", "paused", progress),
       ).rejects.toThrow(/[Ii]nvalid.*transition/);
 
-      // Only the GetCommand should have been called (no UpdateCommand)
+      // Only the GetCommand should have been called (no TransactWriteCommand)
       expect(sendMock).toHaveBeenCalledTimes(1);
     });
 
@@ -277,6 +311,7 @@ describe("job-manager unit tests", () => {
         Item: {
           jobId: "job-789",
           state: "running",
+          phase: "fetch",
           startedAt: "2026-01-15T10:00:00.000Z",
           lastUpdatedAt: "2026-01-15T10:00:00.000Z",
           filterParams: {},
@@ -291,14 +326,13 @@ describe("job-manager unit tests", () => {
 
       await transitionJob("job-789", "failed", progress, longError);
 
-      const updateCmd = sendMock.mock.calls[1][0];
-      expect(updateCmd._type).toBe("Update");
-      expect(updateCmd.input.ExpressionAttributeValues[":error"]).toBe(
+      const txCmd = sendMock.mock.calls[1][0];
+      expect(txCmd._type).toBe("TransactWrite");
+      const updateItem = txCmd.input.TransactItems[0].Update;
+      expect(updateItem.ExpressionAttributeValues[":error"]).toBe(
         "x".repeat(500),
       );
-      expect(updateCmd.input.ExpressionAttributeValues[":error"].length).toBe(
-        500,
-      );
+      expect(updateItem.ExpressionAttributeValues[":error"].length).toBe(500);
     });
   });
 });

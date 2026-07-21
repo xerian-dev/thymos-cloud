@@ -52,6 +52,20 @@ vi.mock("@aws-sdk/lib-dynamodb", () => ({
       this.input = input;
     }
   },
+  QueryCommand: class MockQueryCommand {
+    input: unknown;
+    _type = "Query";
+    constructor(input: unknown) {
+      this.input = input;
+    }
+  },
+  TransactWriteCommand: class MockTransactWriteCommand {
+    input: unknown;
+    _type = "TransactWrite";
+    constructor(input: unknown) {
+      this.input = input;
+    }
+  },
 }));
 
 describe("Property 5: Error descriptions are bounded to 500 characters", () => {
@@ -97,9 +111,9 @@ describe("Property 5: Error descriptions are bounded to 500 characters", () => {
 
           await transitionSaleJob("test-job", "failed", progress, errorString);
 
-          const updateCmd = sendMock.mock.calls[1][0];
-          const storedError =
-            updateCmd.input.ExpressionAttributeValues[":error"];
+          const txCmd = sendMock.mock.calls[1][0];
+          const updateItem = txCmd.input.TransactItems[0].Update;
+          const storedError = updateItem.ExpressionAttributeValues[":error"];
 
           const expectedLength = Math.min(errorString.length, 500);
           expect(storedError.length).toBe(expectedLength);
@@ -144,9 +158,9 @@ describe("Property 5: Error descriptions are bounded to 500 characters", () => {
 
           await transitionSaleJob("test-job", "failed", progress, errorString);
 
-          const updateCmd = sendMock.mock.calls[1][0];
-          const storedError =
-            updateCmd.input.ExpressionAttributeValues[":error"];
+          const txCmd = sendMock.mock.calls[1][0];
+          const updateItem = txCmd.input.TransactItems[0].Update;
+          const storedError = updateItem.ExpressionAttributeValues[":error"];
 
           // The stored error must be a prefix of the original
           expect(errorString.startsWith(storedError)).toBe(true);

@@ -6,9 +6,9 @@ import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import {
   DynamoDBDocumentClient,
   GetCommand,
-  ScanCommand,
+  QueryCommand,
 } from "@aws-sdk/lib-dynamodb";
-import type { ImportJob } from "./generic-job-manager";
+import type { ProgressCounts } from "./generic-job-manager";
 
 interface HistoryJobSummary {
   jobId: string;
@@ -127,70 +127,44 @@ async function getHistoryJobs(
   pageSize: number,
   nextToken: string | undefined,
 ): Promise<ImportHistoryResponse> {
-  const jobs: ImportJob[] = [];
   let exclusiveStartKey: Record<string, unknown> | undefined;
 
-  // Scan all matching records (we need all to sort correctly since
-  // DynamoDB scan returns items in arbitrary order)
-  do {
-    const result = await docClient.send(
-      new ScanCommand({
-        TableName: IMPORT_TABLE_NAME,
-        FilterExpression: "begins_with(PK, :pkPrefix) AND SK = :sk",
-        ExpressionAttributeValues: {
-          ":pkPrefix": `${prefix}#`,
-          ":sk": "METADATA",
-        },
-        ExclusiveStartKey: exclusiveStartKey,
-      }),
-    );
-
-    if (result.Items) {
-      for (const item of result.Items) {
-        jobs.push({
-          jobId: item.jobId as string,
-          state: item.state as ImportJob["state"],
-          phase: (item.phase as ImportJob["phase"]) ?? "fetch",
-          startedAt: item.startedAt as string,
-          lastUpdatedAt: item.lastUpdatedAt as string,
-          filterParams: item.filterParams as { createdAfter?: string },
-          error: item.error as string | undefined,
-          progress: item.progress as ImportJob["progress"],
-        });
-      }
-    }
-
-    exclusiveStartKey = result.LastEvaluatedKey as
-      | Record<string, unknown>
-      | undefined;
-  } while (exclusiveStartKey);
-
-  // Sort by lastUpdatedAt descending
-  jobs.sort(
-    (a, b) =>
-      new Date(b.lastUpdatedAt).getTime() - new Date(a.lastUpdatedAt).getTime(),
-  );
-
-  // Determine the page start offset from nextToken
-  let startIndex = 0;
   if (nextToken) {
     try {
       const decoded = Buffer.from(nextToken, "base64").toString("utf-8");
-      const cursor = JSON.parse(decoded) as { offset: number };
-      if (typeof cursor.offset === "number" && cursor.offset >= 0) {
-        startIndex = cursor.offset;
-      }
+      exclusiveStartKey = JSON.parse(decoded) as Record<string, unknown>;
     } catch {
-      startIndex = 0;
+      exclusiveStartKey = undefined;
     }
   }
 
-  const pageJobs = jobs.slice(startIndex, startIndex + pageSize);
-  const hasMore = startIndex + pageSize < jobs.length;
+  const result = await docClient.send(
+    new QueryCommand({
+      TableName: IMPORT_TABLE_NAME,
+      KeyConditionExpression: "PK = :pk AND begins_with(SK, :skPrefix)",
+      ExpressionAttributeValues: {
+        ":pk": "JOBS",
+        ":skPrefix": `${prefix}#`,
+      },
+      ScanIndexForward: false,
+      Limit: pageSize,
+      ExclusiveStartKey: exclusiveStartKey,
+    }),
+  );
 
-  // Build response with report enrichment for complete jobs
+  const jobs = (result.Items ?? []).map((item) => ({
+    jobId: item.jobId as string,
+    state: item.state as string,
+    phase: (item.phase as string) ?? "fetch",
+    startedAt: item.startedAt as string,
+    lastUpdatedAt: item.lastUpdatedAt as string,
+    progress: item.progress as ProgressCounts,
+    ...(item.error ? { error: item.error as string } : {}),
+  }));
+
+  // Enrich complete jobs with report data
   const summaries: HistoryJobSummary[] = await Promise.all(
-    pageJobs.map(async (job) => {
+    jobs.map(async (job) => {
       const summary: HistoryJobSummary = {
         jobId: job.jobId,
         state: job.state,
@@ -215,15 +189,12 @@ async function getHistoryJobs(
     }),
   );
 
-  const response: ImportHistoryResponse = {
-    jobs: summaries,
-  };
+  const response: ImportHistoryResponse = { jobs: summaries };
 
-  if (hasMore) {
-    const nextCursor = { offset: startIndex + pageSize };
-    response.nextToken = Buffer.from(JSON.stringify(nextCursor)).toString(
-      "base64",
-    );
+  if (result.LastEvaluatedKey) {
+    response.nextToken = Buffer.from(
+      JSON.stringify(result.LastEvaluatedKey),
+    ).toString("base64");
   }
 
   return response;

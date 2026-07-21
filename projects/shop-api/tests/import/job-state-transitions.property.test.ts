@@ -42,6 +42,20 @@ vi.mock("@aws-sdk/lib-dynamodb", () => ({
       this.input = input;
     }
   },
+  QueryCommand: class MockQueryCommand {
+    input: unknown;
+    _type = "Query";
+    constructor(input: unknown) {
+      this.input = input;
+    }
+  },
+  TransactWriteCommand: class MockTransactWriteCommand {
+    input: unknown;
+    _type = "TransactWrite";
+    constructor(input: unknown) {
+      this.input = input;
+    }
+  },
 }));
 
 const VALID_TRANSITIONS: Record<JobState, JobState[]> = {
@@ -49,9 +63,16 @@ const VALID_TRANSITIONS: Record<JobState, JobState[]> = {
   paused: ["running"],
   failed: ["running"],
   complete: [],
+  cancelled: [],
 };
 
-const ALL_STATES: JobState[] = ["running", "paused", "failed", "complete"];
+const ALL_STATES: JobState[] = [
+  "running",
+  "paused",
+  "failed",
+  "complete",
+  "cancelled",
+];
 
 function isValidTransition(from: JobState, to: JobState): boolean {
   return VALID_TRANSITIONS[from].includes(to);
@@ -67,12 +88,14 @@ describe("Property 6: Job state transitions are valid", () => {
     "paused",
     "failed",
     "complete",
+    "cancelled",
   );
   const targetStateArb = fc.constantFrom<JobState>(
     "running",
     "paused",
     "failed",
     "complete",
+    "cancelled",
   );
 
   const progressArb: fc.Arbitrary<ProgressCounts> = fc.record({
