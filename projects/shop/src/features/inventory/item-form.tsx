@@ -172,7 +172,7 @@ export function ItemForm({
 
   function getAccountDisplayName(accountId: string): string {
     const account = accounts.find((a) => a.uuid === accountId);
-    return account ? `${account.shopUid} - ${account.name}` : accountId;
+    return account ? `${account.accountNumber} - ${account.name}` : accountId;
   }
 
   const filteredAccounts = React.useMemo(() => {
@@ -181,13 +181,13 @@ export function ItemForm({
     return accounts.filter(
       (a) =>
         a.name.toLowerCase().includes(lower) ||
-        String(a.shopUid).includes(lower),
+        String(a.accountNumber).includes(lower),
     );
   }, [accounts, accountSearch]);
 
   function handleAccountSelect(account: Account): void {
     setFormState((prev) => ({ ...prev, accountId: account.uuid }));
-    setAccountSearch(`${account.shopUid} - ${account.name}`);
+    setAccountSearch(`${account.accountNumber} - ${account.name}`);
     setShowAccountDropdown(false);
   }
 
@@ -409,7 +409,7 @@ export function ItemForm({
                           }}
                           tabIndex={0}
                         >
-                          {account.shopUid} - {account.name}
+                          {account.accountNumber} - {account.name}
                         </li>
                       ))}
                     </ul>

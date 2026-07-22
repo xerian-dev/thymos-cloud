@@ -1,5 +1,5 @@
 ---
-inclusion: manual
+inclusion: always
 ---
 
 # ConsignCloud API Reference
@@ -11,6 +11,35 @@ inclusion: manual
 ## Authentication
 
 Bearer token via `Authorization: Bearer <api-key>` header. Key stored in AWS SSM at `/{project}/{environment}/consigncloud-api-key`.
+
+## Query Parameter Formatting (CRITICAL)
+
+The ConsignCloud API uses **repeated query parameters** for multi-value fields. Do NOT join values with commas.
+
+**Correct** (repeated params):
+
+```
+GET /sales?include=cashier&include=memo&include=status&expand=cashier&expand=customer
+```
+
+**WRONG** (comma-joined — causes HTTP 400):
+
+```
+GET /sales?include=cashier,memo,status&expand=cashier,customer
+```
+
+In code, always use `url.searchParams.append()` in a loop:
+
+```typescript
+for (const value of INCLUDE_VALUES) {
+  url.searchParams.append("include", value);
+}
+for (const value of EXPAND_VALUES) {
+  url.searchParams.append("expand", value);
+}
+```
+
+Never use `url.searchParams.set("include", values.join(","))`.
 
 ## List Items
 
@@ -106,3 +135,46 @@ batches, created_by, days_on_shelf, historic_consignor_portions, historic_sale_p
 | `images[].url` | `imageKeys` | Array of URLs |
 | `tax_exempt` | `taxExempt` | Direct (default false) |
 | `id` | `sourceId` | Direct (for deduplication) |
+
+## List Sales
+
+`GET /sales`
+
+### Query Parameters
+
+- `limit` (integer): Page size, max 100
+- `cursor` (string): Pagination cursor from `next_cursor`
+- `include` (repeated): Fields to include
+- `expand` (repeated): Fields to expand
+- `created:gt` (date-time): Sales created after this timestamp
+
+### Valid `include` values for sales
+
+cashier, memo, status, consignor_portion, store_portion, refunded_amount, line_item_count, notes, cogs, register, gift_cards, customer, customer.email_notifications_enabled, customer.tax_exempt, customer.address_line_1, customer.address_line_2, customer.city, customer.state, customer.postal_code, customer.tags, register_report, pending_swipe
+
+**NOT safe to include** (cause HTTP 500): `total_tendered`, `amounts_tendered`
+
+### Valid `expand` values for sales
+
+cashier, customer, register, pending_swipe
+
+### Response Schema (200)
+
+```json
+{
+  "data": [Sale],
+  "next_cursor": "base64string" | null
+}
+```
+
+## Get Sale Line Items
+
+`GET /sales/{saleId}/line-items`
+
+### Response Schema (200)
+
+```json
+{
+  "data": [LineItem]
+}
+```

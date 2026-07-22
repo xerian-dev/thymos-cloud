@@ -111,7 +111,7 @@ describe("sync-to-shop-table", () => {
   });
 
   describe("create path — new account", () => {
-    it("uses UUID-based PK with GSI1 attributes and shopUid", async () => {
+    it("uses UUID-based PK with GSI1 attributes and accountNumber", async () => {
       const record = createImportedRecord({ number: "001893" });
       mockScanImportedAccounts.mockResolvedValue([record]);
 
@@ -174,8 +174,8 @@ describe("sync-to-shop-table", () => {
       // uuid attribute should match the UUID portion of PK
       const pkUuid = (metadataItem.PK as string).replace("ACCOUNT#", "");
       expect(metadataItem.uuid).toBe(pkUuid);
-      // shopUid should be zero-padded account number
-      expect(metadataItem.shopUid).toBe("0001893");
+      // accountNumber should be zero-padded account number
+      expect(metadataItem.accountNumber).toBe("0001893");
       // GSI1 attributes
       expect(metadataItem.GSI1PK).toBe("ACCOUNT");
       expect(metadataItem.GSI1SK).toBe("ACCOUNT#0001893");
@@ -408,7 +408,7 @@ describe("sync-to-shop-table", () => {
       expect(tagSKs).toContain("TAG#text_notification");
     });
 
-    it("update path does NOT overwrite immutable key fields (PK, SK, GSI1PK, GSI1SK, uuid, shopUid)", async () => {
+    it("update path does NOT overwrite immutable key fields (PK, SK, GSI1PK, GSI1SK, uuid, accountNumber)", async () => {
       const record = createImportedRecord({
         number: "001893",
         first_name: "Alice",
@@ -430,7 +430,7 @@ describe("sync-to-shop-table", () => {
                     PK: "ACCOUNT#existing-uuid-1234",
                     SK: "METADATA",
                     uuid: "existing-uuid-1234",
-                    shopUid: "0001893",
+                    accountNumber: "0001893",
                     GSI1PK: "ACCOUNT",
                     GSI1SK: "0001893",
                     name: "Alice Smith",
@@ -496,7 +496,7 @@ describe("sync-to-shop-table", () => {
         "GSI1PK",
         "GSI1SK",
         "uuid",
-        "shopUid",
+        "accountNumber",
       ];
       const allAttrNames = Object.values(updateInput.ExpressionAttributeNames);
       for (const field of immutableFields) {

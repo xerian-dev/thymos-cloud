@@ -248,8 +248,8 @@ export async function upsertAccount(
 
   // Create new account
   const uuid = randomUUID();
-  // Use the ConsignCloud account number as shopUid (preserving the original numbering)
-  const shopUid =
+  // Use the ConsignCloud account number as accountNumber (preserving the original numbering)
+  const accountNumber =
     mapped.accountNumber > 0
       ? mapped.accountNumber
       : await getNextSequenceNumber("ACCOUNT");
@@ -263,9 +263,9 @@ export async function upsertAccount(
           PK: `ACCOUNT#${uuid}`,
           SK: "METADATA",
           uuid,
-          shopUid: String(shopUid).padStart(7, "0"),
+          accountNumber: String(accountNumber).padStart(7, "0"),
           GSI1PK: "ACCOUNT",
-          GSI1SK: `ACCOUNT#${String(shopUid).padStart(7, "0")}`,
+          GSI1SK: `ACCOUNT#${String(accountNumber).padStart(7, "0")}`,
           name: `${mapped.firstName} ${mapped.lastName}`.trim(),
           firstName: mapped.firstName,
           lastName: mapped.lastName,
@@ -313,7 +313,7 @@ export async function upsertAccount(
           UpdateExpression: "SET #val = :newVal",
           ConditionExpression: "attribute_not_exists(#val) OR #val < :newVal",
           ExpressionAttributeNames: { "#val": "value" },
-          ExpressionAttributeValues: { ":newVal": shopUid },
+          ExpressionAttributeValues: { ":newVal": accountNumber },
         }),
       );
     } catch (error: unknown) {
@@ -646,12 +646,133 @@ export async function upsertSale(
   const existing = await findBySourceId(mapped.sourceId);
 
   if (existing) {
-    // Sales are immutable — skip if already exists
-    return { action: "skipped" };
+    const now = new Date().toISOString();
+
+    // Resolve cashier for update
+    let updatedCashierId = "";
+    let updatedCashierName: string | null = null;
+    const rawCashier = raw.cashier;
+    if (
+      rawCashier != null &&
+      typeof rawCashier === "object" &&
+      !Array.isArray(rawCashier)
+    ) {
+      const cashier = rawCashier as Record<string, unknown>;
+      const cashierSourceId = typeof cashier.id === "string" ? cashier.id : "";
+      updatedCashierName =
+        typeof cashier.name === "string" ? cashier.name : null;
+      if (cashierSourceId) {
+        updatedCashierId = await resolveOrCreateEmployee(
+          cashierSourceId,
+          updatedCashierName ?? "Unknown",
+        );
+      }
+    }
+
+    // Resolve line item Item UUIDs
+    const resolvedItemIds: string[] = [];
+    for (const lineItem of lineItems) {
+      if (lineItem.itemSourceId) {
+        const itemRecord = await findBySourceId(lineItem.itemSourceId);
+        resolvedItemIds.push(
+          itemRecord ? itemRecord.PK.replace("ITEM#", "") : "",
+        );
+      } else {
+        resolvedItemIds.push("");
+      }
+    }
+
+    // Update sale record
+    await docClient.send(
+      new UpdateCommand({
+        TableName: TABLE_NAME,
+        Key: { PK: existing.PK, SK: existing.SK },
+        UpdateExpression:
+          "SET #status = :status, #subtotal = :subtotal, #total = :total, " +
+          "#storePortion = :storePortion, #cogs = :cogs, #change = :change, " +
+          "#memo = :memo, #refundedAmount = :refundedAmount, " +
+          "#cashRoundingAdjustment = :cashRoundingAdjustment, " +
+          "#lineItemCount = :lineItemCount, #finalizedAt = :finalizedAt, " +
+          "#voidedAt = :voidedAt, #parkedAt = :parkedAt, " +
+          "#cashierId = :cashierId, #cashierName = :cashierName, " +
+          "#updatedAt = :updatedAt",
+        ExpressionAttributeNames: {
+          "#status": "status",
+          "#subtotal": "subtotal",
+          "#total": "total",
+          "#storePortion": "storePortion",
+          "#cogs": "cogs",
+          "#change": "change",
+          "#memo": "memo",
+          "#refundedAmount": "refundedAmount",
+          "#cashRoundingAdjustment": "cashRoundingAdjustment",
+          "#lineItemCount": "lineItemCount",
+          "#finalizedAt": "finalizedAt",
+          "#voidedAt": "voidedAt",
+          "#parkedAt": "parkedAt",
+          "#cashierId": "cashierId",
+          "#cashierName": "cashierName",
+          "#updatedAt": "updatedAt",
+        },
+        ExpressionAttributeValues: {
+          ":status": mapped.status,
+          ":subtotal": mapped.subtotal,
+          ":total": mapped.total,
+          ":storePortion": mapped.storePortion,
+          ":cogs": mapped.cogs,
+          ":change": mapped.change,
+          ":memo": mapped.memo,
+          ":refundedAmount": mapped.refundedAmount,
+          ":cashRoundingAdjustment": mapped.cashRoundingAdjustment,
+          ":lineItemCount": mapped.lineItemCount,
+          ":finalizedAt": mapped.finalizedAt,
+          ":voidedAt": mapped.voidedAt,
+          ":parkedAt": mapped.parkedAt,
+          ":cashierId": updatedCashierId || null,
+          ":cashierName": updatedCashierName,
+          ":updatedAt": now,
+        },
+      }),
+    );
+
+    // Overwrite line items
+    for (let i = 0; i < lineItems.length; i++) {
+      const lineItem = lineItems[i];
+      const itemId = resolvedItemIds[i] || null;
+
+      await docClient.send(
+        new PutCommand({
+          TableName: TABLE_NAME,
+          Item: {
+            PK: existing.PK,
+            SK: `LINE_ITEM#${String(i).padStart(4, "0")}`,
+            sourceId: lineItem.sourceId,
+            itemId,
+            itemSku: lineItem.itemSku,
+            itemTitle: lineItem.itemTitle,
+            salePrice: lineItem.salePrice,
+            consignorPortion: lineItem.consignorPortion,
+            storePortion: lineItem.storePortion,
+            split: lineItem.split,
+            quantity: lineItem.quantity,
+            daysOnShelf: lineItem.daysOnShelf,
+            taxedPrice: lineItem.taxedPrice,
+            taxExempt: lineItem.taxExempt,
+            refundedQuantity: lineItem.refundedQuantity,
+            totalTax: lineItem.totalTax,
+            discount: lineItem.discount,
+            createdAt: lineItem.createdAt,
+          },
+        }),
+      );
+    }
+
+    return { action: "updated" };
   }
 
   // Resolve cashier Employee
   let cashierId = "";
+  let cashierName: string | null = null;
   const rawCashier = raw.cashier;
   if (
     rawCashier != null &&
@@ -660,24 +781,20 @@ export async function upsertSale(
   ) {
     const cashier = rawCashier as Record<string, unknown>;
     const cashierSourceId = typeof cashier.id === "string" ? cashier.id : "";
-    const cashierName =
-      typeof cashier.name === "string" ? cashier.name : "Unknown";
+    cashierName = typeof cashier.name === "string" ? cashier.name : null;
     if (cashierSourceId) {
-      cashierId = await resolveOrCreateEmployee(cashierSourceId, cashierName);
+      cashierId = await resolveOrCreateEmployee(
+        cashierSourceId,
+        cashierName ?? "Unknown",
+      );
     }
   }
 
-  // Resolve line item Item UUIDs
-  const rawLineItems = Array.isArray(raw.line_items)
-    ? (raw.line_items as unknown[])
-    : [];
-
+  // Resolve line item Item UUIDs using itemSourceId from mapped line items
   const resolvedItemIds: string[] = [];
-  for (const rawItem of rawLineItems) {
-    const item = rawItem as Record<string, unknown>;
-    const itemSourceId = typeof item.item_id === "string" ? item.item_id : "";
-    if (itemSourceId) {
-      const itemRecord = await findBySourceId(itemSourceId);
+  for (const lineItem of lineItems) {
+    if (lineItem.itemSourceId) {
+      const itemRecord = await findBySourceId(lineItem.itemSourceId);
       resolvedItemIds.push(
         itemRecord ? itemRecord.PK.replace("ITEM#", "") : "",
       );
@@ -686,10 +803,13 @@ export async function upsertSale(
     }
   }
 
-  // Create new sale
+  // Create new sale — use CC number directly, seed sequence counter
   const uuid = randomUUID();
-  const saleNumber = await getNextSequenceNumber("SALE");
+  const saleNumber = mapped.number;
   const now = new Date().toISOString();
+
+  // Seed sequence counter to stay in sync with imported sale numbers
+  await seedSequenceCounter("SALE", saleNumber);
 
   const transactItems: Array<{
     Put: {
@@ -710,17 +830,21 @@ export async function upsertSale(
         number: saleNumber,
         GSI1PK: "SALES",
         GSI1SK: `SALE#${String(saleNumber).padStart(7, "0")}`,
-        sourceNumber: mapped.sourceNumber,
         status: mapped.status,
         subtotal: mapped.subtotal,
         total: mapped.total,
         storePortion: mapped.storePortion,
-        consignorPortion: mapped.consignorPortion,
+        cogs: mapped.cogs,
         change: mapped.change,
         memo: mapped.memo,
+        refundedAmount: mapped.refundedAmount,
+        cashRoundingAdjustment: mapped.cashRoundingAdjustment,
+        lineItemCount: mapped.lineItemCount,
         finalizedAt: mapped.finalizedAt,
         voidedAt: mapped.voidedAt,
+        parkedAt: mapped.parkedAt,
         cashierId,
+        cashierName,
         sourceId: mapped.sourceId,
         createdAt: mapped.createdAt || now,
       },
@@ -731,7 +855,7 @@ export async function upsertSale(
   // Line item records
   for (let i = 0; i < lineItems.length; i++) {
     const lineItem = lineItems[i];
-    const itemId = resolvedItemIds[i] ?? "";
+    const itemId = resolvedItemIds[i] || null;
 
     transactItems.push({
       Put: {
@@ -739,13 +863,22 @@ export async function upsertSale(
         Item: {
           PK: `SALE#${uuid}`,
           SK: `LINE_ITEM#${String(i).padStart(4, "0")}`,
+          sourceId: lineItem.sourceId,
           itemId,
+          itemSku: lineItem.itemSku,
+          itemTitle: lineItem.itemTitle,
           salePrice: lineItem.salePrice,
-          discount: lineItem.discount,
           consignorPortion: lineItem.consignorPortion,
           storePortion: lineItem.storePortion,
+          split: lineItem.split,
           quantity: lineItem.quantity,
           daysOnShelf: lineItem.daysOnShelf,
+          taxedPrice: lineItem.taxedPrice,
+          taxExempt: lineItem.taxExempt,
+          refundedQuantity: lineItem.refundedQuantity,
+          totalTax: lineItem.totalTax,
+          discount: lineItem.discount,
+          createdAt: lineItem.createdAt,
         },
       },
     });

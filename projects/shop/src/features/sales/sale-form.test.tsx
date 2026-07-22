@@ -59,7 +59,7 @@ describe("SaleForm", () => {
         mode: "edit",
         sale: {
           uuid: "sale-1",
-          number: 1,
+          saleNumber: 1,
           status: "open",
           cashierId: "emp-1",
           subtotal: 1000,
@@ -95,7 +95,7 @@ describe("SaleForm", () => {
         mode: "edit",
         sale: {
           uuid: "sale-1",
-          number: 1,
+          saleNumber: 1,
           status: "open",
           cashierId: "emp-1",
           subtotal: 1000,
@@ -136,7 +136,7 @@ describe("SaleForm", () => {
         mode: "edit",
         sale: {
           uuid: "sale-1",
-          number: 1,
+          saleNumber: 1,
           status: "open",
           cashierId: "emp-123",
           subtotal: 1000,
@@ -216,7 +216,7 @@ describe("SaleForm", () => {
           success: true,
           sale: {
             uuid: "1",
-            number: 1,
+            saleNumber: 1,
             status: "open",
             cashierId: "emp-1",
             subtotal: 0,
@@ -317,7 +317,7 @@ describe("SaleForm", () => {
         mode: "edit",
         sale: {
           uuid: "sale-1",
-          number: 1,
+          saleNumber: 1,
           status: "open",
           cashierId: "emp-1",
           subtotal: 1000,
@@ -351,7 +351,7 @@ describe("SaleForm", () => {
         mode: "edit",
         sale: {
           uuid: "sale-1",
-          number: 1,
+          saleNumber: 1,
           status: "open",
           cashierId: "emp-1",
           subtotal: 1000,
@@ -392,7 +392,7 @@ describe("SaleForm", () => {
         success: true,
         sale: {
           uuid: "sale-1",
-          number: 1,
+          saleNumber: 1,
           status: "open",
           cashierId: "emp-1",
           subtotal: 0,
@@ -424,7 +424,7 @@ describe("SaleForm", () => {
         success: true,
         sale: {
           uuid: "sale-1",
-          number: 1,
+          saleNumber: 1,
           status: "finalized",
           cashierId: "emp-1",
           subtotal: 1000,
@@ -441,7 +441,7 @@ describe("SaleForm", () => {
         mode: "edit",
         sale: {
           uuid: "sale-1",
-          number: 1,
+          saleNumber: 1,
           status: "open",
           cashierId: "emp-1",
           subtotal: 1000,

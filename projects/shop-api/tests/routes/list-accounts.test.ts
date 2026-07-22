@@ -59,14 +59,14 @@ describe("listAccounts", () => {
     expect(body).toEqual({ accounts: [], nextCursor: null, hasMore: false });
   });
 
-  it("maps Account_Item fields correctly including shopUid parsing", async () => {
+  it("maps Account_Item fields correctly including accountNumber parsing", async () => {
     mockedSend.mockResolvedValueOnce({
       Items: [
         {
           PK: "ACCOUNT#abc-uuid",
           SK: "METADATA",
           uuid: "abc-uuid",
-          shopUid: "0000042",
+          accountNumber: "0000042",
           name: "Jane Smith",
           street: "123 Main St",
           place: "Zurich",
@@ -87,7 +87,7 @@ describe("listAccounts", () => {
     expect(body.accounts).toHaveLength(1);
     expect(body.accounts[0]).toEqual({
       uuid: "abc-uuid",
-      shopUid: 42,
+      accountNumber: 42,
       name: "Jane Smith",
       street: "123 Main St",
       place: "Zurich",
@@ -109,7 +109,7 @@ describe("listAccounts", () => {
           PK: "ACCOUNT#uuid-a",
           SK: "METADATA",
           uuid: "uuid-a",
-          shopUid: "0000001",
+          accountNumber: "0000001",
           name: "Account A",
           GSI1PK: "ACCOUNT",
           GSI1SK: "0000001",
@@ -123,7 +123,7 @@ describe("listAccounts", () => {
     const body = JSON.parse(result.body as string);
     expect(body.accounts[0]).toEqual({
       uuid: "uuid-a",
-      shopUid: 1,
+      accountNumber: 1,
       name: "Account A",
       street: "",
       place: "",
@@ -145,7 +145,7 @@ describe("listAccounts", () => {
           PK: "ACCOUNT#uuid-b",
           SK: "METADATA",
           uuid: "uuid-b",
-          shopUid: "0000001",
+          accountNumber: "0000001",
           name: "Account B",
           address: "Old address field",
           street: "New St",
@@ -175,7 +175,7 @@ describe("listAccounts", () => {
           PK: "ACCOUNT#uuid-1",
           SK: "METADATA",
           uuid: "uuid-1",
-          shopUid: "0000001",
+          accountNumber: "0000001",
           name: "First",
           GSI1PK: "ACCOUNT",
           GSI1SK: "0000001",
@@ -205,7 +205,7 @@ describe("listAccounts", () => {
           PK: "ACCOUNT#uuid-1",
           SK: "METADATA",
           uuid: "uuid-1",
-          shopUid: "0000001",
+          accountNumber: "0000001",
           name: "First",
           GSI1PK: "ACCOUNT",
           GSI1SK: "0000001",
@@ -236,7 +236,7 @@ describe("listAccounts", () => {
           PK: "ACCOUNT#uuid-2",
           SK: "METADATA",
           uuid: "uuid-2",
-          shopUid: "0000002",
+          accountNumber: "0000002",
           name: "Second",
           GSI1PK: "ACCOUNT",
           GSI1SK: "0000002",

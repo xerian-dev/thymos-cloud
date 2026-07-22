@@ -2,7 +2,7 @@ import type {
   APIGatewayProxyEventV2,
   APIGatewayProxyResultV2,
 } from "aws-lambda";
-import { QueryCommand } from "@aws-sdk/lib-dynamodb";
+import { GetCommand, QueryCommand } from "@aws-sdk/lib-dynamodb";
 import { docClient, TABLE_NAME } from "../dynamodb-client.js";
 import { encodeCursor, decodeCursor } from "../cursor-utils.js";
 import { jsonResponse, errorResponse } from "../response.js";
@@ -13,9 +13,10 @@ export type PageSize = (typeof ALLOWED_PAGE_SIZES)[number];
 
 export interface SaleResponse {
   uuid: string;
-  number: number;
+  saleNumber: number;
   status: "open" | "finalized" | "voided";
   cashierId: string;
+  cashierName?: string;
   subtotal?: number;
   total?: number;
   storePortion?: number;
@@ -31,19 +32,24 @@ export interface SaleResponse {
 export function mapSaleRecord(item: Record<string, unknown>): SaleResponse {
   const sale: SaleResponse = {
     uuid: item.uuid as string,
-    number: item.number as number,
+    saleNumber: (item.saleNumber ?? item.number) as number,
     status: item.status as "open" | "finalized" | "voided",
     cashierId: item.cashierId as string,
     createdAt: item.createdAt as string,
   };
 
+  if (item.cashierName !== undefined)
+    sale.cashierName = item.cashierName as string;
   if (item.subtotal !== undefined) sale.subtotal = item.subtotal as number;
   if (item.total !== undefined) sale.total = item.total as number;
-  if (item.storePortion !== undefined) sale.storePortion = item.storePortion as number;
-  if (item.consignorPortion !== undefined) sale.consignorPortion = item.consignorPortion as number;
+  if (item.storePortion !== undefined)
+    sale.storePortion = item.storePortion as number;
+  if (item.consignorPortion !== undefined)
+    sale.consignorPortion = item.consignorPortion as number;
   if (item.change !== undefined) sale.change = item.change as number;
   if (item.memo !== undefined) sale.memo = item.memo as string;
-  if (item.finalizedAt !== undefined) sale.finalizedAt = item.finalizedAt as string;
+  if (item.finalizedAt !== undefined)
+    sale.finalizedAt = item.finalizedAt as string;
   if (item.voidedAt !== undefined) sale.voidedAt = item.voidedAt as string;
   if (item.updatedAt !== undefined) sale.updatedAt = item.updatedAt as string;
 
@@ -90,8 +96,8 @@ export async function listSales(
       }),
     );
 
-    const sales = (queryResult.Items ?? []).map(
-      (item) => mapSaleRecord(item as Record<string, unknown>),
+    const sales = (queryResult.Items ?? []).map((item) =>
+      mapSaleRecord(item as Record<string, unknown>),
     );
 
     const lastEvaluatedKey = queryResult.LastEvaluatedKey as

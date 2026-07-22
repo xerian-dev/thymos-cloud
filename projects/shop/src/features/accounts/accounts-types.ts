@@ -3,7 +3,7 @@ export type { PageSize, CursorPaginationParams } from "@/lib/pagination-types";
 
 export interface Account {
   uuid: string;
-  shopUid: number;
+  accountNumber: number;
   name: string;
   street?: string;
   place?: string;

@@ -63,7 +63,7 @@ export async function listAccounts(
 
     const accounts = (queryResult.Items ?? []).map((item) => ({
       uuid: item.uuid as string,
-      shopUid: parseInt(item.shopUid as string, 10),
+      accountNumber: parseInt(item.accountNumber as string, 10),
       name: (item.name as string) ?? "",
       street: (item.street as string) ?? "",
       place: (item.place as string) ?? "",

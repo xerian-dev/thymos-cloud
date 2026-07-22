@@ -14,7 +14,7 @@ const existingSaleArb = fc.record({
   GSI1PK: fc.constant("SALES"),
   GSI1SK: fc.constant("SALE#0000042"),
   uuid: fc.uuid(),
-  number: fc.nat({ max: 9999999 }),
+  saleNumber: fc.nat({ max: 9999999 }),
   status: fc.constantFrom("open", "finalized", "voided"),
   cashierId: fc.string({ minLength: 1 }),
   createdAt: fc.constant("2024-01-01T00:00:00.000Z"),
@@ -23,7 +23,10 @@ const existingSaleArb = fc.record({
 
 // Generator for a valid update payload
 const updateArb: fc.Arbitrary<ValidatedSaleUpdate> = fc.record({
-  status: fc.option(fc.constantFrom("open" as const, "finalized" as const, "voided" as const), { nil: undefined }),
+  status: fc.option(
+    fc.constantFrom("open" as const, "finalized" as const, "voided" as const),
+    { nil: undefined },
+  ),
   cashierId: fc.option(fc.string({ minLength: 1 }), { nil: undefined }),
   subtotal: fc.option(fc.double({ noNaN: true }), { nil: undefined }),
   total: fc.option(fc.double({ noNaN: true }), { nil: undefined }),
@@ -36,12 +39,12 @@ const updateArb: fc.Arbitrary<ValidatedSaleUpdate> = fc.record({
 });
 
 describe("Feature: sales-backend-api, Property 5: Update merge preserves identity", () => {
-  it("preserves uuid, number, and createdAt from the original record", () => {
+  it("preserves uuid, saleNumber, and createdAt from the original record", () => {
     fc.assert(
       fc.property(existingSaleArb, updateArb, (existing, update) => {
         const result = applySaleUpdate(existing, update);
         expect(result.uuid).toBe(existing.uuid);
-        expect(result.number).toBe(existing.number);
+        expect(result.saleNumber).toBe(existing.saleNumber);
         expect(result.createdAt).toBe(existing.createdAt);
       }),
       { numRuns: 200 },
@@ -53,16 +56,24 @@ describe("Feature: sales-backend-api, Property 5: Update merge preserves identit
       fc.property(existingSaleArb, updateArb, (existing, update) => {
         const result = applySaleUpdate(existing, update);
         // Each field in the update (if defined) should be reflected in result
-        if (update.status !== undefined) expect(result.status).toBe(update.status);
-        if (update.cashierId !== undefined) expect(result.cashierId).toBe(update.cashierId);
-        if (update.subtotal !== undefined) expect(result.subtotal).toBe(update.subtotal);
+        if (update.status !== undefined)
+          expect(result.status).toBe(update.status);
+        if (update.cashierId !== undefined)
+          expect(result.cashierId).toBe(update.cashierId);
+        if (update.subtotal !== undefined)
+          expect(result.subtotal).toBe(update.subtotal);
         if (update.total !== undefined) expect(result.total).toBe(update.total);
-        if (update.storePortion !== undefined) expect(result.storePortion).toBe(update.storePortion);
-        if (update.consignorPortion !== undefined) expect(result.consignorPortion).toBe(update.consignorPortion);
-        if (update.change !== undefined) expect(result.change).toBe(update.change);
+        if (update.storePortion !== undefined)
+          expect(result.storePortion).toBe(update.storePortion);
+        if (update.consignorPortion !== undefined)
+          expect(result.consignorPortion).toBe(update.consignorPortion);
+        if (update.change !== undefined)
+          expect(result.change).toBe(update.change);
         if (update.memo !== undefined) expect(result.memo).toBe(update.memo);
-        if (update.finalizedAt !== undefined) expect(result.finalizedAt).toBe(update.finalizedAt);
-        if (update.voidedAt !== undefined) expect(result.voidedAt).toBe(update.voidedAt);
+        if (update.finalizedAt !== undefined)
+          expect(result.finalizedAt).toBe(update.finalizedAt);
+        if (update.voidedAt !== undefined)
+          expect(result.voidedAt).toBe(update.voidedAt);
       }),
       { numRuns: 200 },
     );
@@ -77,8 +88,8 @@ describe("Feature: sales-backend-api, Property 5: Update merge preserves identit
         expect(result.updatedAt).toBeDefined();
         expect(typeof result.updatedAt).toBe("string");
         // updatedAt should be between before and after
-        expect(result.updatedAt as string >= before).toBe(true);
-        expect(result.updatedAt as string <= after).toBe(true);
+        expect((result.updatedAt as string) >= before).toBe(true);
+        expect((result.updatedAt as string) <= after).toBe(true);
       }),
       { numRuns: 100 },
     );

@@ -179,7 +179,7 @@ export async function syncAccountsInternal(): Promise<SyncAccountsInternalResult
               PK: `ACCOUNT#${accountUuid}`,
               SK: "METADATA",
               uuid: accountUuid,
-              shopUid: paddedNumber,
+              accountNumber: paddedNumber,
               GSI1PK: "ACCOUNT",
               GSI1SK: `ACCOUNT#${paddedNumber}`,
               name: mapped.name,

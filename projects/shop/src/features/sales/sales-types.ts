@@ -2,7 +2,7 @@ import type { PageSize } from "@/lib/pagination-types";
 
 export interface Sale {
   uuid: string;
-  number: number;
+  saleNumber: number;
   status: "open" | "finalized" | "voided";
   cashierId: string;
   cashierName?: string;

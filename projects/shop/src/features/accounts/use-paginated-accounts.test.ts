@@ -7,7 +7,7 @@ vi.mock("./accounts-api");
 
 const mockAccount: Account = {
   uuid: "550e8400-e29b-41d4-a716-446655440000",
-  shopUid: 42,
+  accountNumber: 42,
   name: "Jane Smith",
   street: "123 Main St",
   place: "Zurich",
@@ -21,7 +21,7 @@ const mockAccount: Account = {
 
 const mockSecondAccount: Account = {
   uuid: "660e8400-e29b-41d4-a716-446655440001",
-  shopUid: 43,
+  accountNumber: 43,
   name: "John Doe",
   street: "456 Oak St",
   place: "Bern",

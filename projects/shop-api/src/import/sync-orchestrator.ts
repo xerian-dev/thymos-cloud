@@ -6,6 +6,7 @@ import {
 } from "./sync-lock-manager";
 import { getSyncState, updateSyncStateField } from "./sync-state-manager";
 import { createJobManager } from "./generic-job-manager";
+import { createSaleJob, getRunningSaleJob } from "./sale-job-manager";
 import { startStepFunctionForSync } from "./step-function-starter";
 import type { ImportPhase } from "./self-invoker";
 import type { ImportJobType } from "./step-function-starter";
@@ -237,8 +238,52 @@ export async function handleScheduledSync(): Promise<SyncRunResult> {
       }
     }
 
-    // ===== Phase 3: Sales (DISABLED) =====
-    phases.sales = { status: "skipped", reason: "disabled" };
+    // ===== Phase 3: Sales (async via Step Functions) =====
+    try {
+      const existingSaleJob = await getRunningSaleJob();
+      if (existingSaleJob) {
+        phases.sales = {
+          status: "skipped",
+          reason: "Sale import already running/paused",
+        };
+        console.info(
+          JSON.stringify({
+            level: "INFO",
+            message: "Sale import already in progress, skipping",
+            correlationId,
+            existingJobId: existingSaleJob.jobId,
+            existingJobState: existingSaleJob.state,
+          }),
+        );
+      } else {
+        const saleJob = await createSaleJob({
+          createdAfter: syncState?.lastSaleSyncAt ?? undefined,
+        });
+        const saleArn = await startStepFunctionWithRetry(
+          {
+            jobId: saleJob.jobId,
+            phase: "fetch",
+            type: "sale",
+            createdAfter: syncState?.lastSaleSyncAt ?? undefined,
+          },
+          correlationId,
+        );
+        saleExecutionArn = saleArn;
+        phases.sales = { status: "success" };
+        await updateSyncStateField("lastSaleSyncAt", syncTimestamp);
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      phases.sales = { status: "error", reason: message };
+      console.error(
+        JSON.stringify({
+          level: "ERROR",
+          message: "Sale import Step Function start failed",
+          correlationId,
+          error: message,
+        }),
+      );
+    }
 
     // Log sync completion
     console.info(

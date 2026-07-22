@@ -58,7 +58,7 @@ describe("sale-consigncloud-client", () => {
       expect(url).toContain("limit=100");
     });
 
-    it("includes expand=cashier param", async () => {
+    it("includes all expand params", async () => {
       const mockFetch = vi.mocked(fetch);
       mockFetch.mockResolvedValueOnce(
         jsonResponse({ data: [], next_cursor: null }),
@@ -68,7 +68,37 @@ describe("sale-consigncloud-client", () => {
 
       const url: string = mockFetch.mock.calls[0][0] as string;
       const parsedUrl = new URL(url);
-      expect(parsedUrl.searchParams.get("expand")).toBe("cashier");
+      const expandValues = parsedUrl.searchParams.getAll("expand");
+      expect(expandValues).toEqual([
+        "cashier",
+        "customer",
+        "register",
+        "pending_swipe",
+      ]);
+    });
+
+    it("includes all include params", async () => {
+      const mockFetch = vi.mocked(fetch);
+      mockFetch.mockResolvedValueOnce(
+        jsonResponse({ data: [], next_cursor: null }),
+      );
+
+      await fetchSalePage(createConfig(), null, 50);
+
+      const url: string = mockFetch.mock.calls[0][0] as string;
+      const parsedUrl = new URL(url);
+      const includeValues = parsedUrl.searchParams.getAll("include");
+      expect(includeValues).toContain("cashier");
+      expect(includeValues).toContain("cogs");
+      expect(includeValues).toContain("refunded_amount");
+      expect(includeValues).toContain("line_item_count");
+      expect(includeValues).toContain("register_report");
+      expect(includeValues).toContain("pending_swipe");
+      expect(includeValues).toContain("customer");
+      expect(includeValues).toContain("customer.email_notifications_enabled");
+      expect(includeValues).toContain("customer.tax_exempt");
+      expect(includeValues).not.toContain("total_tendered");
+      expect(includeValues).not.toContain("amounts_tendered");
     });
 
     it("uses the specified limit value", async () => {

@@ -17,7 +17,7 @@ vi.mock("./accounts-api", () => ({
     success: true,
     account: {
       uuid: "test-uuid",
-      shopUid: 1,
+      accountNumber: 1,
       name: "Test",
       telephone: "",
       commentCount: 0,

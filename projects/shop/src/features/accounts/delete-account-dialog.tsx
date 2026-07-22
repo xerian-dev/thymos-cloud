@@ -10,7 +10,7 @@ import {
   AlertDialogAction,
 } from "@/components/ui/alert-dialog";
 import { deleteAccount } from "./accounts-api";
-import { formatShopUid } from "./accounts-utils";
+import { formatAccountNumber } from "./accounts-utils";
 import type { Account } from "./accounts-types";
 
 export interface DeleteAccountDialogProps {
@@ -42,7 +42,7 @@ export function DeleteAccountDialog({
     setDeleting(true);
     setError(null);
 
-    const result = await deleteAccount(account.shopUid);
+    const result = await deleteAccount(account.accountNumber);
 
     if (result.success) {
       onSuccess();
@@ -66,7 +66,7 @@ export function DeleteAccountDialog({
           <AlertDialogDescription>
             Are you sure you want to delete account{" "}
             <span className="font-medium text-foreground">
-              {formatShopUid(account.shopUid)}
+              {formatAccountNumber(account.accountNumber)}
             </span>{" "}
             ({account.name})? This action cannot be undone.
           </AlertDialogDescription>

@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { createAccount, updateAccount } from "./accounts-api";
 import { accountFormSchema } from "./accounts-validation";
-import { formatShopUid } from "./accounts-utils";
+import { formatAccountNumber } from "./accounts-utils";
 import type { Account } from "./accounts-types";
 
 export interface AccountFormProps {
@@ -70,7 +70,7 @@ export function AccountForm({
   React.useEffect(() => {
     if (open) {
       if (account) {
-        setAccountNumber(formatShopUid(account.shopUid));
+        setAccountNumber(formatAccountNumber(account.accountNumber));
         setName(account.name);
         setStreet(account.street ?? "");
         setPlace(account.place ?? "");
@@ -81,7 +81,7 @@ export function AccountForm({
       } else {
         const defaultValue =
           defaultAccountNumber !== null
-            ? formatShopUid(defaultAccountNumber)
+            ? formatAccountNumber(defaultAccountNumber)
             : "";
         setAccountNumber(defaultValue);
         setName("");
@@ -111,7 +111,7 @@ export function AccountForm({
     if (isEditMode) return;
     const parsed = parseInt(accountNumber, 10);
     if (!isNaN(parsed) && parsed > 0 && parsed <= 9999999) {
-      setAccountNumber(formatShopUid(parsed));
+      setAccountNumber(formatAccountNumber(parsed));
     }
   }
 
@@ -154,7 +154,7 @@ export function AccountForm({
     setSubmitting(true);
 
     if (isEditMode) {
-      const apiResult = await updateAccount(account.shopUid, {
+      const apiResult = await updateAccount(account.accountNumber, {
         name: result.data.name,
         street: result.data.street,
         place: result.data.place,

@@ -83,7 +83,7 @@ export async function createSale(
       GSI1PK: "SALES",
       GSI1SK: gsi1sk,
       uuid,
-      number: nextNumber,
+      saleNumber: nextNumber,
       ...validation.data,
       createdAt: now,
       updatedAt: now,
@@ -138,7 +138,7 @@ export async function createSale(
       // Success — return the created sale without DynamoDB key attributes
       const responseSale: Record<string, unknown> = {
         uuid,
-        number: nextNumber,
+        saleNumber: nextNumber,
         ...validation.data,
         createdAt: now,
         updatedAt: now,

@@ -17,7 +17,7 @@ import { mapSaleRecord } from "./list-sales.js";
  */
 export interface ExistingSaleIdentity {
   uuid: string;
-  number: number;
+  saleNumber: number;
   createdAt: string;
 }
 

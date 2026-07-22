@@ -13,7 +13,7 @@ An ER diagram is more appropriate than a UML class diagram for this system becau
 erDiagram
     ACCOUNT {
         string uuid PK "v4 UUID (synthetic key)"
-        number shopUid "Sequential account number"
+        number accountNumber "Sequential account number"
         string firstName "Optional"
         string lastName "Optional"
         string company "Optional"
@@ -105,28 +105,43 @@ erDiagram
 
     SALE {
         string uuid PK "v4 UUID (synthetic key)"
-        number number "Sequential sale number, auto-generated from counter"
+        number number "Sale number (from CC import or sequence counter)"
         string status "open | finalized | voided"
         string cashierId FK "UUID of Employee who made the sale"
         number subtotal "CHF cents"
         number total "CHF cents"
         number storePortion "CHF cents"
-        number consignorPortion "CHF cents"
+        number cogs "CHF cents, cost of goods sold (what shop owes)"
         number change "CHF cents"
+        number refundedAmount "CHF cents, total refunded (tech debt: future Refund entity)"
+        number cashRoundingAdjustment "CHF cents, Swiss 5-centime rounding"
+        number lineItemCount "Number of line items"
         string memo "Optional"
         string finalizedAt "Optional, ISO 8601 UTC"
         string voidedAt "Optional, ISO 8601 UTC"
+        string parkedAt "Optional, ISO 8601 UTC"
         string sourceId "ConsignCloud sale UUID"
         string createdAt "ISO 8601 UTC"
     }
 
     SALE_LINE_ITEM {
         string saleId FK "UUID of parent Sale"
-        string itemId FK "UUID of Item sold"
-        number salePrice "CHF cents, price at time of sale"
-        number discount "CHF cents, discount applied"
-        number consignorPortion "CHF cents"
+        string sourceId "CC line item UUID"
+        string itemId FK "UUID of Item sold (null if unresolved)"
+        string itemSku "CC item SKU at time of sale (vital, indexable)"
+        string itemTitle "Item title snapshot for receipt display"
+        number salePrice "CHF cents, unit price at time of sale"
+        number discount "CHF cents, total discount (sum of applied_discounts)"
+        number consignorPortion "CHF cents, per-line consignor amount"
         number storePortion "CHF cents"
+        number split "Decimal 0-1, consignor split at time of sale"
+        number quantity "Units sold"
+        number daysOnShelf "Days item was on shelf before sale"
+        number taxedPrice "CHF cents, price inclusive of tax"
+        boolean taxExempt "Whether line item was tax-exempt"
+        number refundedQuantity "Units refunded (tech debt: future Refund entity)"
+        number totalTax "CHF cents, sum of applied taxes"
+        string createdAt "ISO 8601 UTC"
     }
 
     ACCOUNT ||--o{ ITEM : "owns"
@@ -135,7 +150,7 @@ erDiagram
     EMPLOYEE ||--o{ SALE : "cashier"
     SALE ||--|{ SALE_LINE_ITEM : "contains"
     ITEM ||--o{ SALE_LINE_ITEM : "sold in"
-    SEQUENCE_COUNTER ||--|| ACCOUNT : "generates shopUid"
+    SEQUENCE_COUNTER ||--|| ACCOUNT : "generates accountNumber"
     SEQUENCE_COUNTER ||--|| ITEM : "generates SKU"
     SEQUENCE_COUNTER ||--|| SALE : "generates number"
 ```
@@ -146,11 +161,11 @@ Both entities live in the same DynamoDB table (`thymos-{environment}-shop`). The
 
 | Entity           | PK                    | SK                    | GSI1PK     | GSI1SK                  | GSI2PK                      | GSI2SK                  | GSI3PK                        | GSI3SK                  |
 |------------------|-----------------------|-----------------------|------------|-------------------------|-----------------------------|-------------------------|-------------------------------|-------------------------|
-| Account          | `ACCOUNT#<uuid>`      | `METADATA`            | `ACCOUNTS` | `ACCOUNT#<shopUid>`     | —                           | —                       | —                             | —                       |
+| Account          | `ACCOUNT#<uuid>`      | `METADATA`            | `ACCOUNTS` | `ACCOUNT#<accountNumber>`| —                           | —                       | —                             | —                       |
 | Employee         | `EMPLOYEE#<uuid>`     | `METADATA`            | —          | —                       | `EMPLOYEES`                 | `EMPLOYEE#<uuid>`       | —                             | —                       |
 | Category         | `CATEGORY#<uuid>`     | `METADATA`            | —          | —                       | —                           | —                       | —                             | —                       |
 | Item             | `ITEM#<uuid>`         | `METADATA`            | `ITEMS`    | `ITEM#<sku>`            | `ACCOUNT#<accountId>`       | `ITEM#<createdAt>`      | `CATEGORY#<categoryId>`       | `ITEM#<createdAt>`      |
-| Sale             | `SALE#<uuid>`         | `METADATA`            | `SALES`    | `SALE#<number>`         | —                           | —                       | —                             | —                       |
+| Sale             | `SALE#<uuid>`         | `METADATA`            | `SALES`    | `SALE#<saleNumber>`     | —                           | —                       | —                             | —                       |
 | Sale Line Item   | `SALE#<uuid>`         | `LINE_ITEM#<index>`   | —          | —                       | —                           | —                       | —                             | —                       |
 | Account Counter  | `SEQUENCE#ACCOUNT`    | `COUNTER`             | —          | —                       | —                           | —                       | —                             | —                       |
 | Item Counter     | `SEQUENCE#ITEM`       | `COUNTER`             | —          | —                       | —                           | —                       | —                             | —                       |
@@ -158,15 +173,15 @@ Both entities live in the same DynamoDB table (`thymos-{environment}-shop`). The
 
 ### Key Design Principles
 
-- **Synthetic keys only**: UUIDs for identity, never business values (shopUid, SKU) as partition keys
-- **Business identifiers as attributes**: shopUid and SKU are queryable via GSI1 but never used as primary keys
-- **SKU is the item's shopUid**: The SKU is a sequential number (e.g., `42`) — the operator-facing identifier for items, labelled "SKU" in the UI and printed on labels. For imported items, the SKU comes directly from ConsignCloud (not generated). The sequence counter is seeded to max(imported SKU) after the first full import to prevent collisions with future locally-created items.
+- **Synthetic keys only**: UUIDs for identity, never business values (accountNumber, SKU) as partition keys
+- **Business identifiers as attributes**: accountNumber and SKU are queryable via GSI1 but never used as primary keys
+- **SKU is the item's sequential number**: The SKU is a sequential number (e.g., `42`) — the operator-facing identifier for items, labelled "SKU" in the UI and printed on labels. For imported items, the SKU comes directly from ConsignCloud (not generated). The sequence counter is seeded to max(imported SKU) after the first full import to prevent collisions with future locally-created items.
 - **Relationship via attribute**: Items reference their owning Account by storing `accountId` (the Account's UUID), and their creator by storing `createdBy` (the Employee's UUID)
 - **Items by account (GSI2)**: Items are queryable by owning account via GSI2 (`GSI2PK: ACCOUNT#<accountId>`, `GSI2SK: ITEM#<createdAt>`). Querying with `ScanIndexForward: false` returns items newest-first. GSI2 is overloaded — employees also use it (`GSI2PK: EMPLOYEES`, `GSI2SK: EMPLOYEE#<uuid>`).
 - **Items by category (GSI3)**: Items are queryable by category via GSI3 (`GSI3PK: CATEGORY#<categoryId>`, `GSI3SK: ITEM#<createdAt>`). Querying with `ScanIndexForward: false` returns items newest-first.
 - **Employee lookup**: Employees are looked up by `sourceId` via the `sourceId-index` GSI (same as accounts). No sequential numbering — they're referenced, not browsed.
 - **Sale line items**: Stored under the same PK as the sale (`SALE#<uuid>`) with SK `LINE_ITEM#<index>`. This allows fetching a sale and all its line items in a single Query. Each line item references the Item UUID and stores the price/portions at time of sale.
-- **Sale number**: A sequential number auto-generated from the sale sequence counter — the operator-facing identifier for sales. Queryable via GSI1 (`GSI1PK: SALES`, `GSI1SK: SALE#<number>`).
+- **Sale number**: The operator-facing identifier for sales. For imported sales, the number comes directly from ConsignCloud (not generated). The sequence counter is seeded to max(imported number) after the first full import to prevent collisions with future locally-created sales. Queryable via GSI1 (`GSI1PK: SALES`, `GSI1SK: SALE#<number>`).
 - **Sequence counters**: Separate counter records for each entity type, atomically incremented via DynamoDB conditional expressions
 
 ## Enumerations
@@ -213,3 +228,11 @@ Derived from the ConsignCloud status breakdown object. For items with quantity >
 | `lost`                | 9        | Item is lost or unaccounted for.                                                                      |
 | `stolen`              | 10       | Item reported stolen.                                                                                 |
 | `damaged`             | 11       | Item damaged and removed from inventory.                                                              |
+
+## Tech Debt
+
+### Refund Model
+
+The `refundedAmount` field on Sale and `refundedQuantity` field on Sale_Line_Item are stored as informational snapshots from ConsignCloud. They indicate that a refund occurred and the magnitude, but do not capture when, by whom, or why.
+
+A proper Refund entity should be modelled in a future spec with its own lifecycle (timestamp, operator, reason, partial quantities, linked sale). These snapshot fields will need migration when that model is built.

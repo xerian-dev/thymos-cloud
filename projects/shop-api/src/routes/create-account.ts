@@ -73,7 +73,7 @@ export async function createAccount(
     PK: pk,
     SK: "METADATA",
     uuid,
-    shopUid: paddedAccountNumber,
+    accountNumber: paddedAccountNumber,
     GSI1PK: "ACCOUNT",
     GSI1SK: `ACCOUNT#${paddedAccountNumber}`,
     name,
@@ -152,7 +152,7 @@ export async function createAccount(
   // 6. Return success
   return jsonResponse(201, {
     uuid,
-    shopUid: accountNumber,
+    accountNumber: accountNumber,
     name,
     street,
     place,
