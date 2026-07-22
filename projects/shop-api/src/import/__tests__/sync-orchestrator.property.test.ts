@@ -23,6 +23,8 @@ const mockAccountGetRunningOrPausedJob = vi.hoisted(() => vi.fn());
 const mockAccountCreateJob = vi.hoisted(() => vi.fn());
 const mockItemGetRunningOrPausedJob = vi.hoisted(() => vi.fn());
 const mockItemCreateJob = vi.hoisted(() => vi.fn());
+const mockGetRunningSaleJob = vi.hoisted(() => vi.fn());
+const mockCreateSaleJob = vi.hoisted(() => vi.fn());
 
 vi.mock("../sync-lock-manager", () => ({
   acquireLock: mockAcquireLock,
@@ -55,6 +57,10 @@ vi.mock("../generic-job-manager", () => ({
       createJob: vi.fn(),
     };
   },
+}));
+vi.mock("../sale-job-manager", () => ({
+  getRunningSaleJob: mockGetRunningSaleJob,
+  createSaleJob: mockCreateSaleJob,
 }));
 vi.mock("crypto", () => ({
   randomUUID: mockRandomUUID,
@@ -92,6 +98,7 @@ function setupSyncState(
 function setupDefaultJobManagers(): void {
   mockAccountGetRunningOrPausedJob.mockResolvedValue(null);
   mockItemGetRunningOrPausedJob.mockResolvedValue(null);
+  mockGetRunningSaleJob.mockResolvedValue(null);
   mockAccountCreateJob.mockResolvedValue({
     jobId: "account-job-uuid",
     state: "running",
@@ -103,6 +110,15 @@ function setupDefaultJobManagers(): void {
   });
   mockItemCreateJob.mockResolvedValue({
     jobId: "item-job-uuid",
+    state: "running",
+    phase: "fetch",
+    startedAt: "2025-01-15T12:00:00.000Z",
+    lastUpdatedAt: "2025-01-15T12:00:00.000Z",
+    filterParams: {},
+    progress: { processed: 0, imported: 0, skipped: 0, failed: 0 },
+  });
+  mockCreateSaleJob.mockResolvedValue({
+    jobId: "sale-job-uuid",
     state: "running",
     phase: "fetch",
     startedAt: "2025-01-15T12:00:00.000Z",
@@ -164,17 +180,17 @@ describe("Property 3: Sync state timestamps are only updated on phase success", 
         const updatedFields = updateCalls.map((call) => call[0]);
 
         if (!accountSuccess) {
-          // Account failed -> no timestamps updated (items skipped due to account failure)
+          // Account failed -> account timestamp not updated, items skipped
           expect(updatedFields).not.toContain("lastAccountSyncAt");
           expect(updatedFields).not.toContain("lastItemSyncAt");
+          // Sales still runs and succeeds (requirement 2.2)
+          expect(updatedFields).toContain("lastSaleSyncAt");
         } else {
-          // Account succeeded -> both account and item timestamps updated
+          // Account succeeded -> all timestamps updated
           expect(updatedFields).toContain("lastAccountSyncAt");
           expect(updatedFields).toContain("lastItemSyncAt");
+          expect(updatedFields).toContain("lastSaleSyncAt");
         }
-
-        // Sales timestamps are never updated (disabled)
-        expect(updatedFields).not.toContain("lastSaleSyncAt");
       }),
       { numRuns: 100 },
     );
@@ -240,7 +256,7 @@ describe("Property 4: Sync timestamp is captured before phase execution", () => 
   });
 });
 
-describe("Property 5: Account and item phases call Step Functions, sales disabled", () => {
+describe("Property 5: All phases call Step Functions, sales runs unconditionally", () => {
   beforeEach(() => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2025-01-15T12:00:00.000Z"));
@@ -254,7 +270,7 @@ describe("Property 5: Account and item phases call Step Functions, sales disable
     vi.useRealTimers();
   });
 
-  it("account and item step functions are called, never sale", async () => {
+  it("account, item, and sale step functions are called in correct order", async () => {
     await fc.assert(
       fc.asyncProperty(
         fc.boolean(), // whether account succeeds
@@ -294,8 +310,8 @@ describe("Property 5: Account and item phases call Step Functions, sales disable
             expect(calledTypes).toContain("account");
             expect(calledTypes).not.toContain("item");
           }
-          // Sale is never called (disabled)
-          expect(calledTypes).not.toContain("sale");
+          // Sale is always called (runs unconditionally)
+          expect(calledTypes).toContain("sale");
         },
       ),
       { numRuns: 100 },
@@ -354,10 +370,8 @@ describe("Property 6: Account failure skips items phase", () => {
           status: "skipped",
           reason: "Skipped: accounts phase failed",
         });
-        expect(result.phases.sales).toEqual({
-          status: "skipped",
-          reason: "disabled",
-        });
+        // Sales phase still attempts (requirement 2.2)
+        expect(calledTypes).toContain("sale");
       }),
       { numRuns: 100 },
     );

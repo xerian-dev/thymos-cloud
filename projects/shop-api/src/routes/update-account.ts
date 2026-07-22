@@ -105,7 +105,7 @@ export async function updateAccount(
     const item = result.Attributes!;
     return jsonResponse(200, {
       uuid: item.uuid as string,
-      shopUid: accountNumber,
+      accountNumber: accountNumber,
       name: item.name as string,
       street: (item.street as string) ?? "",
       place: (item.place as string) ?? "",

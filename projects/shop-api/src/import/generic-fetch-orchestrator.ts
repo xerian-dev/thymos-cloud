@@ -34,8 +34,8 @@ export interface GenericFetchOrchestratorConfig<T> {
   };
   /**
    * The job state to transition to when all pages are fetched.
-   * Defaults to "complete" (items go directly to complete).
-   * Sales pass "paused" here so the sync phase can run separately.
+   * Defaults to "complete". Override to "paused" if a subsequent phase
+   * must run before the job is considered done.
    */
   completionState?: JobState;
 }

@@ -1,6 +1,6 @@
 import { mapAccount } from "./account-mapper";
 import { mapItem } from "./item-mapper";
-import { mapSale, isFinalizedSale } from "./sale-mapper";
+import { mapSale } from "./sale-mapper";
 import { upsertAccount, upsertItem, upsertSale } from "./upsert-service";
 
 export type EntityType = "ACCOUNT" | "ITEM" | "SALE";
@@ -44,7 +44,7 @@ export interface RoutableRecord {
  *
  * - ACCOUNT: mapAccount → upsertAccount
  * - ITEM: mapItem → upsertItem (validation errors throw ValidationError)
- * - SALE: mapSale → upsertSale (non-finalized sales are silently skipped; other errors throw ValidationError)
+ * - SALE: mapSale → upsertSale (validation errors throw ValidationError)
  *
  * Logs a warning and returns without throwing for unrecognised entity types.
  */
@@ -68,10 +68,6 @@ export async function routeRecord(record: RoutableRecord): Promise<void> {
     case "SALE": {
       const result = mapSale(record.rawAttributes);
       if (!result.success) {
-        // "not finalized" is an expected condition — skip silently
-        if (result.error.toLowerCase().includes("not finalized")) {
-          return;
-        }
         throw new ValidationError(result.error);
       }
       await upsertSale(result.sale, result.lineItems, record.rawAttributes);

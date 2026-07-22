@@ -13,13 +13,11 @@ import {
   getSaleJob,
   getRunningSaleJob,
   transitionSaleJob,
-  updateSaleJobPhase,
 } from "./sale-job-manager";
 import { buildPointerSK } from "./generic-job-manager";
 import { getConsignCloudApiKey } from "./ssm-client";
 import { createRateLimiter } from "./rate-limiter";
 import { runSaleFetchLoop } from "./sale-fetch-orchestrator";
-import { runSaleSyncLoop } from "./sale-sync-orchestrator";
 import { startStepFunction } from "./step-function-starter";
 import type { ImportPhase } from "./self-invoker";
 
@@ -124,103 +122,6 @@ export async function handleSaleImportStart(
   };
 }
 
-export async function handleSaleImportSync(
-  event: APIGatewayProxyEventV2,
-): Promise<APIGatewayProxyResultV2> {
-  // 1. Parse body
-  let jobId: string | undefined;
-  try {
-    if (event.body) {
-      const parsed = JSON.parse(event.body) as { jobId?: string };
-      jobId = parsed.jobId;
-    }
-  } catch {
-    return {
-      statusCode: 400,
-      body: JSON.stringify({ message: "Invalid JSON body" }),
-    };
-  }
-
-  if (!jobId) {
-    return {
-      statusCode: 400,
-      body: JSON.stringify({ message: "jobId is required" }),
-    };
-  }
-
-  // 2. Get job
-  const job = await getSaleJob(jobId);
-  if (!job) {
-    return {
-      statusCode: 404,
-      body: JSON.stringify({ message: "Job not found", jobId }),
-    };
-  }
-
-  // 3. Validate state — sync can start from paused (after fetch completes) or failed
-  if (job.state !== "paused" && job.state !== "failed") {
-    return {
-      statusCode: 400,
-      body: JSON.stringify({
-        message: `Cannot start sync for job in '${job.state}' state. Job must be in 'paused' or 'failed' state (fetch phase should be complete).`,
-        jobId,
-        currentState: job.state,
-        currentPhase: job.phase,
-      }),
-    };
-  }
-
-  // 4. Update phase to sync and transition to running
-  await updateSaleJobPhase(jobId, "sync");
-  await transitionSaleJob(jobId, "running", job.progress);
-
-  console.info(
-    JSON.stringify({
-      level: "INFO",
-      message: "Sale import sync phase started",
-      jobId,
-    }),
-  );
-
-  // 5. Start Step Function execution to begin sync processing
-  try {
-    await startStepFunction(jobId, "sync", "sale");
-  } catch (error: unknown) {
-    const errorMsg =
-      error instanceof Error
-        ? error.message
-        : "Failed to start sale sync processing";
-    console.error(
-      JSON.stringify({
-        level: "ERROR",
-        message: "Failed to start Step Function for sale sync phase",
-        jobId,
-        error: errorMsg,
-      }),
-    );
-
-    await transitionSaleJob(jobId, "paused", job.progress, errorMsg);
-
-    return {
-      statusCode: 500,
-      body: JSON.stringify({
-        message: "Failed to start sale sync processing",
-        jobId,
-      }),
-    };
-  }
-
-  // 6. Return 200
-  return {
-    statusCode: 200,
-    body: JSON.stringify({
-      jobId,
-      state: "running",
-      phase: "sync",
-    }),
-  };
-}
-
 export async function handleSaleImportResume(
   event: APIGatewayProxyEventV2,
 ): Promise<APIGatewayProxyResultV2> {
@@ -275,14 +176,13 @@ export async function handleSaleImportResume(
       message: "Sale import job resumed",
       jobId,
       previousState: job.state,
-      phase: job.phase,
+      phase: "fetch",
     }),
   );
 
-  // 5. Start Step Function execution with the current phase
-  const phase: ImportPhase = job.phase;
+  // 5. Start Step Function execution (always fetch phase — stream handler handles the rest)
   try {
-    await startStepFunction(jobId, phase, "sale");
+    await startStepFunction(jobId, "fetch", "sale");
   } catch (error: unknown) {
     const errorMsg =
       error instanceof Error
@@ -293,7 +193,6 @@ export async function handleSaleImportResume(
         level: "ERROR",
         message: "Failed to start Step Function for sale job resumption",
         jobId,
-        phase,
         error: errorMsg,
       }),
     );
@@ -315,7 +214,7 @@ export async function handleSaleImportResume(
     body: JSON.stringify({
       jobId,
       state: "running",
-      phase,
+      phase: "fetch",
     }),
   };
 }
@@ -506,7 +405,6 @@ export interface SaleResumeInternalResult {
 
 export async function handleSaleResumeInternal(
   jobId: string,
-  phase: ImportPhase = "fetch",
 ): Promise<SaleResumeInternalResult> {
   // 1. Validate job exists and is in running state
   const job = await getSaleJob(jobId);
@@ -518,7 +416,7 @@ export async function handleSaleResumeInternal(
         jobId,
       }),
     );
-    return { status: "failed", jobId, phase, type: "sale" };
+    return { status: "failed", jobId, phase: "fetch", type: "sale" };
   }
 
   if (job.state !== "running") {
@@ -530,14 +428,10 @@ export async function handleSaleResumeInternal(
         currentState: job.state,
       }),
     );
-    return { status: "failed", jobId, phase, type: "sale" };
+    return { status: "failed", jobId, phase: "fetch", type: "sale" };
   }
 
-  if (phase === "fetch") {
-    return runSaleFetchPhase(jobId, job);
-  } else {
-    return runSaleSyncPhase(jobId, job);
-  }
+  return runSaleFetchPhase(jobId, job);
 }
 
 async function runSaleFetchPhase(
@@ -599,44 +493,6 @@ async function runSaleFetchPhase(
       await transitionSaleJob(jobId, "paused", currentJob.progress, errorMsg);
     }
     return { status: "failed", jobId, phase: "fetch", type: "sale" };
-  }
-}
-
-async function runSaleSyncPhase(
-  jobId: string,
-  job: {
-    progress: {
-      processed: number;
-      imported: number;
-      skipped: number;
-      failed: number;
-    };
-  },
-): Promise<SaleResumeInternalResult> {
-  try {
-    const result = await runSaleSyncLoop({
-      jobId,
-      startTime: Date.now(),
-      timeoutThresholdMs: TIMEOUT_THRESHOLD_MS,
-    });
-    return { status: result.status, jobId, phase: "sync", type: "sale" };
-  } catch (error: unknown) {
-    const errorMsg =
-      error instanceof Error ? error.message : "Sale sync loop failed";
-    console.error(
-      JSON.stringify({
-        level: "ERROR",
-        message: "Sale resume-internal: sync loop threw an error",
-        jobId,
-        error: errorMsg,
-      }),
-    );
-
-    const currentJob = await getSaleJob(jobId);
-    if (currentJob && currentJob.state === "running") {
-      await transitionSaleJob(jobId, "paused", currentJob.progress, errorMsg);
-    }
-    return { status: "failed", jobId, phase: "sync", type: "sale" };
   }
 }
 

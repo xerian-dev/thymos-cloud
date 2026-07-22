@@ -30,7 +30,6 @@ vi.mock("../import/item-import-handler", () => ({
 
 vi.mock("../import/sale-import-handler", () => ({
   handleSaleImportStart: vi.fn(),
-  handleSaleImportSync: vi.fn(),
   handleSaleImportResume: vi.fn(),
   handleSaleImportStatus: vi.fn(),
   handleSaleImportCancel: vi.fn(),
@@ -184,10 +183,7 @@ describe("import-handler", () => {
 
       const result = await handler(event);
 
-      expect(mockHandleSaleResumeInternal).toHaveBeenCalledWith(
-        "job-456",
-        "sync",
-      );
+      expect(mockHandleSaleResumeInternal).toHaveBeenCalledWith("job-456");
       expect(result).toEqual({
         statusCode: 200,
         body: JSON.stringify({ status: "resumed-sale" }),

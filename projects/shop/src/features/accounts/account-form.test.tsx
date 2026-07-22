@@ -202,7 +202,7 @@ describe("AccountForm", () => {
           success: true,
           account: {
             uuid: "1",
-            shopUid: 42,
+            accountNumber: 42,
             name: "Test",
             street: "",
             place: "",
@@ -346,7 +346,7 @@ describe("AccountForm", () => {
         success: true,
         account: {
           uuid: "test-uuid",
-          shopUid: 42,
+          accountNumber: 42,
           name: "Test Account",
           street: "",
           place: "",

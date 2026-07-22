@@ -7,25 +7,33 @@ import type {
 } from "../../src/import/sale-consigncloud-client";
 
 /**
- * Feature: consigncloud-sale-import, Property 2: Sale mapping preserves monetary values and produces valid output
+ * Feature: sale-import-rework, Property 2: Sale mapping preserves monetary values and produces valid output
  *
- * Validates: Requirements 6.1
+ * Validates: Requirements 4.1, 3.1, 6.1
  *
  * For any valid ConsignCloudSale object, the mapper produces output where
- * subtotal/total/storePortion/consignorPortion/change equal input values,
- * sourceId equals input id, sourceNumber equals input number, createdAt equals input created.
+ * subtotal/total/storePortion/cogs/change equal input values,
+ * sourceId equals input id, number equals parsed integer of input number,
+ * status equals input status, createdAt equals input created.
  */
+
+const validStatusArb: fc.Arbitrary<string> = fc.constantFrom(
+  "open",
+  "finalized",
+  "voided",
+);
 
 const validSaleArb: fc.Arbitrary<
   ConsignCloudSale & { line_items?: ConsignCloudLineItem[] }
 > = fc.record({
   id: fc.uuid(),
-  number: fc.string({ minLength: 1, maxLength: 20 }),
-  status: fc.constant("finalized" as string),
+  number: fc.integer({ min: 1, max: 9_999_999 }).map((n) => String(n)),
+  status: validStatusArb,
   subtotal: fc.integer({ min: -1_000_000_00, max: 1_000_000_00 }),
   total: fc.integer({ min: -1_000_000_00, max: 1_000_000_00 }),
   store_portion: fc.integer({ min: -1_000_000_00, max: 1_000_000_00 }),
   consignor_portion: fc.integer({ min: -1_000_000_00, max: 1_000_000_00 }),
+  cogs: fc.integer({ min: -1_000_000_00, max: 1_000_000_00 }),
   change: fc.integer({ min: -1_000_000_00, max: 1_000_000_00 }),
   memo: fc.oneof(fc.string({ maxLength: 200 }), fc.constant(null)),
   cashier: fc.oneof(
@@ -44,27 +52,33 @@ const validSaleArb: fc.Arbitrary<
       .map((ms) => new Date(ms).toISOString()),
     fc.constant(null),
   ),
-  voided: fc.constant(null),
-  line_items: fc.option(
-    fc.array(
-      fc.record({
-        id: fc.uuid(),
-        item: fc.oneof(fc.uuid(), fc.record({ id: fc.uuid() })),
-        price: fc.integer({ min: 0, max: 1_000_000_00 }),
-        consignor_portion: fc.integer({ min: 0, max: 1_000_000_00 }),
-        store_portion: fc.integer({ min: 0, max: 1_000_000_00 }),
-        quantity: fc.integer({ min: 1, max: 100 }),
-        discount: fc.integer({ min: 0, max: 1_000_000_00 }),
-      }),
-      { minLength: 0, maxLength: 10 },
-    ),
-    { nil: undefined },
+  voided: fc.oneof(
+    fc
+      .integer({ min: 946684800000, max: 1924991999000 })
+      .map((ms) => new Date(ms).toISOString()),
+    fc.constant(null),
   ),
+  parked: fc.oneof(
+    fc
+      .integer({ min: 946684800000, max: 1924991999000 })
+      .map((ms) => new Date(ms).toISOString()),
+    fc.constant(null),
+  ),
+  refunded_amount: fc.integer({ min: 0, max: 1_000_000_00 }),
+  cash_rounding_adjustment: fc.integer({ min: -100, max: 100 }),
+  line_item_count: fc.integer({ min: 0, max: 100 }),
+  notes: fc.constant([] as unknown[]),
+  gift_cards: fc.constant([] as unknown[]),
+  customer: fc.constant(null),
+  register: fc.constant(null),
+  register_report: fc.constant(null),
+  pending_swipe: fc.constant(null),
+  line_items: fc.constant(undefined),
 });
 
 describe("Property 2: Sale mapping preserves monetary values and produces valid output", () => {
   /**
-   * Validates: Requirements 6.1
+   * Validates: Requirements 4.1
    */
   it("monetary fields and identity fields are preserved exactly in the mapped output", () => {
     fc.assert(
@@ -79,12 +93,16 @@ describe("Property 2: Sale mapping preserves monetary values and produces valid 
         expect(result.mapped.subtotal).toBe(sale.subtotal);
         expect(result.mapped.total).toBe(sale.total);
         expect(result.mapped.storePortion).toBe(sale.store_portion);
-        expect(result.mapped.consignorPortion).toBe(sale.consignor_portion);
+        expect(result.mapped.cogs).toBe(sale.cogs);
         expect(result.mapped.change).toBe(sale.change);
+        expect(result.mapped.refundedAmount).toBe(sale.refunded_amount);
+        expect(result.mapped.cashRoundingAdjustment).toBe(
+          sale.cash_rounding_adjustment,
+        );
 
         // Identity fields preserved
         expect(result.mapped.sourceId).toBe(sale.id);
-        expect(result.mapped.sourceNumber).toBe(sale.number);
+        expect(result.mapped.number).toBe(parseInt(sale.number, 10));
         expect(result.mapped.createdAt).toBe(sale.created);
       }),
       { numRuns: 100 },
@@ -92,9 +110,9 @@ describe("Property 2: Sale mapping preserves monetary values and produces valid 
   });
 
   /**
-   * Validates: Requirements 6.1
+   * Validates: Requirements 3.1
    */
-  it("mapped result always has status 'finalized' and voidedAt null", () => {
+  it("mapped result status matches input status directly", () => {
     fc.assert(
       fc.property(validSaleArb, (sale) => {
         const result = mapConsignCloudSale(sale);
@@ -103,17 +121,16 @@ describe("Property 2: Sale mapping preserves monetary values and produces valid 
 
         if (!result.success) return;
 
-        expect(result.mapped.status).toBe("finalized");
-        expect(result.mapped.voidedAt).toBeNull();
+        expect(result.mapped.status).toBe(sale.status);
       }),
       { numRuns: 100 },
     );
   });
 
   /**
-   * Validates: Requirements 6.1
+   * Validates: Requirements 4.1
    */
-  it("finalizedAt equals input finalized value", () => {
+  it("timestamp fields map correctly from input", () => {
     fc.assert(
       fc.property(validSaleArb, (sale) => {
         const result = mapConsignCloudSale(sale);
@@ -123,13 +140,15 @@ describe("Property 2: Sale mapping preserves monetary values and produces valid 
         if (!result.success) return;
 
         expect(result.mapped.finalizedAt).toBe(sale.finalized ?? null);
+        expect(result.mapped.voidedAt).toBe(sale.voided ?? null);
+        expect(result.mapped.parkedAt).toBe(sale.parked ?? null);
       }),
       { numRuns: 100 },
     );
   });
 
   /**
-   * Validates: Requirements 6.1
+   * Validates: Requirements 4.1
    */
   it("memo maps correctly (null preserved, string preserved)", () => {
     fc.assert(

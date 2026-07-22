@@ -1,25 +1,39 @@
 export interface MappedSale {
-  sourceNumber: string;
-  status: "finalized";
+  sourceId: string;
+  number: number; // CC sale number, parsed to int
+  status: "open" | "finalized" | "voided";
   subtotal: number;
   total: number;
   storePortion: number;
-  consignorPortion: number;
+  cogs: number;
   change: number;
   memo: string | null;
+  refundedAmount: number;
+  cashRoundingAdjustment: number;
+  lineItemCount: number;
   finalizedAt: string | null;
-  voidedAt: null;
-  sourceId: string;
+  voidedAt: string | null;
+  parkedAt: string | null;
   createdAt: string;
 }
 
 export interface MappedLineItem {
+  sourceId: string;
+  itemSourceId: string;
+  itemSku: string | null;
+  itemTitle: string | null;
   salePrice: number;
-  discount: number;
   consignorPortion: number;
   storePortion: number;
+  split: number;
   quantity: number;
   daysOnShelf: number;
+  taxedPrice: number;
+  taxExempt: boolean;
+  refundedQuantity: number;
+  totalTax: number;
+  discount: number;
+  createdAt: string;
 }
 
 export type SaleMappingResult =
@@ -27,24 +41,13 @@ export type SaleMappingResult =
   | { success: false; error: string };
 
 /**
- * Returns true if the sale is finalized (has a finalized timestamp and is not voided).
- * Only finalized, non-voided sales should be synced to the Shop_Table.
- */
-export function isFinalizedSale(raw: Record<string, unknown>): boolean {
-  return raw.finalized != null && raw.voided == null;
-}
-
-/**
  * Maps a raw DynamoDB Stream record (NewImage) for a sale to the Shop_Table schema.
  * Returns a discriminated union indicating success or failure.
  *
+ * All sale statuses (open, finalized, voided) are mapped.
  * Pure function — no side effects, idempotent.
  */
 export function mapSale(raw: Record<string, unknown>): SaleMappingResult {
-  if (!isFinalizedSale(raw)) {
-    return { success: false, error: "Sale is not finalized or is voided" };
-  }
-
   const id = typeof raw.id === "string" ? raw.id : "";
   if (!id) {
     return { success: false, error: "Missing required field: id" };
@@ -55,33 +58,58 @@ export function mapSale(raw: Record<string, unknown>): SaleMappingResult {
     return { success: false, error: "Missing required field: number" };
   }
 
+  const parsedNumber = parseInt(number, 10);
+  if (isNaN(parsedNumber)) {
+    return { success: false, error: "Field 'number' is not a valid integer" };
+  }
+
   const created = typeof raw.created === "string" ? raw.created : "";
   if (!created) {
     return { success: false, error: "Missing required field: created" };
   }
 
+  const status = typeof raw.status === "string" ? raw.status : "open";
+
   const subtotal = typeof raw.subtotal === "number" ? raw.subtotal : 0;
   const total = typeof raw.total === "number" ? raw.total : 0;
   const storePortion =
     typeof raw.store_portion === "number" ? raw.store_portion : 0;
-  const consignorPortion =
-    typeof raw.consignor_portion === "number" ? raw.consignor_portion : 0;
+  const cogs =
+    typeof raw.cogs === "number"
+      ? raw.cogs
+      : typeof raw.consignor_portion === "number"
+        ? raw.consignor_portion
+        : 0;
   const change = typeof raw.change === "number" ? raw.change : 0;
   const memo = typeof raw.memo === "string" ? raw.memo : null;
   const finalized = typeof raw.finalized === "string" ? raw.finalized : null;
+  const voided = typeof raw.voided === "string" ? raw.voided : null;
+  const parked = typeof raw.parked === "string" ? raw.parked : null;
+  const refundedAmount =
+    typeof raw.refunded_amount === "number" ? raw.refunded_amount : 0;
+  const cashRoundingAdjustment =
+    typeof raw.cash_rounding_adjustment === "number"
+      ? raw.cash_rounding_adjustment
+      : 0;
+  const lineItemCount =
+    typeof raw.line_item_count === "number" ? raw.line_item_count : 0;
 
   const sale: MappedSale = {
     sourceId: id,
-    sourceNumber: number,
-    status: "finalized",
+    number: parsedNumber,
+    status: status as "open" | "finalized" | "voided",
     subtotal,
     total,
     storePortion,
-    consignorPortion,
+    cogs,
     change,
     memo,
+    refundedAmount,
+    cashRoundingAdjustment,
+    lineItemCount,
     finalizedAt: finalized,
-    voidedAt: null,
+    voidedAt: voided,
+    parkedAt: parked,
     createdAt: created,
   };
 
@@ -104,6 +132,39 @@ export function mapSale(raw: Record<string, unknown>): SaleMappingResult {
         0,
       );
 
+      const appliedTaxes = Array.isArray(lineItem.applied_taxes)
+        ? (lineItem.applied_taxes as unknown[])
+        : [];
+      const totalTax = appliedTaxes.reduce((sum: number, t: unknown) => {
+        const tax = t as Record<string, unknown>;
+        const amount = typeof tax.amount === "number" ? tax.amount : 0;
+        return sum + amount;
+      }, 0);
+
+      const itemObj =
+        lineItem.item != null &&
+        typeof lineItem.item === "object" &&
+        !Array.isArray(lineItem.item)
+          ? (lineItem.item as Record<string, unknown>)
+          : null;
+
+      const sourceId = typeof lineItem.id === "string" ? lineItem.id : "";
+      const itemSourceId = itemObj
+        ? typeof itemObj.id === "string"
+          ? itemObj.id
+          : ""
+        : "";
+      const itemSku = itemObj
+        ? typeof itemObj.sku === "string"
+          ? itemObj.sku
+          : null
+        : null;
+      const itemTitle = itemObj
+        ? typeof itemObj.title === "string"
+          ? itemObj.title
+          : null
+        : null;
+
       const salePrice =
         typeof lineItem.unit_price === "number" ? lineItem.unit_price : 0;
       const consignorPortion =
@@ -111,23 +172,40 @@ export function mapSale(raw: Record<string, unknown>): SaleMappingResult {
           ? lineItem.consignor_portion
           : 0;
       const storePortion =
-        typeof lineItem.store_portion === "number"
-          ? lineItem.store_portion
-          : 0;
+        typeof lineItem.store_portion === "number" ? lineItem.store_portion : 0;
+      const split = typeof lineItem.split === "number" ? lineItem.split : 0;
       const quantity =
         typeof lineItem.quantity === "number" ? lineItem.quantity : 0;
       const daysOnShelf =
-        typeof lineItem.days_on_shelf === "number"
-          ? lineItem.days_on_shelf
+        typeof lineItem.days_on_shelf === "number" ? lineItem.days_on_shelf : 0;
+      const taxedPrice =
+        typeof lineItem.taxed_price === "number" ? lineItem.taxed_price : 0;
+      const taxExempt =
+        typeof lineItem.tax_exempt === "boolean" ? lineItem.tax_exempt : false;
+      const refundedQuantity =
+        typeof lineItem.refunded_quantity === "number"
+          ? lineItem.refunded_quantity
           : 0;
+      const lineItemCreated =
+        typeof lineItem.created === "string" ? lineItem.created : created;
 
       return {
+        sourceId,
+        itemSourceId,
+        itemSku,
+        itemTitle,
         salePrice,
-        discount: totalDiscount,
         consignorPortion,
         storePortion,
+        split,
         quantity,
         daysOnShelf,
+        taxedPrice,
+        taxExempt,
+        refundedQuantity,
+        totalTax,
+        discount: totalDiscount,
+        createdAt: lineItemCreated,
       };
     },
   );

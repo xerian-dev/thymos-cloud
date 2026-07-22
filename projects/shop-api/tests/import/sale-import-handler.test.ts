@@ -13,14 +13,12 @@ const mockCreateSaleJob = vi.fn();
 const mockGetSaleJob = vi.fn();
 const mockGetRunningSaleJob = vi.fn();
 const mockTransitionSaleJob = vi.fn();
-const mockUpdateSaleJobPhase = vi.fn();
 
 vi.mock("../../src/import/sale-job-manager", () => ({
   createSaleJob: (...args: unknown[]) => mockCreateSaleJob(...args),
   getSaleJob: (...args: unknown[]) => mockGetSaleJob(...args),
   getRunningSaleJob: (...args: unknown[]) => mockGetRunningSaleJob(...args),
   transitionSaleJob: (...args: unknown[]) => mockTransitionSaleJob(...args),
-  updateSaleJobPhase: (...args: unknown[]) => mockUpdateSaleJobPhase(...args),
 }));
 
 const mockStartStepFunction = vi.fn();
@@ -33,12 +31,6 @@ const mockRunSaleFetchLoop = vi.fn();
 
 vi.mock("../../src/import/sale-fetch-orchestrator", () => ({
   runSaleFetchLoop: (...args: unknown[]) => mockRunSaleFetchLoop(...args),
-}));
-
-const mockRunSaleSyncLoop = vi.fn();
-
-vi.mock("../../src/import/sale-sync-orchestrator", () => ({
-  runSaleSyncLoop: (...args: unknown[]) => mockRunSaleSyncLoop(...args),
 }));
 
 vi.mock("../../src/import/ssm-client", () => ({
@@ -133,12 +125,7 @@ describe("sale-import-handler unit tests", () => {
     });
     mockStartStepFunction.mockResolvedValue(undefined);
     mockTransitionSaleJob.mockResolvedValue(undefined);
-    mockUpdateSaleJobPhase.mockResolvedValue(undefined);
     mockRunSaleFetchLoop.mockResolvedValue({
-      status: "complete",
-      jobId: "sale-job-001",
-    });
-    mockRunSaleSyncLoop.mockResolvedValue({
       status: "complete",
       jobId: "sale-job-001",
     });
@@ -199,76 +186,8 @@ describe("sale-import-handler unit tests", () => {
     });
   });
 
-  describe("handleSaleImportSync", () => {
-    it("returns 200 for paused job (valid state for sync)", async () => {
-      mockGetSaleJob.mockResolvedValue({
-        jobId: "sale-job-002",
-        state: "paused",
-        phase: "fetch",
-        startedAt: "2026-01-15T10:00:00.000Z",
-        lastUpdatedAt: "2026-01-15T10:30:00.000Z",
-        filterParams: {},
-        progress: { processed: 100, imported: 80, skipped: 15, failed: 5 },
-      });
-
-      const { handleSaleImportSync } =
-        await import("../../src/import/sale-import-handler");
-
-      const event = makeEvent({ jobId: "sale-job-002" });
-
-      const result = await handleSaleImportSync(event);
-
-      expect(result.statusCode).toBe(200);
-      const body = JSON.parse(result.body as string);
-      expect(body.jobId).toBe("sale-job-002");
-      expect(body.state).toBe("running");
-      expect(body.phase).toBe("sync");
-
-      expect(mockUpdateSaleJobPhase).toHaveBeenCalledWith(
-        "sale-job-002",
-        "sync",
-      );
-      expect(mockTransitionSaleJob).toHaveBeenCalledWith(
-        "sale-job-002",
-        "running",
-        { processed: 100, imported: 80, skipped: 15, failed: 5 },
-      );
-      expect(mockStartStepFunction).toHaveBeenCalledWith(
-        "sale-job-002",
-        "sync",
-        "sale",
-      );
-    });
-
-    it("returns 400 for running job (invalid state for sync)", async () => {
-      mockGetSaleJob.mockResolvedValue({
-        jobId: "sale-job-003",
-        state: "running",
-        phase: "fetch",
-        startedAt: "2026-01-15T10:00:00.000Z",
-        lastUpdatedAt: "2026-01-15T10:15:00.000Z",
-        filterParams: {},
-        progress: { processed: 50, imported: 40, skipped: 5, failed: 5 },
-      });
-
-      const { handleSaleImportSync } =
-        await import("../../src/import/sale-import-handler");
-
-      const event = makeEvent({ jobId: "sale-job-003" });
-
-      const result = await handleSaleImportSync(event);
-
-      expect(result.statusCode).toBe(400);
-      const body = JSON.parse(result.body as string);
-      expect(body.message).toContain("running");
-      expect(body.message).toContain("Cannot start sync");
-      expect(mockUpdateSaleJobPhase).not.toHaveBeenCalled();
-      expect(mockStartStepFunction).not.toHaveBeenCalled();
-    });
-  });
-
   describe("handleSaleImportResume", () => {
-    it("resumes a paused job, transitions to running, starts StepFunction, returns 200", async () => {
+    it("resumes a paused job, transitions to running, starts StepFunction with fetch phase, returns 200", async () => {
       mockGetSaleJob.mockResolvedValue({
         jobId: "sale-job-paused",
         state: "paused",
@@ -297,6 +216,7 @@ describe("sale-import-handler unit tests", () => {
         "running",
         { processed: 50, imported: 40, skipped: 5, failed: 5 },
       );
+      // Always starts with fetch phase now (stream handles sync)
       expect(mockStartStepFunction).toHaveBeenCalledWith(
         "sale-job-paused",
         "fetch",
@@ -304,11 +224,11 @@ describe("sale-import-handler unit tests", () => {
       );
     });
 
-    it("resumes a failed job, transitions to running, starts StepFunction, returns 200", async () => {
+    it("resumes a failed job, transitions to running, starts StepFunction with fetch phase, returns 200", async () => {
       mockGetSaleJob.mockResolvedValue({
         jobId: "sale-job-failed",
         state: "failed",
-        phase: "sync",
+        phase: "fetch",
         startedAt: "2026-01-15T10:00:00.000Z",
         lastUpdatedAt: "2026-01-15T10:45:00.000Z",
         filterParams: {},
@@ -327,7 +247,7 @@ describe("sale-import-handler unit tests", () => {
       const body = JSON.parse(result.body as string);
       expect(body.jobId).toBe("sale-job-failed");
       expect(body.state).toBe("running");
-      expect(body.phase).toBe("sync");
+      expect(body.phase).toBe("fetch");
 
       expect(mockTransitionSaleJob).toHaveBeenCalledWith(
         "sale-job-failed",
@@ -336,7 +256,7 @@ describe("sale-import-handler unit tests", () => {
       );
       expect(mockStartStepFunction).toHaveBeenCalledWith(
         "sale-job-failed",
-        "sync",
+        "fetch",
         "sale",
       );
     });
@@ -373,7 +293,7 @@ describe("sale-import-handler unit tests", () => {
       mockGetSaleJob.mockResolvedValue({
         jobId: "sale-job-complete",
         state: "complete",
-        phase: "sync",
+        phase: "fetch",
         startedAt: "2026-01-15T10:00:00.000Z",
         lastUpdatedAt: "2026-01-15T11:00:00.000Z",
         filterParams: {},
@@ -469,11 +389,8 @@ describe("sale-import-handler unit tests", () => {
       const { handleSaleResumeInternal } =
         await import("../../src/import/sale-import-handler");
 
-      const result = await handleSaleResumeInternal("sale-job-resume", "fetch");
+      const result = await handleSaleResumeInternal("sale-job-resume");
 
-      // Regression: this field must always be "sale" so the Terraform state
-      // machine's PrepareNextIteration step ($.taskResult.result.type) can
-      // route the next loop iteration back through the sale code path.
       expect(result.type).toBe("sale");
       expect(result.status).toBe("continue");
       expect(result.phase).toBe("fetch");
@@ -485,7 +402,7 @@ describe("sale-import-handler unit tests", () => {
       const { handleSaleResumeInternal } =
         await import("../../src/import/sale-import-handler");
 
-      const result = await handleSaleResumeInternal("missing-job", "fetch");
+      const result = await handleSaleResumeInternal("missing-job");
 
       expect(result.status).toBe("failed");
       expect(result.type).toBe("sale");
@@ -505,21 +422,13 @@ describe("sale-import-handler unit tests", () => {
       const { handleSaleResumeInternal } =
         await import("../../src/import/sale-import-handler");
 
-      const result = await handleSaleResumeInternal(
-        "sale-job-paused-2",
-        "fetch",
-      );
+      const result = await handleSaleResumeInternal("sale-job-paused-2");
 
       expect(result.status).toBe("failed");
       expect(result.type).toBe("sale");
     });
 
-    it("passes 'sale' as the third argument to startStepFunction on start/sync/resume", async () => {
-      // handleSaleImportStart, handleSaleImportSync, and handleSaleImportResume
-      // must all tell the Step Function this is a sale job — otherwise the
-      // loop falls back to the item code path and job lookups fail with
-      // "Resume-internal: job not found" (ITEM_IMPORT# prefix instead of
-      // SALE_IMPORT#).
+    it("passes 'sale' as the third argument to startStepFunction on start/resume", async () => {
       const { handleSaleImportStart } =
         await import("../../src/import/sale-import-handler");
 
@@ -632,7 +541,7 @@ describe("sale-import-handler unit tests", () => {
       mockGetSaleJob.mockResolvedValue({
         jobId: "sale-job-complete",
         state: "complete",
-        phase: "sync",
+        phase: "fetch",
         startedAt: "2026-01-15T10:00:00.000Z",
         lastUpdatedAt: "2026-01-15T11:00:00.000Z",
         filterParams: {},
@@ -681,7 +590,7 @@ describe("sale-import-handler unit tests", () => {
       mockGetSaleJob.mockResolvedValue({
         jobId: "sale-job-failed",
         state: "failed",
-        phase: "sync",
+        phase: "fetch",
         startedAt: "2026-01-15T10:00:00.000Z",
         lastUpdatedAt: "2026-01-15T10:45:00.000Z",
         filterParams: {},

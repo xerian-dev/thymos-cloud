@@ -8,7 +8,7 @@ vi.mock("./accounts-api");
 
 const mockAccount: Account = {
   uuid: "550e8400-e29b-41d4-a716-446655440000",
-  shopUid: 42,
+  accountNumber: 42,
   name: "Jane Smith",
   street: "123 Main St",
   telephone: "555-0100",

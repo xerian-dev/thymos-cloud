@@ -15,7 +15,6 @@ vi.mock("./sale-mapper", () => ({
     sale: { sourceId: "sale-1" },
     lineItems: [],
   })),
-  isFinalizedSale: vi.fn(() => true),
 }));
 
 vi.mock("./upsert-service", () => ({
@@ -111,7 +110,7 @@ describe("routeRecord", () => {
   });
 
   it("routes SALE to mapSale + upsertSale on success", async () => {
-    const raw = { id: "sale-1", number: "S001", finalized: "2024-01-01" };
+    const raw = { id: "sale-1", number: "S001", created: "2024-01-01" };
 
     await routeRecord({
       entityType: "SALE",
@@ -122,23 +121,7 @@ describe("routeRecord", () => {
     expect(upsertSale).toHaveBeenCalled();
   });
 
-  it("skips silently when mapSale returns not-finalized error", async () => {
-    vi.mocked(mapSale).mockReturnValueOnce({
-      success: false,
-      error: "Sale is not finalized or is voided",
-    });
-
-    await expect(
-      routeRecord({
-        entityType: "SALE",
-        rawAttributes: {},
-      }),
-    ).resolves.toBeUndefined();
-
-    expect(upsertSale).not.toHaveBeenCalled();
-  });
-
-  it("throws ValidationError for non-finalized-related sale mapping errors", async () => {
+  it("throws ValidationError when mapSale returns failure", async () => {
     vi.mocked(mapSale).mockReturnValueOnce({
       success: false,
       error: "Missing required field: id",

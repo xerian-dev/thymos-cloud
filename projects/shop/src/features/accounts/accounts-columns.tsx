@@ -1,7 +1,7 @@
 import type { ColumnDef } from "@tanstack/react-table";
 import { Pencil, Trash2 } from "lucide-react";
 import type { Account } from "./accounts-types";
-import { formatShopUid } from "./accounts-utils";
+import { formatAccountNumber } from "./accounts-utils";
 
 export interface AccountsTableMeta {
   onEdit?: (account: Account) => void;
@@ -10,9 +10,10 @@ export interface AccountsTableMeta {
 
 export const accountsColumns: ColumnDef<Account>[] = [
   {
-    accessorKey: "shopUid",
+    accessorKey: "accountNumber",
     header: "Account #",
-    cell: ({ row }) => formatShopUid(row.getValue<number>("shopUid")),
+    cell: ({ row }) =>
+      formatAccountNumber(row.getValue<number>("accountNumber")),
   },
   {
     accessorKey: "name",

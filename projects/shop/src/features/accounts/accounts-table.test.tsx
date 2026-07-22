@@ -6,7 +6,7 @@ import type { Account } from "./accounts-types";
 const mockAccounts: Account[] = [
   {
     uuid: "uuid-1",
-    shopUid: 42,
+    accountNumber: 42,
     name: "Alice",
     street: "123 Main",
     place: "Zurich",
@@ -20,7 +20,7 @@ const mockAccounts: Account[] = [
   },
   {
     uuid: "uuid-2",
-    shopUid: 7,
+    accountNumber: 7,
     name: "Bob",
     street: "456 Oak",
     place: "Bern",

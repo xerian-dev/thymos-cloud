@@ -50,7 +50,7 @@ describe("POST /api/accounts - createAccount", () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           uuid: "test-uuid-1234",
-          shopUid: 42,
+          accountNumber: 42,
           name: "Jane Smith",
           street: "123 Main St",
           place: "Zurich",
@@ -204,7 +204,7 @@ describe("POST /api/accounts - createAccount", () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           uuid: "test-uuid-1234",
-          shopUid: 5,
+          accountNumber: 5,
           name: "Jane Smith",
           street: "123 Main St",
           place: "",

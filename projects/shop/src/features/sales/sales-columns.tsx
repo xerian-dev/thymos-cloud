@@ -1,7 +1,11 @@
 import type { ColumnDef } from "@tanstack/react-table";
 import { Pencil, Trash2 } from "lucide-react";
 import type { Sale } from "./sales-types";
-import { formatChfCents, formatSaleDate, getStatusVariant } from "./sales-utils";
+import {
+  formatChfCents,
+  formatSaleDate,
+  getStatusVariant,
+} from "./sales-utils";
 
 export interface SalesTableMeta {
   onEdit?: (sale: Sale) => void;
@@ -11,9 +15,9 @@ export interface SalesTableMeta {
 
 export const salesColumns: ColumnDef<Sale>[] = [
   {
-    accessorKey: "number",
+    accessorKey: "saleNumber",
     header: "Sale #",
-    cell: ({ row }) => row.getValue<number>("number"),
+    cell: ({ row }) => row.getValue<number>("saleNumber"),
   },
   {
     accessorKey: "status",
@@ -61,7 +65,8 @@ export const salesColumns: ColumnDef<Sale>[] = [
   {
     accessorKey: "finalizedAt",
     header: "Finalized At",
-    cell: ({ row }) => formatSaleDate(row.getValue<string | undefined>("finalizedAt")),
+    cell: ({ row }) =>
+      formatSaleDate(row.getValue<string | undefined>("finalizedAt")),
   },
   {
     id: "actions",
@@ -76,7 +81,7 @@ export const salesColumns: ColumnDef<Sale>[] = [
             type="button"
             onClick={() => meta?.onEdit?.(sale)}
             className="rounded p-1 text-muted-foreground hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-            aria-label={`Edit sale ${sale.number}`}
+            aria-label={`Edit sale ${sale.saleNumber}`}
           >
             <Pencil className="h-4 w-4" />
           </button>
@@ -84,7 +89,7 @@ export const salesColumns: ColumnDef<Sale>[] = [
             type="button"
             onClick={() => meta?.onDelete?.(sale)}
             className="rounded p-1 text-muted-foreground hover:text-destructive focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-            aria-label={`Delete sale ${sale.number}`}
+            aria-label={`Delete sale ${sale.saleNumber}`}
           >
             <Trash2 className="h-4 w-4" />
           </button>

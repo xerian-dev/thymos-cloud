@@ -324,7 +324,7 @@ async function resolveAccountByNumber(
     return cached;
   }
 
-  // Query GSI1 for account with matching shopUid
+  // Query GSI1 for account with matching accountNumber
   // Accounts store GSI1PK = "ACCOUNT", GSI1SK = 7-digit zero-padded number
   const paddedNumber = String(parseInt(accountNumber, 10)).padStart(7, "0");
 

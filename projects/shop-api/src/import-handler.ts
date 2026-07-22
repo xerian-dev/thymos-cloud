@@ -13,7 +13,6 @@ import {
 } from "./import/item-import-handler";
 import {
   handleSaleImportStart,
-  handleSaleImportSync,
   handleSaleImportResume,
   handleSaleImportStatus,
   handleSaleImportCancel,
@@ -50,10 +49,7 @@ export async function handler(
   };
   if (rawEvent.action === "resume-internal" && rawEvent.jobId) {
     if (rawEvent.type === "sale") {
-      const result = await handleSaleResumeInternal(
-        rawEvent.jobId,
-        rawEvent.phase ?? "fetch",
-      );
+      const result = await handleSaleResumeInternal(rawEvent.jobId);
       return {
         statusCode: 200,
         body: JSON.stringify(result),
@@ -174,16 +170,6 @@ export async function handler(
       };
     }
     return handleSaleImportStart(event);
-  }
-
-  if (path === "/api/import/sales/sync") {
-    if (method !== "POST") {
-      return {
-        statusCode: 405,
-        body: JSON.stringify({ message: "Method Not Allowed" }),
-      };
-    }
-    return handleSaleImportSync(event);
   }
 
   if (path === "/api/import/sales/resume") {

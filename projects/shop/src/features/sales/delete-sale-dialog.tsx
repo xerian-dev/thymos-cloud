@@ -65,7 +65,7 @@ export function DeleteSaleDialog({
           <AlertDialogDescription>
             Are you sure you want to delete sale{" "}
             <span className="font-medium text-foreground">
-              #{sale.number}
+              #{sale.saleNumber}
             </span>{" "}
             (status: {sale.status})? This action cannot be undone.
           </AlertDialogDescription>
