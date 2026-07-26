@@ -32,7 +32,7 @@ export interface SaleResponse {
 export function mapSaleRecord(item: Record<string, unknown>): SaleResponse {
   const sale: SaleResponse = {
     uuid: item.uuid as string,
-    saleNumber: (item.saleNumber ?? item.number) as number,
+    saleNumber: item.saleNumber as number,
     status: item.status as "open" | "finalized" | "voided",
     cashierId: item.cashierId as string,
     createdAt: item.createdAt as string,

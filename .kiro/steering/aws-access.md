@@ -24,6 +24,9 @@ This authenticates via SSO and sets `AWS_PROFILE=thymos-cloud`.
 - **Shop table**: `thymos-dev-shop`
 - **Import table**: `thymos-dev-import`
 - **Import table stream**: Powers the stream handler that syncs staged records to Shop_Table
+- **Shop API URL**: `https://7ne4yil3k7.execute-api.eu-central-1.amazonaws.com/`
+- **Shop API Lambda**: `thymos-dev-shop-api`
+- **Stream handler Lambda**: `thymos-dev-stream-handler`
 
 ## What You Can Do
 
