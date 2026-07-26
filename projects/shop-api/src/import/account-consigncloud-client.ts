@@ -3,6 +3,7 @@ import { fetchWithRetry } from "./generic-consigncloud-client";
 
 export interface ConsignCloudAccount {
   id: string;
+  number: string;
   name: string;
   email?: string | null;
   phone?: string | null;

@@ -30,6 +30,7 @@ function createConfig(
 function createMockAccount(id: string): ConsignCloudAccount {
   return {
     id,
+    number: "000001",
     name: `Account ${id}`,
     email: `${id}@example.com`,
     created: "2025-01-01T00:00:00.000Z",
