@@ -276,6 +276,8 @@ resource "aws_iam_role_policy" "pricing_aggregator_dynamodb" {
         Effect = "Allow"
         Action = [
           "dynamodb:GetItem",
+          "dynamodb:PutItem",
+          "dynamodb:UpdateItem",
           "dynamodb:Query",
           "dynamodb:Scan"
         ]
