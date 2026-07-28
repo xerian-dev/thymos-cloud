@@ -29,6 +29,13 @@ import {
 import { suggestPrice } from "./routes/suggest-price.js";
 import { listAdjustments } from "./routes/list-adjustments.js";
 import { listCategories } from "./routes/list-categories.js";
+import {
+  scanClusterBrands,
+  getMappings,
+  saveMappings,
+  applyMappings,
+  getApplyStatus,
+} from "./routes/brand-management.js";
 import { jsonResponse } from "./response.js";
 
 type RouteHandler = (
@@ -61,6 +68,11 @@ const routes: Record<string, RouteHandler> = {
   "GET /api/pricing/canonical/brands": listCanonicalBrands,
   "GET /api/pricing/canonical/colors": listCanonicalColors,
   "GET /api/categories": listCategories,
+  "POST /api/brands/scan-cluster": scanClusterBrands,
+  "GET /api/brands/mappings": getMappings,
+  "PUT /api/brands/mappings": saveMappings,
+  "POST /api/brands/apply": applyMappings,
+  "GET /api/brands/apply-status": getApplyStatus,
 };
 
 export function routeRequest(

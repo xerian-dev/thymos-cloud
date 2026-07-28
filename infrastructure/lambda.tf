@@ -99,9 +99,23 @@ resource "aws_iam_role_policy" "shop_api_s3_items" {
       {
         Effect = "Allow"
         Action = [
-          "s3:PutObject"
+          "s3:PutObject",
+          "s3:GetObject"
         ]
-        Resource = "${aws_s3_bucket.items.arn}/items/*"
+        Resource = [
+          "${aws_s3_bucket.items.arn}/items/*",
+          "${aws_s3_bucket.items.arn}/brand-mappings/*"
+        ]
+      },
+      {
+        Effect   = "Allow"
+        Action   = "s3:ListBucket"
+        Resource = aws_s3_bucket.items.arn
+        Condition = {
+          StringLike = {
+            "s3:prefix" = ["brand-mappings/*"]
+          }
+        }
       }
     ]
   })
@@ -135,9 +149,13 @@ resource "aws_iam_role_policy" "shop_api_invoke_aggregator" {
     Version = "2012-10-17"
     Statement = [
       {
-        Effect   = "Allow"
-        Action   = "lambda:InvokeFunction"
-        Resource = aws_lambda_function.pricing_aggregator.arn
+        Effect = "Allow"
+        Action = "lambda:InvokeFunction"
+        Resource = [
+          aws_lambda_function.pricing_aggregator.arn,
+          aws_lambda_function.brand_cluster.arn,
+          aws_lambda_function.brand_apply.arn
+        ]
       }
     ]
   })
@@ -179,11 +197,13 @@ resource "aws_lambda_function" "shop_api" {
 
   environment {
     variables = {
-      TABLE_NAME               = aws_dynamodb_table.shop.name
-      PRICING_TABLE_NAME       = aws_dynamodb_table.pricing.name
-      COGNITO_USER_POOL_ID     = aws_cognito_user_pool.main.id
-      BUCKET_NAME              = aws_s3_bucket.items.id
-      AGGREGATOR_FUNCTION_NAME = aws_lambda_function.pricing_aggregator.function_name
+      TABLE_NAME                  = aws_dynamodb_table.shop.name
+      PRICING_TABLE_NAME          = aws_dynamodb_table.pricing.name
+      COGNITO_USER_POOL_ID        = aws_cognito_user_pool.main.id
+      BUCKET_NAME                 = aws_s3_bucket.items.id
+      AGGREGATOR_FUNCTION_NAME    = aws_lambda_function.pricing_aggregator.function_name
+      BRAND_CLUSTER_FUNCTION_NAME = aws_lambda_function.brand_cluster.function_name
+      BRAND_APPLY_FUNCTION_NAME   = aws_lambda_function.brand_apply.function_name
     }
   }
 
@@ -256,6 +276,8 @@ resource "aws_iam_role_policy" "pricing_aggregator_dynamodb" {
         Effect = "Allow"
         Action = [
           "dynamodb:GetItem",
+          "dynamodb:PutItem",
+          "dynamodb:UpdateItem",
           "dynamodb:Query",
           "dynamodb:Scan"
         ]
@@ -302,6 +324,35 @@ resource "aws_iam_role_policy" "pricing_aggregator_logs" {
   })
 }
 
+resource "aws_iam_role_policy" "pricing_aggregator_s3" {
+  name = "${var.project_name}-${var.environment}-pricing-aggregator-s3"
+  role = aws_iam_role.pricing_aggregator_lambda.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "s3:PutObject",
+          "s3:GetObject"
+        ]
+        Resource = "${aws_s3_bucket.items.arn}/brand-mappings/*"
+      },
+      {
+        Effect   = "Allow"
+        Action   = "s3:ListBucket"
+        Resource = aws_s3_bucket.items.arn
+        Condition = {
+          StringLike = {
+            "s3:prefix" = ["brand-mappings/*"]
+          }
+        }
+      }
+    ]
+  })
+}
+
 # -----------------------------------------------------------------------------
 # Pricing Aggregator Lambda Function
 # -----------------------------------------------------------------------------
@@ -321,6 +372,60 @@ resource "aws_lambda_function" "pricing_aggregator" {
       TABLE_NAME         = aws_dynamodb_table.shop.name
       PRICING_TABLE_NAME = aws_dynamodb_table.pricing.name
       REGION             = data.aws_region.current.name
+    }
+  }
+
+  tags = {
+    Environment = var.environment
+    Project     = var.project_name
+  }
+}
+
+# -----------------------------------------------------------------------------
+# Brand Cluster Lambda Function
+# -----------------------------------------------------------------------------
+
+resource "aws_lambda_function" "brand_cluster" {
+  function_name    = "${var.project_name}-${var.environment}-brand-cluster"
+  role             = aws_iam_role.pricing_aggregator_lambda.arn
+  handler          = "brand-cluster-handler.handler"
+  runtime          = "nodejs20.x"
+  memory_size      = 1024
+  timeout          = 900
+  filename         = "../projects/shop-api/dist/brand-cluster-handler.zip"
+  source_code_hash = filebase64sha256("../projects/shop-api/dist/brand-cluster-handler.zip")
+
+  environment {
+    variables = {
+      TABLE_NAME  = aws_dynamodb_table.shop.name
+      BUCKET_NAME = aws_s3_bucket.items.id
+    }
+  }
+
+  tags = {
+    Environment = var.environment
+    Project     = var.project_name
+  }
+}
+
+# -----------------------------------------------------------------------------
+# Brand Apply Lambda Function
+# -----------------------------------------------------------------------------
+
+resource "aws_lambda_function" "brand_apply" {
+  function_name    = "${var.project_name}-${var.environment}-brand-apply"
+  role             = aws_iam_role.pricing_aggregator_lambda.arn
+  handler          = "brand-apply-handler.handler"
+  runtime          = "nodejs20.x"
+  memory_size      = 1024
+  timeout          = 900
+  filename         = "../projects/shop-api/dist/brand-apply-handler.zip"
+  source_code_hash = filebase64sha256("../projects/shop-api/dist/brand-apply-handler.zip")
+
+  environment {
+    variables = {
+      TABLE_NAME  = aws_dynamodb_table.shop.name
+      BUCKET_NAME = aws_s3_bucket.items.id
     }
   }
 

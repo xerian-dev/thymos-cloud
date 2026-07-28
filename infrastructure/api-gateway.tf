@@ -344,3 +344,52 @@ resource "aws_apigatewayv2_route" "get_categories" {
   authorization_type = "CUSTOM"
   authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
 }
+
+# -----------------------------------------------------------------------------
+# Brand Management Routes
+# -----------------------------------------------------------------------------
+
+resource "aws_apigatewayv2_route" "post_brands_scan_cluster" {
+  api_id    = aws_apigatewayv2_api.shop_api.id
+  route_key = "POST /api/brands/scan-cluster"
+  target    = "integrations/${aws_apigatewayv2_integration.monolambda.id}"
+
+  authorization_type = "CUSTOM"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "get_brands_mappings" {
+  api_id    = aws_apigatewayv2_api.shop_api.id
+  route_key = "GET /api/brands/mappings"
+  target    = "integrations/${aws_apigatewayv2_integration.monolambda.id}"
+
+  authorization_type = "CUSTOM"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "put_brands_mappings" {
+  api_id    = aws_apigatewayv2_api.shop_api.id
+  route_key = "PUT /api/brands/mappings"
+  target    = "integrations/${aws_apigatewayv2_integration.monolambda.id}"
+
+  authorization_type = "CUSTOM"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "post_brands_apply" {
+  api_id    = aws_apigatewayv2_api.shop_api.id
+  route_key = "POST /api/brands/apply"
+  target    = "integrations/${aws_apigatewayv2_integration.monolambda.id}"
+
+  authorization_type = "CUSTOM"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "get_brands_apply_status" {
+  api_id    = aws_apigatewayv2_api.shop_api.id
+  route_key = "GET /api/brands/apply-status"
+  target    = "integrations/${aws_apigatewayv2_integration.monolambda.id}"
+
+  authorization_type = "CUSTOM"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
