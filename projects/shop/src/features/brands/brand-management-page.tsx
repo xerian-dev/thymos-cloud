@@ -1,4 +1,5 @@
 import * as React from "react";
+import { useVirtualizer } from "@tanstack/react-virtual";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Loader2, Search, Play, Save, Upload } from "lucide-react";
@@ -9,6 +10,8 @@ import {
   saveMappings,
   applyMappings,
 } from "./brands-api";
+
+const ROW_HEIGHT = 44;
 
 export function BrandManagementPage(): React.ReactNode {
   const [mappings, setMappings] = React.useState<BrandMapping[]>([]);
@@ -22,10 +25,30 @@ export function BrandManagementPage(): React.ReactNode {
   const [statusMessage, setStatusMessage] = React.useState<string | null>(null);
   const [hasUnsavedChanges, setHasUnsavedChanges] = React.useState(false);
 
+  const parentRef = React.useRef<HTMLDivElement>(null);
+
   // Load mappings on mount
   React.useEffect(() => {
     loadMappings();
   }, []);
+
+  // Filter mappings by search term
+  const filteredMappings = React.useMemo(() => {
+    if (!searchTerm.trim()) return mappings;
+    const term = searchTerm.toLowerCase();
+    return mappings.filter(
+      (m) =>
+        m.raw.toLowerCase().includes(term) ||
+        m.canonical.toLowerCase().includes(term),
+    );
+  }, [mappings, searchTerm]);
+
+  const virtualizer = useVirtualizer({
+    count: filteredMappings.length,
+    getScrollElement: () => parentRef.current,
+    estimateSize: () => ROW_HEIGHT,
+    overscan: 20,
+  });
 
   async function loadMappings(): Promise<void> {
     setIsLoading(true);
@@ -95,33 +118,30 @@ export function BrandManagementPage(): React.ReactNode {
     setIsApplying(false);
   }
 
-  function handleMappingChange(index: number, canonical: string): void {
+  function handleMappingChange(filteredIndex: number, canonical: string): void {
+    const mapping = filteredMappings[filteredIndex];
+    const realIndex = mappings.indexOf(mapping);
+    if (realIndex === -1) return;
+
     setMappings((prev) => {
       const updated = [...prev];
-      updated[index] = { ...updated[index], canonical };
+      updated[realIndex] = { ...updated[realIndex], canonical };
       return updated;
     });
     setHasUnsavedChanges(true);
   }
 
-  function handleDeleteMapping(index: number): void {
-    setMappings((prev) => prev.filter((_, i) => i !== index));
+  function handleDeleteMapping(filteredIndex: number): void {
+    const mapping = filteredMappings[filteredIndex];
+    const realIndex = mappings.indexOf(mapping);
+    if (realIndex === -1) return;
+
+    setMappings((prev) => prev.filter((_, i) => i !== realIndex));
     setHasUnsavedChanges(true);
   }
 
-  // Filter mappings by search term
-  const filteredMappings = React.useMemo(() => {
-    if (!searchTerm.trim()) return mappings;
-    const term = searchTerm.toLowerCase();
-    return mappings.filter(
-      (m) =>
-        m.raw.toLowerCase().includes(term) ||
-        m.canonical.toLowerCase().includes(term),
-    );
-  }, [mappings, searchTerm]);
-
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex h-full flex-col gap-4">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">
@@ -211,79 +231,97 @@ export function BrandManagementPage(): React.ReactNode {
           className="pl-9"
           aria-label="Search brand mappings"
         />
+        {searchTerm && (
+          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
+            {filteredMappings.length} results
+          </span>
+        )}
       </div>
 
-      {/* Mapping table */}
+      {/* Virtualized mapping table */}
       {isLoading && mappings.length === 0 ? (
         <div className="flex justify-center py-12" aria-busy="true">
           <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
         </div>
       ) : (
-        <div className="rounded-md border">
-          <table
-            className="w-full text-sm"
+        <div className="flex-1 overflow-hidden rounded-md border">
+          {/* Header */}
+          <div className="flex border-b bg-muted/50 px-4 py-2 text-sm font-medium">
+            <div className="w-1/3">Raw Value</div>
+            <div className="flex-1">Canonical</div>
+            <div className="w-12" />
+          </div>
+
+          {/* Virtualized rows */}
+          <div
+            ref={parentRef}
+            className="h-[calc(100vh-320px)] overflow-auto"
             role="grid"
             aria-label="Brand mappings"
+            aria-rowcount={filteredMappings.length}
           >
-            <thead>
-              <tr className="border-b bg-muted/50">
-                <th className="px-4 py-3 text-left font-medium">Raw Value</th>
-                <th className="px-4 py-3 text-left font-medium">Canonical</th>
-                <th className="w-16 px-4 py-3" />
-              </tr>
-            </thead>
-            <tbody>
-              {filteredMappings.length === 0 ? (
-                <tr>
-                  <td
-                    colSpan={3}
-                    className="px-4 py-8 text-center text-muted-foreground"
-                  >
-                    {searchTerm
-                      ? "No mappings match your search"
-                      : "No mappings loaded"}
-                  </td>
-                </tr>
-              ) : (
-                filteredMappings.map((mapping) => {
-                  const realIndex = mappings.indexOf(mapping);
+            {filteredMappings.length === 0 ? (
+              <div className="px-4 py-8 text-center text-muted-foreground">
+                {searchTerm
+                  ? "No mappings match your search"
+                  : "No mappings loaded"}
+              </div>
+            ) : (
+              <div
+                className="relative w-full"
+                style={{ height: `${virtualizer.getTotalSize()}px` }}
+              >
+                {virtualizer.getVirtualItems().map((virtualRow) => {
+                  const mapping = filteredMappings[virtualRow.index];
                   return (
-                    <tr key={mapping.raw} className="border-b last:border-0">
-                      <td className="px-4 py-2 font-mono text-xs">
+                    <div
+                      key={mapping.raw}
+                      className="absolute left-0 top-0 flex w-full items-center border-b px-4"
+                      style={{
+                        height: `${virtualRow.size}px`,
+                        transform: `translateY(${virtualRow.start}px)`,
+                      }}
+                      role="row"
+                      aria-rowindex={virtualRow.index + 1}
+                    >
+                      <div className="w-1/3 truncate pr-4 font-mono text-xs">
                         {mapping.raw}
-                      </td>
-                      <td className="px-4 py-2">
+                      </div>
+                      <div className="flex-1 pr-2">
                         <Input
                           value={mapping.canonical}
                           onChange={(e) =>
-                            handleMappingChange(realIndex, e.target.value)
+                            handleMappingChange(
+                              virtualRow.index,
+                              e.target.value,
+                            )
                           }
                           className="h-8 text-sm"
                           aria-label={`Canonical name for ${mapping.raw}`}
                         />
-                      </td>
-                      <td className="px-4 py-2">
+                      </div>
+                      <div className="w-12 text-center">
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => handleDeleteMapping(realIndex)}
-                          className="h-8 text-xs text-muted-foreground hover:text-destructive"
+                          onClick={() => handleDeleteMapping(virtualRow.index)}
+                          className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive"
                           aria-label={`Remove mapping for ${mapping.raw}`}
                         >
                           ×
                         </Button>
-                      </td>
-                    </tr>
+                      </div>
+                    </div>
                   );
-                })
-              )}
-            </tbody>
-          </table>
-          {filteredMappings.length > 0 && (
-            <div className="border-t px-4 py-2 text-xs text-muted-foreground">
-              Showing {filteredMappings.length} of {mappings.length} mappings
-            </div>
-          )}
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* Footer */}
+          <div className="border-t px-4 py-2 text-xs text-muted-foreground">
+            Showing {filteredMappings.length} of {mappings.length} mappings
+          </div>
         </div>
       )}
     </div>
