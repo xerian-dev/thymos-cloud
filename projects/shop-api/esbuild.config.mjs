@@ -15,6 +15,7 @@ await build({
     "src/import-handler.ts",
     "src/stream-handler.ts",
     "src/aggregator-handler.ts",
+    "src/brand-cluster-handler.ts",
   ],
   bundle: true,
   platform: "node",
@@ -39,6 +40,12 @@ execSync(`cd ${outdir} && zip -j stream-handler.zip stream-handler.js`, {
 });
 execSync(
   `cd ${outdir} && zip -j aggregator-handler.zip aggregator-handler.js`,
+  {
+    stdio: "inherit",
+  },
+);
+execSync(
+  `cd ${outdir} && zip -j brand-cluster-handler.zip brand-cluster-handler.js`,
   {
     stdio: "inherit",
   },

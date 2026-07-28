@@ -11,6 +11,7 @@ import { SalesPage } from "@/features/sales/sales-page";
 import { ImportsPage } from "@/features/imports/imports-page";
 import { ItemCapturePage } from "@/features/item-capture/item-capture-page";
 import { AdjustmentReportPage } from "@/features/pricing/adjustment-report-page";
+import { BrandManagementPage } from "@/features/brands/brand-management-page";
 
 /**
  * Application route configuration.
@@ -67,6 +68,10 @@ export const router = createBrowserRouter([
           {
             path: "pricing/adjustments",
             Component: AdjustmentReportPage,
+          },
+          {
+            path: "brands",
+            Component: BrandManagementPage,
           },
         ],
       },

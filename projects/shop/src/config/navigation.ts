@@ -4,6 +4,7 @@ import {
   Package,
   Receipt,
   Sparkles,
+  Tag,
   TrendingUp,
   UserCheck,
   Users,
@@ -24,5 +25,6 @@ export const navigationItems: NavItem[] = [
   { label: "Imports", path: "/imports", icon: Download },
   { label: "Item Capture", path: "/item-capture", icon: Sparkles },
   { label: "Pricing", path: "/pricing/adjustments", icon: TrendingUp },
+  { label: "Brands", path: "/brands", icon: Tag },
   { label: "Help", path: "/help", icon: HelpCircle },
 ];
