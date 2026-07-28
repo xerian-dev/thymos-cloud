@@ -34,6 +34,17 @@ export const itemsColumns: ColumnDef<Item, unknown>[] = [
     },
   },
   {
+    accessorKey: "description",
+    header: "Description",
+    cell: ({ row }) => {
+      const description = row.original.description;
+      if (!description) return "";
+      return description.length > 80
+        ? `${description.slice(0, 80)}…`
+        : description;
+    },
+  },
+  {
     accessorKey: "tagPrice",
     header: "Tag Price",
     cell: ({ row }) => formatChf(row.original.tagPrice),
