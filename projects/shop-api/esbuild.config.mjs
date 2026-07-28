@@ -14,6 +14,7 @@ await build({
     "src/authorizer.ts",
     "src/import-handler.ts",
     "src/stream-handler.ts",
+    "src/aggregator-handler.ts",
   ],
   bundle: true,
   platform: "node",
@@ -36,7 +37,13 @@ execSync(`cd ${outdir} && zip -j import-handler.zip import-handler.js`, {
 execSync(`cd ${outdir} && zip -j stream-handler.zip stream-handler.js`, {
   stdio: "inherit",
 });
+execSync(
+  `cd ${outdir} && zip -j aggregator-handler.zip aggregator-handler.js`,
+  {
+    stdio: "inherit",
+  },
+);
 
 console.log(
-  "Build complete: dist/handler.zip, dist/authorizer.zip, dist/import-handler.zip, and dist/stream-handler.zip",
+  "Build complete: dist/handler.zip, dist/authorizer.zip, dist/import-handler.zip, dist/stream-handler.zip, and dist/aggregator-handler.zip",
 );
