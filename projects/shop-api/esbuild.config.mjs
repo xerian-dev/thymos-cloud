@@ -15,6 +15,7 @@ await build({
     "src/import-handler.ts",
     "src/stream-handler.ts",
     "src/aggregator-handler.ts",
+    "src/migrations/migrate-pricing-data.ts",
   ],
   bundle: true,
   platform: "node",
@@ -43,7 +44,13 @@ execSync(
     stdio: "inherit",
   },
 );
+execSync(
+  `cd ${outdir} && zip -j migrate-pricing-data.zip migrations/migrate-pricing-data.js`,
+  {
+    stdio: "inherit",
+  },
+);
 
 console.log(
-  "Build complete: dist/handler.zip, dist/authorizer.zip, dist/import-handler.zip, dist/stream-handler.zip, and dist/aggregator-handler.zip",
+  "Build complete: dist/handler.zip, dist/authorizer.zip, dist/import-handler.zip, dist/stream-handler.zip, dist/aggregator-handler.zip, and dist/migrate-pricing-data.zip",
 );
