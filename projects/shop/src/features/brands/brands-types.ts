@@ -15,3 +15,14 @@ export interface ApplyResponse {
   errors: number;
   canonicalBrandsSeeded: number;
 }
+
+export interface ApplyStatus {
+  status: "idle" | "running" | "complete" | "error";
+  startedAt?: string;
+  completedAt?: string;
+  delta?: number;
+  itemsUpdated?: number;
+  errors?: number;
+  canonicalBrandsSeeded?: number;
+  message?: string;
+}

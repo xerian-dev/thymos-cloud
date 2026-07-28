@@ -9,6 +9,7 @@ import {
   fetchMappings,
   saveMappings,
   applyMappings,
+  fetchApplyStatus,
 } from "./brands-api";
 
 const ROW_HEIGHT = 44;
@@ -103,19 +104,39 @@ export function BrandManagementPage(): React.ReactNode {
 
     setIsApplying(true);
     setError(null);
-    setStatusMessage(
-      "Applying mappings... This may take a while for large deltas.",
-    );
+    setStatusMessage("Applying mappings... This runs in the background.");
     const result = await applyMappings();
-    if (result.success) {
-      setStatusMessage(
-        `Applied: ${result.data.itemsUpdated} items updated, ${result.data.canonicalBrandsSeeded} canonical brands seeded. ${result.data.errors} errors.`,
-      );
-    } else {
-      setError(result.error);
+    if (!result.success) {
+      setError(result.error ?? "Failed to start apply");
       setStatusMessage(null);
+      setIsApplying(false);
+      return;
     }
-    setIsApplying(false);
+
+    setStatusMessage("Apply running in background. Polling for status...");
+    pollApplyStatus();
+  }
+
+  function pollApplyStatus(): void {
+    const interval = setInterval(async () => {
+      const result = await fetchApplyStatus();
+      if (!result.success) return;
+
+      const { data } = result;
+
+      if (data.status === "complete") {
+        clearInterval(interval);
+        setIsApplying(false);
+        setStatusMessage(
+          `Apply complete: ${data.itemsUpdated ?? 0} items updated, ${data.canonicalBrandsSeeded ?? 0} canonical brands seeded. ${data.errors ?? 0} errors.`,
+        );
+      } else if (data.status === "error") {
+        clearInterval(interval);
+        setIsApplying(false);
+        setError(data.message ?? "Apply failed");
+        setStatusMessage(null);
+      }
+    }, 5000);
   }
 
   function handleMappingChange(filteredIndex: number, canonical: string): void {

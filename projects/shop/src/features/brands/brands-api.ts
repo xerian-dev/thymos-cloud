@@ -1,5 +1,9 @@
 import { fetchAuthSession } from "aws-amplify/auth";
-import type { MappingsResponse, BrandMapping, ApplyResponse } from "./brands-types";
+import type {
+  MappingsResponse,
+  BrandMapping,
+  ApplyStatus,
+} from "./brands-types";
 
 const API_BASE = "/api";
 
@@ -16,7 +20,10 @@ async function getAuthHeaders(): Promise<Record<string, string>> {
   return {};
 }
 
-export async function triggerScanCluster(): Promise<{ success: boolean; error?: string }> {
+export async function triggerScanCluster(): Promise<{
+  success: boolean;
+  error?: string;
+}> {
   try {
     const headers = await getAuthHeaders();
     const response = await fetch(`${API_BASE}/brands/scan-cluster`, {
@@ -85,9 +92,10 @@ export async function saveMappings(
   }
 }
 
-export async function applyMappings(): Promise<
-  { success: true; data: ApplyResponse } | { success: false; error: string }
-> {
+export async function applyMappings(): Promise<{
+  success: boolean;
+  error?: string;
+}> {
   try {
     const headers = await getAuthHeaders();
     const response = await fetch(`${API_BASE}/brands/apply`, {
@@ -99,7 +107,30 @@ export async function applyMappings(): Promise<
       return { success: false, error: `HTTP ${response.status}` };
     }
 
-    const data: ApplyResponse = await response.json();
+    return { success: true };
+  } catch (error: unknown) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error",
+    };
+  }
+}
+
+export async function fetchApplyStatus(): Promise<
+  { success: true; data: ApplyStatus } | { success: false; error: string }
+> {
+  try {
+    const headers = await getAuthHeaders();
+    const response = await fetch(`${API_BASE}/brands/apply-status`, {
+      method: "GET",
+      headers,
+    });
+
+    if (!response.ok) {
+      return { success: false, error: `HTTP ${response.status}` };
+    }
+
+    const data: ApplyStatus = await response.json();
     return { success: true, data };
   } catch (error: unknown) {
     return {
