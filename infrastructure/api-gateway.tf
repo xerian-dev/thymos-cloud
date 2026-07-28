@@ -384,3 +384,12 @@ resource "aws_apigatewayv2_route" "post_brands_apply" {
   authorization_type = "CUSTOM"
   authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
 }
+
+resource "aws_apigatewayv2_route" "get_brands_apply_status" {
+  api_id    = aws_apigatewayv2_api.shop_api.id
+  route_key = "GET /api/brands/apply-status"
+  target    = "integrations/${aws_apigatewayv2_integration.monolambda.id}"
+
+  authorization_type = "CUSTOM"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}

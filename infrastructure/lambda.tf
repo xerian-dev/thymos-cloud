@@ -153,7 +153,8 @@ resource "aws_iam_role_policy" "shop_api_invoke_aggregator" {
         Action = "lambda:InvokeFunction"
         Resource = [
           aws_lambda_function.pricing_aggregator.arn,
-          aws_lambda_function.brand_cluster.arn
+          aws_lambda_function.brand_cluster.arn,
+          aws_lambda_function.brand_apply.arn
         ]
       }
     ]
@@ -202,6 +203,7 @@ resource "aws_lambda_function" "shop_api" {
       BUCKET_NAME                 = aws_s3_bucket.items.id
       AGGREGATOR_FUNCTION_NAME    = aws_lambda_function.pricing_aggregator.function_name
       BRAND_CLUSTER_FUNCTION_NAME = aws_lambda_function.brand_cluster.function_name
+      BRAND_APPLY_FUNCTION_NAME   = aws_lambda_function.brand_apply.function_name
     }
   }
 
@@ -380,6 +382,33 @@ resource "aws_lambda_function" "brand_cluster" {
   timeout          = 900
   filename         = "../projects/shop-api/dist/brand-cluster-handler.zip"
   source_code_hash = filebase64sha256("../projects/shop-api/dist/brand-cluster-handler.zip")
+
+  environment {
+    variables = {
+      TABLE_NAME  = aws_dynamodb_table.shop.name
+      BUCKET_NAME = aws_s3_bucket.items.id
+    }
+  }
+
+  tags = {
+    Environment = var.environment
+    Project     = var.project_name
+  }
+}
+
+# -----------------------------------------------------------------------------
+# Brand Apply Lambda Function
+# -----------------------------------------------------------------------------
+
+resource "aws_lambda_function" "brand_apply" {
+  function_name    = "${var.project_name}-${var.environment}-brand-apply"
+  role             = aws_iam_role.pricing_aggregator_lambda.arn
+  handler          = "brand-apply-handler.handler"
+  runtime          = "nodejs20.x"
+  memory_size      = 1024
+  timeout          = 900
+  filename         = "../projects/shop-api/dist/brand-apply-handler.zip"
+  source_code_hash = filebase64sha256("../projects/shop-api/dist/brand-apply-handler.zip")
 
   environment {
     variables = {

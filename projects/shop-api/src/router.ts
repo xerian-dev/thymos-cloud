@@ -34,6 +34,7 @@ import {
   getMappings,
   saveMappings,
   applyMappings,
+  getApplyStatus,
 } from "./routes/brand-management.js";
 import { jsonResponse } from "./response.js";
 
@@ -71,6 +72,7 @@ const routes: Record<string, RouteHandler> = {
   "GET /api/brands/mappings": getMappings,
   "PUT /api/brands/mappings": saveMappings,
   "POST /api/brands/apply": applyMappings,
+  "GET /api/brands/apply-status": getApplyStatus,
 };
 
 export function routeRequest(
