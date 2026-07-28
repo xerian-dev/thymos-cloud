@@ -13,6 +13,7 @@ export interface ItemsTableProps {
   onEdit?: (item: Item) => void;
   onDelete?: (item: Item) => void;
   onViewUser?: (employeeId: string) => void;
+  categoryMap?: Map<string, string>;
   hasPrevious: boolean;
   hasMore: boolean;
   pageSize: PageSize;
@@ -29,6 +30,7 @@ export function ItemsTable({
   onEdit,
   onDelete,
   onViewUser,
+  categoryMap,
   hasPrevious,
   hasMore,
   pageSize,
@@ -37,8 +39,8 @@ export function ItemsTable({
   onPageSizeChange,
 }: ItemsTableProps): React.ReactNode {
   const meta: ItemsTableMeta = React.useMemo(
-    () => ({ onEdit, onDelete, onViewUser }),
-    [onEdit, onDelete, onViewUser],
+    () => ({ onEdit, onDelete, onViewUser, categoryMap }),
+    [onEdit, onDelete, onViewUser, categoryMap],
   );
 
   return (
