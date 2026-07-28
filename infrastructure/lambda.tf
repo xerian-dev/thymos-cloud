@@ -115,6 +115,22 @@ resource "aws_iam_role_policy" "shop_api_logs" {
   })
 }
 
+resource "aws_iam_role_policy" "shop_api_invoke_aggregator" {
+  name = "${var.project_name}-${var.environment}-shop-api-invoke-aggregator"
+  role = aws_iam_role.shop_api_lambda.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect   = "Allow"
+        Action   = "lambda:InvokeFunction"
+        Resource = aws_lambda_function.pricing_aggregator.arn
+      }
+    ]
+  })
+}
+
 resource "aws_iam_role_policy" "shop_api_authorizer_logs" {
   name = "${var.project_name}-${var.environment}-shop-api-authorizer-logs"
   role = aws_iam_role.shop_api_authorizer.id
@@ -151,9 +167,10 @@ resource "aws_lambda_function" "shop_api" {
 
   environment {
     variables = {
-      TABLE_NAME           = aws_dynamodb_table.shop.name
-      COGNITO_USER_POOL_ID = aws_cognito_user_pool.main.id
-      BUCKET_NAME          = aws_s3_bucket.items.id
+      TABLE_NAME               = aws_dynamodb_table.shop.name
+      COGNITO_USER_POOL_ID     = aws_cognito_user_pool.main.id
+      BUCKET_NAME              = aws_s3_bucket.items.id
+      AGGREGATOR_FUNCTION_NAME = aws_lambda_function.pricing_aggregator.function_name
     }
   }
 
@@ -176,6 +193,108 @@ resource "aws_lambda_function" "shop_api_authorizer" {
   environment {
     variables = {
       COGNITO_USER_POOL_ID = aws_cognito_user_pool.main.id
+    }
+  }
+
+  tags = {
+    Environment = var.environment
+    Project     = var.project_name
+  }
+}
+
+# -----------------------------------------------------------------------------
+# Pricing Aggregator IAM Role
+# -----------------------------------------------------------------------------
+
+resource "aws_iam_role" "pricing_aggregator_lambda" {
+  name = "${var.project_name}-${var.environment}-pricing-aggregator-lambda-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Principal = {
+          Service = "lambda.amazonaws.com"
+        }
+        Action = "sts:AssumeRole"
+      }
+    ]
+  })
+
+  tags = {
+    Environment = var.environment
+    Project     = var.project_name
+  }
+}
+
+# -----------------------------------------------------------------------------
+# Pricing Aggregator IAM Policies
+# -----------------------------------------------------------------------------
+
+resource "aws_iam_role_policy" "pricing_aggregator_dynamodb" {
+  name = "${var.project_name}-${var.environment}-pricing-aggregator-dynamodb"
+  role = aws_iam_role.pricing_aggregator_lambda.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "dynamodb:GetItem",
+          "dynamodb:PutItem",
+          "dynamodb:UpdateItem",
+          "dynamodb:Query",
+          "dynamodb:Scan"
+        ]
+        Resource = [
+          aws_dynamodb_table.shop.arn,
+          "${aws_dynamodb_table.shop.arn}/index/*"
+        ]
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy" "pricing_aggregator_logs" {
+  name = "${var.project_name}-${var.environment}-pricing-aggregator-logs"
+  role = aws_iam_role.pricing_aggregator_lambda.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "logs:CreateLogGroup",
+          "logs:CreateLogStream",
+          "logs:PutLogEvents"
+        ]
+        Resource = "arn:aws:logs:*:*:*"
+      }
+    ]
+  })
+}
+
+# -----------------------------------------------------------------------------
+# Pricing Aggregator Lambda Function
+# -----------------------------------------------------------------------------
+
+resource "aws_lambda_function" "pricing_aggregator" {
+  function_name    = "${var.project_name}-${var.environment}-pricing-aggregator"
+  role             = aws_iam_role.pricing_aggregator_lambda.arn
+  handler          = "aggregator-handler.handler"
+  runtime          = "nodejs20.x"
+  memory_size      = 512
+  timeout          = 300
+  filename         = "../projects/shop-api/dist/aggregator-handler.zip"
+  source_code_hash = filebase64sha256("../projects/shop-api/dist/aggregator-handler.zip")
+
+  environment {
+    variables = {
+      TABLE_NAME = aws_dynamodb_table.shop.name
+      REGION     = data.aws_region.current.name
     }
   }
 

@@ -9,3 +9,9 @@ variable "project_name" {
   type        = string
   default     = "thymos"
 }
+
+variable "pricing_aggregator_schedule" {
+  description = "EventBridge schedule expression for the pricing aggregator Lambda (default: every Sunday at 02:00 UTC)"
+  type        = string
+  default     = "cron(0 2 ? * SUN *)"
+}
