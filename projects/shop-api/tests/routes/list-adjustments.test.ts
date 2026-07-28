@@ -4,6 +4,7 @@ import type { APIGatewayProxyEventV2 } from "aws-lambda";
 vi.mock("../../src/dynamodb-client.js", () => ({
   docClient: { send: vi.fn() },
   TABLE_NAME: "test-table",
+  PRICING_TABLE_NAME: "test-pricing-table",
 }));
 
 import { listAdjustments } from "../../src/routes/list-adjustments.js";
@@ -44,7 +45,9 @@ function makeEvent(
   };
 }
 
-function makeAdjustmentItem(overrides: Partial<Record<string, unknown>> = {}): Record<string, unknown> {
+function makeAdjustmentItem(
+  overrides: Partial<Record<string, unknown>> = {},
+): Record<string, unknown> {
   return {
     PK: "ADJUSTMENT#adj-1",
     SK: "METADATA",
@@ -132,7 +135,12 @@ describe("GET /api/pricing/adjustments", () => {
   // --- Pagination ---
 
   it("returns nextCursor when more results available", async () => {
-    const lastKey = { PK: "ADJUSTMENT#adj-5", SK: "METADATA", GSI1PK: "ADJUSTMENTS", GSI1SK: "ADJUSTMENT#2024-06-10T00:00:00.000Z" };
+    const lastKey = {
+      PK: "ADJUSTMENT#adj-5",
+      SK: "METADATA",
+      GSI1PK: "ADJUSTMENTS",
+      GSI1SK: "ADJUSTMENT#2024-06-10T00:00:00.000Z",
+    };
     mockedSend.mockResolvedValueOnce({
       Items: [makeAdjustmentItem()],
       LastEvaluatedKey: lastKey,
@@ -147,7 +155,12 @@ describe("GET /api/pricing/adjustments", () => {
   });
 
   it("passes cursor as ExclusiveStartKey to DynamoDB", async () => {
-    const startKey = { PK: "ADJUSTMENT#adj-3", SK: "METADATA", GSI1PK: "ADJUSTMENTS", GSI1SK: "ADJUSTMENT#2024-06-12T00:00:00.000Z" };
+    const startKey = {
+      PK: "ADJUSTMENT#adj-3",
+      SK: "METADATA",
+      GSI1PK: "ADJUSTMENTS",
+      GSI1SK: "ADJUSTMENT#2024-06-12T00:00:00.000Z",
+    };
     const cursor = encodeCursor(startKey);
 
     mockedSend.mockResolvedValueOnce({
@@ -227,7 +240,9 @@ describe("GET /api/pricing/adjustments", () => {
   });
 
   it("returns 400 for invalid cursor", async () => {
-    const result = await listAdjustments(makeEvent({ cursor: "!!!invalid!!!" }));
+    const result = await listAdjustments(
+      makeEvent({ cursor: "!!!invalid!!!" }),
+    );
 
     expect(result.statusCode).toBe(400);
     const body = JSON.parse(result.body as string);
@@ -246,13 +261,19 @@ describe("GET /api/pricing/adjustments", () => {
 
     expect(result.statusCode).toBe(200);
     const command = mockedSend.mock.calls[0][0];
-    expect(command.input.FilterExpression).toContain("#direction = :directionVal");
-    expect(command.input.ExpressionAttributeValues[":directionVal"]).toBe("decrease");
+    expect(command.input.FilterExpression).toContain(
+      "#direction = :directionVal",
+    );
+    expect(command.input.ExpressionAttributeValues[":directionVal"]).toBe(
+      "decrease",
+    );
   });
 
   it("filters by direction=increase", async () => {
     mockedSend.mockResolvedValueOnce({
-      Items: [makeAdjustmentItem({ direction: "increase", percentageChange: 5.0 })],
+      Items: [
+        makeAdjustmentItem({ direction: "increase", percentageChange: 5.0 }),
+      ],
       LastEvaluatedKey: undefined,
     } as never);
 
@@ -260,7 +281,9 @@ describe("GET /api/pricing/adjustments", () => {
 
     expect(result.statusCode).toBe(200);
     const command = mockedSend.mock.calls[0][0];
-    expect(command.input.ExpressionAttributeValues[":directionVal"]).toBe("increase");
+    expect(command.input.ExpressionAttributeValues[":directionVal"]).toBe(
+      "increase",
+    );
   });
 
   it("filters by brand", async () => {
@@ -284,14 +307,21 @@ describe("GET /api/pricing/adjustments", () => {
     } as never);
 
     const result = await listAdjustments(
-      makeEvent({ fromDate: "2024-06-01T00:00:00.000Z", toDate: "2024-06-30T23:59:59.000Z" }),
+      makeEvent({
+        fromDate: "2024-06-01T00:00:00.000Z",
+        toDate: "2024-06-30T23:59:59.000Z",
+      }),
     );
 
     expect(result.statusCode).toBe(200);
     const command = mockedSend.mock.calls[0][0];
     expect(command.input.KeyConditionExpression).toContain("BETWEEN");
-    expect(command.input.ExpressionAttributeValues[":fromKey"]).toBe("ADJUSTMENT#2024-06-01T00:00:00.000Z");
-    expect(command.input.ExpressionAttributeValues[":toKey"]).toBe("ADJUSTMENT#2024-06-30T23:59:59.000Z");
+    expect(command.input.ExpressionAttributeValues[":fromKey"]).toBe(
+      "ADJUSTMENT#2024-06-01T00:00:00.000Z",
+    );
+    expect(command.input.ExpressionAttributeValues[":toKey"]).toBe(
+      "ADJUSTMENT#2024-06-30T23:59:59.000Z",
+    );
   });
 
   it("filters by fromDate only", async () => {
@@ -341,7 +371,9 @@ describe("GET /api/pricing/adjustments", () => {
     expect(result.statusCode).toBe(200);
     const command = mockedSend.mock.calls[0][0];
     expect(command.input.FilterExpression).toContain("#brand = :brandVal");
-    expect(command.input.FilterExpression).toContain("#direction = :directionVal");
+    expect(command.input.FilterExpression).toContain(
+      "#direction = :directionVal",
+    );
     expect(command.input.KeyConditionExpression).toContain(">= :fromKey");
   });
 

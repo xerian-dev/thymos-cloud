@@ -72,6 +72,18 @@ resource "aws_iam_role_policy" "shop_api_dynamodb" {
           aws_dynamodb_table.shop.arn,
           "${aws_dynamodb_table.shop.arn}/index/*"
         ]
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "dynamodb:GetItem",
+          "dynamodb:Query",
+          "dynamodb:Scan"
+        ]
+        Resource = [
+          aws_dynamodb_table.pricing.arn,
+          "${aws_dynamodb_table.pricing.arn}/index/*"
+        ]
       }
     ]
   })
@@ -168,6 +180,7 @@ resource "aws_lambda_function" "shop_api" {
   environment {
     variables = {
       TABLE_NAME               = aws_dynamodb_table.shop.name
+      PRICING_TABLE_NAME       = aws_dynamodb_table.pricing.name
       COGNITO_USER_POOL_ID     = aws_cognito_user_pool.main.id
       BUCKET_NAME              = aws_s3_bucket.items.id
       AGGREGATOR_FUNCTION_NAME = aws_lambda_function.pricing_aggregator.function_name
@@ -243,14 +256,26 @@ resource "aws_iam_role_policy" "pricing_aggregator_dynamodb" {
         Effect = "Allow"
         Action = [
           "dynamodb:GetItem",
-          "dynamodb:PutItem",
-          "dynamodb:UpdateItem",
           "dynamodb:Query",
           "dynamodb:Scan"
         ]
         Resource = [
           aws_dynamodb_table.shop.arn,
           "${aws_dynamodb_table.shop.arn}/index/*"
+        ]
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "dynamodb:GetItem",
+          "dynamodb:PutItem",
+          "dynamodb:UpdateItem",
+          "dynamodb:Query",
+          "dynamodb:Scan"
+        ]
+        Resource = [
+          aws_dynamodb_table.pricing.arn,
+          "${aws_dynamodb_table.pricing.arn}/index/*"
         ]
       }
     ]
@@ -286,15 +311,16 @@ resource "aws_lambda_function" "pricing_aggregator" {
   role             = aws_iam_role.pricing_aggregator_lambda.arn
   handler          = "aggregator-handler.handler"
   runtime          = "nodejs20.x"
-  memory_size      = 512
-  timeout          = 300
+  memory_size      = 1024
+  timeout          = 900
   filename         = "../projects/shop-api/dist/aggregator-handler.zip"
   source_code_hash = filebase64sha256("../projects/shop-api/dist/aggregator-handler.zip")
 
   environment {
     variables = {
-      TABLE_NAME = aws_dynamodb_table.shop.name
-      REGION     = data.aws_region.current.name
+      TABLE_NAME         = aws_dynamodb_table.shop.name
+      PRICING_TABLE_NAME = aws_dynamodb_table.pricing.name
+      REGION             = data.aws_region.current.name
     }
   }
 

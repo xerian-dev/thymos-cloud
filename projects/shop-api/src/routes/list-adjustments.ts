@@ -3,7 +3,7 @@ import type {
   APIGatewayProxyResultV2,
 } from "aws-lambda";
 import { QueryCommand } from "@aws-sdk/lib-dynamodb";
-import { docClient, TABLE_NAME } from "../dynamodb-client.js";
+import { docClient, PRICING_TABLE_NAME } from "../dynamodb-client.js";
 import { encodeCursor, decodeCursor } from "../cursor-utils.js";
 import { jsonResponse, errorResponse } from "../response.js";
 
@@ -74,9 +74,7 @@ export async function listAdjustments(
   // Validate direction filter
   let directionFilter: Direction | undefined;
   if (raw.direction !== undefined && raw.direction !== "") {
-    if (
-      !VALID_DIRECTIONS.includes(raw.direction as Direction)
-    ) {
+    if (!VALID_DIRECTIONS.includes(raw.direction as Direction)) {
       return jsonResponse(400, {
         error: "validation_error",
         fields: ["direction must be 'increase' or 'decrease'"],
@@ -125,8 +123,7 @@ export async function listAdjustments(
     };
 
     if (fromDate && toDate) {
-      keyConditionExpression +=
-        " AND GSI1SK BETWEEN :fromKey AND :toKey";
+      keyConditionExpression += " AND GSI1SK BETWEEN :fromKey AND :toKey";
       expressionAttributeValues[":fromKey"] = `ADJUSTMENT#${fromDate}`;
       expressionAttributeValues[":toKey"] = `ADJUSTMENT#${toDate}`;
     } else if (fromDate) {
@@ -164,7 +161,7 @@ export async function listAdjustments(
 
     const queryResult = await docClient.send(
       new QueryCommand({
-        TableName: TABLE_NAME,
+        TableName: PRICING_TABLE_NAME,
         IndexName: "GSI1",
         KeyConditionExpression: keyConditionExpression,
         FilterExpression: filterExpression,
@@ -180,7 +177,10 @@ export async function listAdjustments(
     );
 
     const adjustments = (queryResult.Items ?? []).map(
-      (item) => stripKeyAttributes(item as Record<string, unknown>) as unknown as AdjustmentRecord,
+      (item) =>
+        stripKeyAttributes(
+          item as Record<string, unknown>,
+        ) as unknown as AdjustmentRecord,
     );
 
     const lastEvaluatedKey = queryResult.LastEvaluatedKey as

@@ -155,9 +155,9 @@ erDiagram
     SEQUENCE_COUNTER ||--|| SALE : "generates number"
 ```
 
-## DynamoDB Single-Table Mapping
+## DynamoDB Single-Table Mapping (Shop Table)
 
-Both entities live in the same DynamoDB table (`thymos-{environment}-shop`). The ER diagram above shows the logical domain model; below is how it maps to physical key patterns:
+Operational entities live in the DynamoDB table (`thymos-{environment}-shop`). The ER diagram above shows the logical domain model; below is how it maps to physical key patterns:
 
 | Entity           | PK                    | SK                    | GSI1PK     | GSI1SK                  | GSI2PK                      | GSI2SK                  | GSI3PK                        | GSI3SK                  |
 |------------------|-----------------------|-----------------------|------------|-------------------------|-----------------------------|-------------------------|-------------------------------|-------------------------|
@@ -183,6 +183,48 @@ Both entities live in the same DynamoDB table (`thymos-{environment}-shop`). The
 - **Sale line items**: Stored under the same PK as the sale (`SALE#<uuid>`) with SK `LINE_ITEM#<index>`. This allows fetching a sale and all its line items in a single Query. Each line item references the Item UUID and stores the price/portions at time of sale.
 - **Sale number**: The operator-facing identifier for sales. For imported sales, the number comes directly from ConsignCloud (not generated). The sequence counter is seeded to max(imported number) after the first full import to prevent collisions with future locally-created sales. Queryable via GSI1 (`GSI1PK: SALES`, `GSI1SK: SALE#<number>`).
 - **Sequence counters**: Separate counter records for each entity type, atomically incremented via DynamoDB conditional expressions
+
+## Pricing Table (`thymos-{environment}-pricing`)
+
+Pricing data lives in a separate DynamoDB table from the operational shop data. This isolates the batch-computed pricing references, adjustment audit trail, and employee accuracy scores from the operational CRUD workload.
+
+### Entities
+
+| Entity           | PK                                          | SK         | GSI1PK              | GSI1SK                                      |
+|------------------|---------------------------------------------|------------|---------------------|---------------------------------------------|
+| Pricing Ref      | `PRICING_REF#<brand>#<categoryId>`          | `METADATA` | `PRICING_REFS`      | `PRICING_REF#<brand>#<categoryId>`          |
+| Adjustment Event | `ADJUSTMENT#<uuid>`                         | `METADATA` | `ADJUSTMENTS`       | `ADJUSTMENT#<timestamp>`                    |
+| Employee Pricing | `EMPLOYEE_PRICING#<employeeId>`             | `METADATA` | —                   | —                                           |
+
+### Key Design Principles
+
+- **Separate table for pricing**: Pricing data has a different lifecycle (batch-computed by the aggregator) and access pattern (read at item-creation time, queried for reports) than operational data. Isolation prevents aggregator write bursts from contending with shop traffic.
+- **Single GSI**: GSI1 supports listing all pricing refs (`GSI1PK: PRICING_REFS`) and querying adjustments by date (`GSI1PK: ADJUSTMENTS`, `GSI1SK: ADJUSTMENT#<timestamp>`).
+- **Brand `_NONE_`**: Items without a brand are grouped under the synthetic brand `_NONE_`, enabling category-only fallback lookups.
+- **Employee pricing by direct key**: Looked up by `PK: EMPLOYEE_PRICING#<employeeId>` — no GSI needed since access is always by known employee ID.
+
+### Pricing Ref Attributes
+
+| Attribute              | Type              | Description                                           |
+|------------------------|-------------------|-------------------------------------------------------|
+| `brand`                | string            | Canonical brand name (or `_NONE_`)                    |
+| `categoryId`           | string (UUID)     | Category UUID                                         |
+| `categoryName`         | string            | Category display name                                 |
+| `referencePrice`       | number (CHF)      | Computed reference price (median sale price)          |
+| `previousReferencePrice` | number \| null  | Previous aggregation's reference price                |
+| `originalBaseline`     | number (CHF)      | First-ever reference price for drift cap             |
+| `medianTagPrice`       | number (CHF)      | Median tag price of sold items in group              |
+| `medianSalePrice`      | number (CHF)      | Median actual sale price                             |
+| `sellThroughRate`      | number (0–1)      | Ratio of sold to total items                         |
+| `medianDaysOnShelf`    | number            | Median days before sale                              |
+| `discountFrequency`    | number (0–1)      | Proportion of items sold at a discount               |
+| `sampleSize`           | number            | Count of sold items in group                         |
+| `velocityMultiplier`   | number (0.90–1.10)| Demand-based adjustment                              |
+| `lowConfidence`        | boolean           | True if sampleSize < 5                               |
+| `colorAdjustments`     | Record<string, number> | Per-color price ratio                           |
+| `sizeAdjustments`      | Record<string, number> | Per-size price ratio                            |
+| `computedAt`           | string (ISO 8601) | When this ref was last computed                      |
+| `updatedAt`            | string (ISO 8601) | Last write timestamp                                 |
 
 ## Enumerations
 
