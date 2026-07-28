@@ -331,34 +331,6 @@ resource "aws_lambda_function" "pricing_aggregator" {
 }
 
 # -----------------------------------------------------------------------------
-# TEMPORARY: Pricing Data Migration Lambda (remove after migration)
-# -----------------------------------------------------------------------------
-
-resource "aws_lambda_function" "migrate_pricing" {
-  function_name    = "${var.project_name}-${var.environment}-migrate-pricing"
-  role             = aws_iam_role.pricing_aggregator_lambda.arn
-  handler          = "migrate-pricing-data.handler"
-  runtime          = "nodejs20.x"
-  memory_size      = 256
-  timeout          = 300
-  filename         = "../projects/shop-api/dist/migrate-pricing-data.zip"
-  source_code_hash = filebase64sha256("../projects/shop-api/dist/migrate-pricing-data.zip")
-
-  environment {
-    variables = {
-      TABLE_NAME         = aws_dynamodb_table.shop.name
-      PRICING_TABLE_NAME = aws_dynamodb_table.pricing.name
-    }
-  }
-
-  tags = {
-    Environment = var.environment
-    Project     = var.project_name
-    Temporary   = "true"
-  }
-}
-
-# -----------------------------------------------------------------------------
 # Lambda Permissions (API Gateway invocation)
 # -----------------------------------------------------------------------------
 
