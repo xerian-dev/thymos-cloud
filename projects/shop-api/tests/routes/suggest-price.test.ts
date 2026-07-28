@@ -4,6 +4,7 @@ import type { APIGatewayProxyEventV2 } from "aws-lambda";
 vi.mock("../../src/dynamodb-client.js", () => ({
   docClient: { send: vi.fn() },
   TABLE_NAME: "test-table",
+  PRICING_TABLE_NAME: "test-pricing-table",
 }));
 
 import { suggestPrice } from "../../src/routes/suggest-price.js";
@@ -413,14 +414,12 @@ describe("suggestPrice", () => {
       },
     } as never);
 
-    await suggestPrice(
-      makeEvent({ brand: "Adidas", categoryId: "cat-789" }),
-    );
+    await suggestPrice(makeEvent({ brand: "Adidas", categoryId: "cat-789" }));
 
     expect(mockedSend).toHaveBeenCalledTimes(1);
     const command = mockedSend.mock.calls[0][0];
     expect(command.input).toMatchObject({
-      TableName: "test-table",
+      TableName: "test-pricing-table",
       Key: {
         PK: "PRICING_REF#Adidas#cat-789",
         SK: "METADATA",
