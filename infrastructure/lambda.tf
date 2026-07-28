@@ -311,8 +311,8 @@ resource "aws_lambda_function" "pricing_aggregator" {
   role             = aws_iam_role.pricing_aggregator_lambda.arn
   handler          = "aggregator-handler.handler"
   runtime          = "nodejs20.x"
-  memory_size      = 512
-  timeout          = 300
+  memory_size      = 1024
+  timeout          = 900
   filename         = "../projects/shop-api/dist/aggregator-handler.zip"
   source_code_hash = filebase64sha256("../projects/shop-api/dist/aggregator-handler.zip")
 
