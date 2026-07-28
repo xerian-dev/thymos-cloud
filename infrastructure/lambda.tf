@@ -106,6 +106,16 @@ resource "aws_iam_role_policy" "shop_api_s3_items" {
           "${aws_s3_bucket.items.arn}/items/*",
           "${aws_s3_bucket.items.arn}/brand-mappings/*"
         ]
+      },
+      {
+        Effect   = "Allow"
+        Action   = "s3:ListBucket"
+        Resource = aws_s3_bucket.items.arn
+        Condition = {
+          StringLike = {
+            "s3:prefix" = ["brand-mappings/*"]
+          }
+        }
       }
     ]
   })
