@@ -7,6 +7,7 @@ export interface ItemsTableMeta {
   onEdit?: (item: Item) => void;
   onDelete?: (item: Item) => void;
   onViewUser?: (employeeId: string) => void;
+  categoryMap?: Map<string, string>;
 }
 
 export const itemsColumns: ColumnDef<Item, unknown>[] = [
@@ -23,9 +24,14 @@ export const itemsColumns: ColumnDef<Item, unknown>[] = [
     header: "Account",
   },
   {
-    accessorKey: "category",
+    accessorKey: "categoryId",
     header: "Category",
-    cell: ({ row }) => row.original.category ?? "",
+    cell: ({ row, table }) => {
+      const meta = table.options.meta as ItemsTableMeta | undefined;
+      const categoryId = row.original.categoryId;
+      if (!categoryId) return "";
+      return meta?.categoryMap?.get(categoryId) ?? "";
+    },
   },
   {
     accessorKey: "tagPrice",

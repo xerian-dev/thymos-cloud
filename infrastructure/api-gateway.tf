@@ -282,3 +282,65 @@ resource "aws_apigatewayv2_route" "post_import_accounts_cancel" {
   authorization_type = "CUSTOM"
   authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
 }
+
+# -----------------------------------------------------------------------------
+# Pricing Routes
+# -----------------------------------------------------------------------------
+
+resource "aws_apigatewayv2_route" "get_pricing_suggest" {
+  api_id    = aws_apigatewayv2_api.shop_api.id
+  route_key = "GET /api/pricing/suggest"
+  target    = "integrations/${aws_apigatewayv2_integration.monolambda.id}"
+
+  authorization_type = "CUSTOM"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "post_pricing_aggregate" {
+  api_id    = aws_apigatewayv2_api.shop_api.id
+  route_key = "POST /api/pricing/aggregate"
+  target    = "integrations/${aws_apigatewayv2_integration.monolambda.id}"
+
+  authorization_type = "CUSTOM"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "get_pricing_adjustments" {
+  api_id    = aws_apigatewayv2_api.shop_api.id
+  route_key = "GET /api/pricing/adjustments"
+  target    = "integrations/${aws_apigatewayv2_integration.monolambda.id}"
+
+  authorization_type = "CUSTOM"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "get_pricing_canonical_brands" {
+  api_id    = aws_apigatewayv2_api.shop_api.id
+  route_key = "GET /api/pricing/canonical/brands"
+  target    = "integrations/${aws_apigatewayv2_integration.monolambda.id}"
+
+  authorization_type = "CUSTOM"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "get_pricing_canonical_colors" {
+  api_id    = aws_apigatewayv2_api.shop_api.id
+  route_key = "GET /api/pricing/canonical/colors"
+  target    = "integrations/${aws_apigatewayv2_integration.monolambda.id}"
+
+  authorization_type = "CUSTOM"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+# -----------------------------------------------------------------------------
+# Category Routes
+# -----------------------------------------------------------------------------
+
+resource "aws_apigatewayv2_route" "get_categories" {
+  api_id    = aws_apigatewayv2_api.shop_api.id
+  route_key = "GET /api/categories"
+  target    = "integrations/${aws_apigatewayv2_integration.monolambda.id}"
+
+  authorization_type = "CUSTOM"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}

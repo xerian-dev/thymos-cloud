@@ -21,6 +21,14 @@ import { deleteSale } from "./routes/delete-sale.js";
 import { listEmployees } from "./routes/list-employees.js";
 import { getEmployee } from "./routes/get-employee.js";
 import { batchGetEmployees } from "./routes/batch-get-employees.js";
+import { triggerAggregation } from "./routes/trigger-aggregation.js";
+import {
+  listCanonicalBrands,
+  listCanonicalColors,
+} from "./routes/canonical-lists.js";
+import { suggestPrice } from "./routes/suggest-price.js";
+import { listAdjustments } from "./routes/list-adjustments.js";
+import { listCategories } from "./routes/list-categories.js";
 import { jsonResponse } from "./response.js";
 
 type RouteHandler = (
@@ -47,6 +55,12 @@ const routes: Record<string, RouteHandler> = {
   "GET /api/employees": listEmployees,
   "GET /api/employees/{uuid}": getEmployee,
   "POST /api/employees/batch": batchGetEmployees,
+  "GET /api/pricing/suggest": suggestPrice,
+  "POST /api/pricing/aggregate": triggerAggregation,
+  "GET /api/pricing/adjustments": listAdjustments,
+  "GET /api/pricing/canonical/brands": listCanonicalBrands,
+  "GET /api/pricing/canonical/colors": listCanonicalColors,
+  "GET /api/categories": listCategories,
 };
 
 export function routeRequest(

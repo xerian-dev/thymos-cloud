@@ -6,6 +6,7 @@ import { DeleteItemDialog } from "./delete-item-dialog";
 import { UserDetailPanel } from "@/components/shared/user-detail-panel";
 import { usePaginatedItems } from "./use-paginated-items";
 import { fetchNextSku } from "./items-api";
+import { fetchCategories } from "../item-capture/categories-api";
 import type { Item } from "./items-types";
 
 export function ItemsPage(): React.ReactNode {
@@ -33,6 +34,26 @@ export function ItemsPage(): React.ReactNode {
   const [selectedEmployeeId, setSelectedEmployeeId] = React.useState<
     string | null
   >(null);
+
+  const [categoryMap, setCategoryMap] = React.useState<Map<string, string>>(
+    new Map(),
+  );
+
+  React.useEffect(() => {
+    const controller = new AbortController();
+    fetchCategories(controller.signal).then((result) => {
+      if (result.success) {
+        const map = new Map<string, string>();
+        for (const cat of result.categories) {
+          map.set(cat.id, cat.name);
+        }
+        setCategoryMap(map);
+      }
+    });
+    return () => {
+      controller.abort();
+    };
+  }, []);
 
   const addButtonRef = React.useRef<HTMLButtonElement>(null);
 
@@ -104,6 +125,7 @@ export function ItemsPage(): React.ReactNode {
         onEdit={handleEdit}
         onDelete={handleDelete}
         onViewUser={handleViewUser}
+        categoryMap={categoryMap}
         hasPrevious={hasPrevious}
         hasMore={hasMore}
         pageSize={pageSize}
@@ -118,6 +140,7 @@ export function ItemsPage(): React.ReactNode {
       loading,
       error,
       retry,
+      categoryMap,
       hasPrevious,
       hasMore,
       pageSize,
