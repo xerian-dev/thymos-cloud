@@ -14,6 +14,7 @@ import { detectAdjustment } from "./adjustment-detector.js";
 import type { PricingRef, ComputedStats } from "./adjustment-detector.js";
 
 const TABLE_NAME = process.env.TABLE_NAME ?? "";
+const PRICING_TABLE_NAME = process.env.PRICING_TABLE_NAME ?? "";
 
 const client = new DynamoDBClient({});
 const docClient = DynamoDBDocumentClient.from(client, {
@@ -138,7 +139,7 @@ async function readExistingPricingRefs(): Promise<
   do {
     const result = await docClient.send(
       new QueryCommand({
-        TableName: TABLE_NAME,
+        TableName: PRICING_TABLE_NAME,
         IndexName: "GSI1",
         KeyConditionExpression: "GSI1PK = :pk",
         ExpressionAttributeValues: {
@@ -383,7 +384,7 @@ export async function handler(): Promise<void> {
       // Step 7: Write PRICING_REF record
       await docClient.send(
         new PutCommand({
-          TableName: TABLE_NAME,
+          TableName: PRICING_TABLE_NAME,
           Item: {
             PK: `PRICING_REF#${stats.brand}#${stats.categoryId}`,
             SK: "METADATA",
@@ -419,7 +420,7 @@ export async function handler(): Promise<void> {
 
         await docClient.send(
           new PutCommand({
-            TableName: TABLE_NAME,
+            TableName: PRICING_TABLE_NAME,
             Item: {
               PK: `ADJUSTMENT#${adjustmentId}`,
               SK: "METADATA",
@@ -457,7 +458,7 @@ export async function handler(): Promise<void> {
 
       await docClient.send(
         new PutCommand({
-          TableName: TABLE_NAME,
+          TableName: PRICING_TABLE_NAME,
           Item: {
             PK: `EMPLOYEE_PRICING#${employeeId}`,
             SK: "METADATA",

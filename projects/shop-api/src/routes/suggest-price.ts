@@ -3,7 +3,7 @@ import type {
   APIGatewayProxyResultV2,
 } from "aws-lambda";
 import { GetCommand } from "@aws-sdk/lib-dynamodb";
-import { docClient, TABLE_NAME } from "../dynamodb-client.js";
+import { docClient, PRICING_TABLE_NAME } from "../dynamodb-client.js";
 import { jsonResponse, errorResponse } from "../response.js";
 import { calculateSuggestedPrice } from "../pricing/price-calculator.js";
 import { buildExplanation } from "../pricing/explanation-builder.js";
@@ -175,7 +175,7 @@ async function getPricingRef(
 ): Promise<PricingRefRecord | null> {
   const result = await docClient.send(
     new GetCommand({
-      TableName: TABLE_NAME,
+      TableName: PRICING_TABLE_NAME,
       Key: {
         PK: `PRICING_REF#${brand}#${categoryId}`,
         SK: "METADATA",
@@ -195,7 +195,7 @@ async function getEmployeePricing(
 ): Promise<EmployeePricingRecord | null> {
   const result = await docClient.send(
     new GetCommand({
-      TableName: TABLE_NAME,
+      TableName: PRICING_TABLE_NAME,
       Key: {
         PK: `EMPLOYEE_PRICING#${employeeId}`,
         SK: "METADATA",

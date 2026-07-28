@@ -1,3 +1,7 @@
+# -----------------------------------------------------------------------------
+# Shop Table — Operational data (items, accounts, sales, employees, categories)
+# -----------------------------------------------------------------------------
+
 resource "aws_dynamodb_table" "shop" {
   name         = "${var.project_name}-${var.environment}-shop"
   billing_mode = "PAY_PER_REQUEST"
@@ -73,6 +77,49 @@ resource "aws_dynamodb_table" "shop" {
     name            = "GSI3"
     hash_key        = "GSI3PK"
     range_key       = "GSI3SK"
+    projection_type = "ALL"
+  }
+
+  tags = {
+    Environment = var.environment
+    Project     = var.project_name
+  }
+}
+
+# -----------------------------------------------------------------------------
+# Pricing Table — Pricing references, adjustments, employee pricing
+# -----------------------------------------------------------------------------
+
+resource "aws_dynamodb_table" "pricing" {
+  name         = "${var.project_name}-${var.environment}-pricing"
+  billing_mode = "PAY_PER_REQUEST"
+  hash_key     = "PK"
+  range_key    = "SK"
+
+  attribute {
+    name = "PK"
+    type = "S"
+  }
+
+  attribute {
+    name = "SK"
+    type = "S"
+  }
+
+  attribute {
+    name = "GSI1PK"
+    type = "S"
+  }
+
+  attribute {
+    name = "GSI1SK"
+    type = "S"
+  }
+
+  global_secondary_index {
+    name            = "GSI1"
+    hash_key        = "GSI1PK"
+    range_key       = "GSI1SK"
     projection_type = "ALL"
   }
 

@@ -11,3 +11,5 @@ export const docClient: DynamoDBDocumentClient = DynamoDBDocumentClient.from(
 );
 
 export const TABLE_NAME: string = process.env.TABLE_NAME ?? "";
+
+export const PRICING_TABLE_NAME: string = process.env.PRICING_TABLE_NAME ?? "";

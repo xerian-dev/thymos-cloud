@@ -72,6 +72,18 @@ resource "aws_iam_role_policy" "shop_api_dynamodb" {
           aws_dynamodb_table.shop.arn,
           "${aws_dynamodb_table.shop.arn}/index/*"
         ]
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "dynamodb:GetItem",
+          "dynamodb:Query",
+          "dynamodb:Scan"
+        ]
+        Resource = [
+          aws_dynamodb_table.pricing.arn,
+          "${aws_dynamodb_table.pricing.arn}/index/*"
+        ]
       }
     ]
   })
@@ -168,6 +180,7 @@ resource "aws_lambda_function" "shop_api" {
   environment {
     variables = {
       TABLE_NAME               = aws_dynamodb_table.shop.name
+      PRICING_TABLE_NAME       = aws_dynamodb_table.pricing.name
       COGNITO_USER_POOL_ID     = aws_cognito_user_pool.main.id
       BUCKET_NAME              = aws_s3_bucket.items.id
       AGGREGATOR_FUNCTION_NAME = aws_lambda_function.pricing_aggregator.function_name
@@ -243,14 +256,26 @@ resource "aws_iam_role_policy" "pricing_aggregator_dynamodb" {
         Effect = "Allow"
         Action = [
           "dynamodb:GetItem",
-          "dynamodb:PutItem",
-          "dynamodb:UpdateItem",
           "dynamodb:Query",
           "dynamodb:Scan"
         ]
         Resource = [
           aws_dynamodb_table.shop.arn,
           "${aws_dynamodb_table.shop.arn}/index/*"
+        ]
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "dynamodb:GetItem",
+          "dynamodb:PutItem",
+          "dynamodb:UpdateItem",
+          "dynamodb:Query",
+          "dynamodb:Scan"
+        ]
+        Resource = [
+          aws_dynamodb_table.pricing.arn,
+          "${aws_dynamodb_table.pricing.arn}/index/*"
         ]
       }
     ]
@@ -293,8 +318,9 @@ resource "aws_lambda_function" "pricing_aggregator" {
 
   environment {
     variables = {
-      TABLE_NAME = aws_dynamodb_table.shop.name
-      REGION     = data.aws_region.current.name
+      TABLE_NAME         = aws_dynamodb_table.shop.name
+      PRICING_TABLE_NAME = aws_dynamodb_table.pricing.name
+      REGION             = data.aws_region.current.name
     }
   }
 
