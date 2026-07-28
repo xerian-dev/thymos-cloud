@@ -1,0 +1,159 @@
+{
+  "pbtResults": {},
+  "executionHistory": {
+    "1.1 Create list-categories route handler": [
+      {
+        "executionId": "d1d2c34f-3208-4a2e-be93-bfd1252be51a",
+        "chatSessionId": "sess_5f3dbb3f-254a-4742-988c-6018d7e4d141",
+        "timestamp": 1785246402442
+      },
+      {
+        "executionId": "d1d2c34f-3208-4a2e-be93-bfd1252be51a",
+        "chatSessionId": "sess_5f3dbb3f-254a-4742-988c-6018d7e4d141",
+        "timestamp": 1785246410377
+      },
+      {
+        "executionId": "d1d2c34f-3208-4a2e-be93-bfd1252be51a",
+        "chatSessionId": "sess_5f3dbb3f-254a-4742-988c-6018d7e4d141",
+        "timestamp": 1785246556545
+      }
+    ],
+    "1.2 Register route in router": [
+      {
+        "executionId": "d1d2c34f-3208-4a2e-be93-bfd1252be51a",
+        "chatSessionId": "sess_5f3dbb3f-254a-4742-988c-6018d7e4d141",
+        "timestamp": 1785246402485
+      },
+      {
+        "executionId": "d1d2c34f-3208-4a2e-be93-bfd1252be51a",
+        "chatSessionId": "sess_5f3dbb3f-254a-4742-988c-6018d7e4d141",
+        "timestamp": 1785246567211
+      },
+      {
+        "executionId": "d1d2c34f-3208-4a2e-be93-bfd1252be51a",
+        "chatSessionId": "sess_5f3dbb3f-254a-4742-988c-6018d7e4d141",
+        "timestamp": 1785246637738
+      }
+    ],
+    "2.1 Add Terraform route for GET /api/categories": [
+      {
+        "executionId": "d1d2c34f-3208-4a2e-be93-bfd1252be51a",
+        "chatSessionId": "sess_5f3dbb3f-254a-4742-988c-6018d7e4d141",
+        "timestamp": 1785246402556
+      },
+      {
+        "executionId": "d1d2c34f-3208-4a2e-be93-bfd1252be51a",
+        "chatSessionId": "sess_5f3dbb3f-254a-4742-988c-6018d7e4d141",
+        "timestamp": 1785246411095
+      },
+      {
+        "executionId": "d1d2c34f-3208-4a2e-be93-bfd1252be51a",
+        "chatSessionId": "sess_5f3dbb3f-254a-4742-988c-6018d7e4d141",
+        "timestamp": 1785246557288
+      }
+    ],
+    "3.1 Create categories-api module": [
+      {
+        "executionId": "d1d2c34f-3208-4a2e-be93-bfd1252be51a",
+        "chatSessionId": "sess_5f3dbb3f-254a-4742-988c-6018d7e4d141",
+        "timestamp": 1785246402616
+      },
+      {
+        "executionId": "d1d2c34f-3208-4a2e-be93-bfd1252be51a",
+        "chatSessionId": "sess_5f3dbb3f-254a-4742-988c-6018d7e4d141",
+        "timestamp": 1785246411859
+      },
+      {
+        "executionId": "d1d2c34f-3208-4a2e-be93-bfd1252be51a",
+        "chatSessionId": "sess_5f3dbb3f-254a-4742-988c-6018d7e4d141",
+        "timestamp": 1785246558082
+      }
+    ],
+    "4.1 Create CategoryAutocomplete component": [
+      {
+        "executionId": "d1d2c34f-3208-4a2e-be93-bfd1252be51a",
+        "chatSessionId": "sess_5f3dbb3f-254a-4742-988c-6018d7e4d141",
+        "timestamp": 1785246402689
+      },
+      {
+        "executionId": "d1d2c34f-3208-4a2e-be93-bfd1252be51a",
+        "chatSessionId": "sess_5f3dbb3f-254a-4742-988c-6018d7e4d141",
+        "timestamp": 1785246567251
+      },
+      {
+        "executionId": "d1d2c34f-3208-4a2e-be93-bfd1252be51a",
+        "chatSessionId": "sess_5f3dbb3f-254a-4742-988c-6018d7e4d141",
+        "timestamp": 1785246638387
+      }
+    ],
+    "5.1 Replace plain Category input with CategoryAutocomplete": [
+      {
+        "executionId": "d1d2c34f-3208-4a2e-be93-bfd1252be51a",
+        "chatSessionId": "sess_5f3dbb3f-254a-4742-988c-6018d7e4d141",
+        "timestamp": 1785246402744
+      },
+      {
+        "executionId": "d1d2c34f-3208-4a2e-be93-bfd1252be51a",
+        "chatSessionId": "sess_5f3dbb3f-254a-4742-988c-6018d7e4d141",
+        "timestamp": 1785246663833
+      },
+      {
+        "executionId": "d1d2c34f-3208-4a2e-be93-bfd1252be51a",
+        "chatSessionId": "sess_5f3dbb3f-254a-4742-988c-6018d7e4d141",
+        "timestamp": 1785246712212
+      }
+    ],
+    "6. Final checkpoint": [
+      {
+        "executionId": "d1d2c34f-3208-4a2e-be93-bfd1252be51a",
+        "chatSessionId": "sess_5f3dbb3f-254a-4742-988c-6018d7e4d141",
+        "timestamp": 1785246402795
+      },
+      {
+        "executionId": "d1d2c34f-3208-4a2e-be93-bfd1252be51a",
+        "chatSessionId": "sess_5f3dbb3f-254a-4742-988c-6018d7e4d141",
+        "timestamp": 1785246716103
+      },
+      {
+        "executionId": "d1d2c34f-3208-4a2e-be93-bfd1252be51a",
+        "chatSessionId": "sess_5f3dbb3f-254a-4742-988c-6018d7e4d141",
+        "timestamp": 1785246897292
+      }
+    ],
+    "2. Add API Gateway route": [
+      {
+        "executionId": "d1d2c34f-3208-4a2e-be93-bfd1252be51a",
+        "chatSessionId": "sess_5f3dbb3f-254a-4742-988c-6018d7e4d141",
+        "timestamp": 1785246557353
+      }
+    ],
+    "3. Implement frontend categories API client": [
+      {
+        "executionId": "d1d2c34f-3208-4a2e-be93-bfd1252be51a",
+        "chatSessionId": "sess_5f3dbb3f-254a-4742-988c-6018d7e4d141",
+        "timestamp": 1785246558137
+      }
+    ],
+    "1. Implement backend categories endpoint": [
+      {
+        "executionId": "d1d2c34f-3208-4a2e-be93-bfd1252be51a",
+        "chatSessionId": "sess_5f3dbb3f-254a-4742-988c-6018d7e4d141",
+        "timestamp": 1785246637793
+      }
+    ],
+    "4. Implement CategoryAutocomplete component": [
+      {
+        "executionId": "d1d2c34f-3208-4a2e-be93-bfd1252be51a",
+        "chatSessionId": "sess_5f3dbb3f-254a-4742-988c-6018d7e4d141",
+        "timestamp": 1785246638464
+      }
+    ],
+    "5. Integrate into Item Capture Page": [
+      {
+        "executionId": "d1d2c34f-3208-4a2e-be93-bfd1252be51a",
+        "chatSessionId": "sess_5f3dbb3f-254a-4742-988c-6018d7e4d141",
+        "timestamp": 1785246712272
+      }
+    ]
+  }
+}

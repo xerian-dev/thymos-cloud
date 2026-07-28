@@ -9,6 +9,8 @@ import { ItemsPage } from "@/features/inventory/items-page";
 import { HelpPage } from "@/features/help/help-page";
 import { SalesPage } from "@/features/sales/sales-page";
 import { ImportsPage } from "@/features/imports/imports-page";
+import { ItemCapturePage } from "@/features/item-capture/item-capture-page";
+import { AdjustmentReportPage } from "@/features/pricing/adjustment-report-page";
 
 /**
  * Application route configuration.
@@ -57,6 +59,14 @@ export const router = createBrowserRouter([
           {
             path: "help",
             Component: HelpPage,
+          },
+          {
+            path: "item-capture",
+            Component: ItemCapturePage,
+          },
+          {
+            path: "pricing/adjustments",
+            Component: AdjustmentReportPage,
           },
         ],
       },

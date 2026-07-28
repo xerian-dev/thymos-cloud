@@ -87,6 +87,8 @@ export interface MappedItem {
   labelPrintedAt?: string;
   daysOnShelf?: number;
   deleted?: string;
+  sourceBrand?: string;
+  sourceColor?: string;
   sourceId: string;
   createdAt: string;
 }
@@ -120,7 +122,13 @@ function mapTerms(value: unknown): Terms {
   }
 }
 
-export function mapItem(raw: Record<string, unknown>): ItemMappingResult {
+export function mapItem(
+  raw: Record<string, unknown>,
+  canonicalMappings?: {
+    brands: Map<string, string>;
+    colors: Map<string, string>;
+  },
+): ItemMappingResult {
   // Extract title and sku with type guards
   const title = typeof raw.title === "string" ? raw.title : "";
   const sku = typeof raw.sku === "string" ? raw.sku : "";
@@ -214,11 +222,31 @@ export function mapItem(raw: Record<string, unknown>): ItemMappingResult {
   }
 
   if (typeof raw.brand === "string" && raw.brand) {
-    mapped.brand = raw.brand;
+    if (canonicalMappings) {
+      const canonical = canonicalMappings.brands.get(raw.brand.toLowerCase());
+      if (canonical) {
+        mapped.brand = canonical;
+        mapped.sourceBrand = raw.brand;
+      } else {
+        mapped.brand = raw.brand;
+      }
+    } else {
+      mapped.brand = raw.brand;
+    }
   }
 
   if (typeof raw.color === "string" && raw.color) {
-    mapped.color = raw.color;
+    if (canonicalMappings) {
+      const canonical = canonicalMappings.colors.get(raw.color.toLowerCase());
+      if (canonical) {
+        mapped.color = canonical;
+        mapped.sourceColor = raw.color;
+      } else {
+        mapped.color = raw.color;
+      }
+    } else {
+      mapped.color = raw.color;
+    }
   }
 
   if (typeof raw.size === "string" && raw.size) {

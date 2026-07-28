@@ -3,6 +3,8 @@ import {
   HelpCircle,
   Package,
   Receipt,
+  Sparkles,
+  TrendingUp,
   UserCheck,
   Users,
 } from "lucide-react";
@@ -20,5 +22,7 @@ export const navigationItems: NavItem[] = [
   { label: "Employees", path: "/employees", icon: UserCheck },
   { label: "Sales", path: "/sales", icon: Receipt },
   { label: "Imports", path: "/imports", icon: Download },
+  { label: "Item Capture", path: "/item-capture", icon: Sparkles },
+  { label: "Pricing", path: "/pricing/adjustments", icon: TrendingUp },
   { label: "Help", path: "/help", icon: HelpCircle },
 ];

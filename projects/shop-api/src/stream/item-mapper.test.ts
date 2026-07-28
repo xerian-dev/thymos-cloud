@@ -416,3 +416,118 @@ describe("mapItem", () => {
     expect(result.mapped.daysOnShelf).toBeUndefined();
   });
 });
+
+describe("mapItem with canonicalMappings", () => {
+  const validRaw: Record<string, unknown> = {
+    id: "abc-123",
+    created: "2024-01-15T10:30:00Z",
+    title: "Blue Dress",
+    tag_price: 2500,
+    quantity: 1,
+    split: 0.6,
+    inventory_type: "consignment",
+    terms: "return_to_consignor",
+    tax_exempt: false,
+    brand: "Nike",
+    color: "Blau",
+  };
+
+  const brands = new Map([
+    ["nike", "Nike"],
+    ["addidas", "Adidas"],
+    ["adidas", "Adidas"],
+  ]);
+
+  const colors = new Map([
+    ["blau", "Blue"],
+    ["blue", "Blue"],
+    ["rot", "Red"],
+    ["red", "Red"],
+  ]);
+
+  const canonicalMappings = { brands, colors };
+
+  it("maps brand to canonical when match found (case-insensitive)", () => {
+    const result = mapItem(validRaw, canonicalMappings);
+    expect(result.success).toBe(true);
+    if (!result.success) return;
+    expect(result.mapped.brand).toBe("Nike");
+    expect(result.mapped.sourceBrand).toBe("Nike");
+  });
+
+  it("maps color to canonical when match found (case-insensitive)", () => {
+    const result = mapItem(validRaw, canonicalMappings);
+    expect(result.success).toBe(true);
+    if (!result.success) return;
+    expect(result.mapped.color).toBe("Blue");
+    expect(result.mapped.sourceColor).toBe("Blau");
+  });
+
+  it("keeps brand as-is when no canonical match exists", () => {
+    const raw = { ...validRaw, brand: "UnknownBrand" };
+    const result = mapItem(raw, canonicalMappings);
+    expect(result.success).toBe(true);
+    if (!result.success) return;
+    expect(result.mapped.brand).toBe("UnknownBrand");
+    expect(result.mapped.sourceBrand).toBeUndefined();
+  });
+
+  it("keeps color as-is when no canonical match exists", () => {
+    const raw = { ...validRaw, color: "Magenta" };
+    const result = mapItem(raw, canonicalMappings);
+    expect(result.success).toBe(true);
+    if (!result.success) return;
+    expect(result.mapped.color).toBe("Magenta");
+    expect(result.mapped.sourceColor).toBeUndefined();
+  });
+
+  it("handles case-insensitive brand lookup", () => {
+    const raw = { ...validRaw, brand: "NIKE" };
+    const result = mapItem(raw, canonicalMappings);
+    expect(result.success).toBe(true);
+    if (!result.success) return;
+    expect(result.mapped.brand).toBe("Nike");
+    expect(result.mapped.sourceBrand).toBe("NIKE");
+  });
+
+  it("handles case-insensitive color lookup", () => {
+    const raw = { ...validRaw, color: "ROT" };
+    const result = mapItem(raw, canonicalMappings);
+    expect(result.success).toBe(true);
+    if (!result.success) return;
+    expect(result.mapped.color).toBe("Red");
+    expect(result.mapped.sourceColor).toBe("ROT");
+  });
+
+  it("does not set sourceBrand/sourceColor when canonicalMappings is not provided", () => {
+    const result = mapItem(validRaw);
+    expect(result.success).toBe(true);
+    if (!result.success) return;
+    expect(result.mapped.brand).toBe("Nike");
+    expect(result.mapped.color).toBe("Blau");
+    expect(result.mapped.sourceBrand).toBeUndefined();
+    expect(result.mapped.sourceColor).toBeUndefined();
+  });
+
+  it("handles item with no brand or color gracefully", () => {
+    const raw = { ...validRaw, brand: undefined, color: undefined };
+    const result = mapItem(raw, canonicalMappings);
+    expect(result.success).toBe(true);
+    if (!result.success) return;
+    expect(result.mapped.brand).toBeUndefined();
+    expect(result.mapped.color).toBeUndefined();
+    expect(result.mapped.sourceBrand).toBeUndefined();
+    expect(result.mapped.sourceColor).toBeUndefined();
+  });
+
+  it("does not fail import when mappings are empty maps", () => {
+    const emptyMappings = { brands: new Map(), colors: new Map() };
+    const result = mapItem(validRaw, emptyMappings);
+    expect(result.success).toBe(true);
+    if (!result.success) return;
+    expect(result.mapped.brand).toBe("Nike");
+    expect(result.mapped.color).toBe("Blau");
+    expect(result.mapped.sourceBrand).toBeUndefined();
+    expect(result.mapped.sourceColor).toBeUndefined();
+  });
+});
