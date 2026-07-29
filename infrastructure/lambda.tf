@@ -104,7 +104,8 @@ resource "aws_iam_role_policy" "shop_api_s3_items" {
         ]
         Resource = [
           "${aws_s3_bucket.items.arn}/items/*",
-          "${aws_s3_bucket.items.arn}/brand-mappings/*"
+          "${aws_s3_bucket.items.arn}/brand-mappings/*",
+          "${aws_s3_bucket.items.arn}/color-mappings/*"
         ]
       },
       {
@@ -113,7 +114,7 @@ resource "aws_iam_role_policy" "shop_api_s3_items" {
         Resource = aws_s3_bucket.items.arn
         Condition = {
           StringLike = {
-            "s3:prefix" = ["brand-mappings/*"]
+            "s3:prefix" = ["brand-mappings/*", "color-mappings/*"]
           }
         }
       }
@@ -154,7 +155,9 @@ resource "aws_iam_role_policy" "shop_api_invoke_aggregator" {
         Resource = [
           aws_lambda_function.pricing_aggregator.arn,
           aws_lambda_function.brand_cluster.arn,
-          aws_lambda_function.brand_apply.arn
+          aws_lambda_function.brand_apply.arn,
+          aws_lambda_function.color_cluster.arn,
+          aws_lambda_function.color_apply.arn
         ]
       }
     ]
@@ -204,6 +207,8 @@ resource "aws_lambda_function" "shop_api" {
       AGGREGATOR_FUNCTION_NAME    = aws_lambda_function.pricing_aggregator.function_name
       BRAND_CLUSTER_FUNCTION_NAME = aws_lambda_function.brand_cluster.function_name
       BRAND_APPLY_FUNCTION_NAME   = aws_lambda_function.brand_apply.function_name
+      COLOR_CLUSTER_FUNCTION_NAME = aws_lambda_function.color_cluster.function_name
+      COLOR_APPLY_FUNCTION_NAME   = aws_lambda_function.color_apply.function_name
     }
   }
 
@@ -340,12 +345,20 @@ resource "aws_iam_role_policy" "pricing_aggregator_s3" {
         Resource = "${aws_s3_bucket.items.arn}/brand-mappings/*"
       },
       {
+        Effect = "Allow"
+        Action = [
+          "s3:PutObject",
+          "s3:GetObject"
+        ]
+        Resource = "${aws_s3_bucket.items.arn}/color-mappings/*"
+      },
+      {
         Effect   = "Allow"
         Action   = "s3:ListBucket"
         Resource = aws_s3_bucket.items.arn
         Condition = {
           StringLike = {
-            "s3:prefix" = ["brand-mappings/*"]
+            "s3:prefix" = ["brand-mappings/*", "color-mappings/*"]
           }
         }
       }
@@ -421,6 +434,60 @@ resource "aws_lambda_function" "brand_apply" {
   timeout          = 900
   filename         = "../projects/shop-api/dist/brand-apply-handler.zip"
   source_code_hash = filebase64sha256("../projects/shop-api/dist/brand-apply-handler.zip")
+
+  environment {
+    variables = {
+      TABLE_NAME  = aws_dynamodb_table.shop.name
+      BUCKET_NAME = aws_s3_bucket.items.id
+    }
+  }
+
+  tags = {
+    Environment = var.environment
+    Project     = var.project_name
+  }
+}
+
+# -----------------------------------------------------------------------------
+# Color Cluster Lambda Function
+# -----------------------------------------------------------------------------
+
+resource "aws_lambda_function" "color_cluster" {
+  function_name    = "${var.project_name}-${var.environment}-color-cluster"
+  role             = aws_iam_role.pricing_aggregator_lambda.arn
+  handler          = "color-cluster-handler.handler"
+  runtime          = "nodejs20.x"
+  memory_size      = 1024
+  timeout          = 900
+  filename         = "../projects/shop-api/dist/color-cluster-handler.zip"
+  source_code_hash = filebase64sha256("../projects/shop-api/dist/color-cluster-handler.zip")
+
+  environment {
+    variables = {
+      TABLE_NAME  = aws_dynamodb_table.shop.name
+      BUCKET_NAME = aws_s3_bucket.items.id
+    }
+  }
+
+  tags = {
+    Environment = var.environment
+    Project     = var.project_name
+  }
+}
+
+# -----------------------------------------------------------------------------
+# Color Apply Lambda Function
+# -----------------------------------------------------------------------------
+
+resource "aws_lambda_function" "color_apply" {
+  function_name    = "${var.project_name}-${var.environment}-color-apply"
+  role             = aws_iam_role.pricing_aggregator_lambda.arn
+  handler          = "color-apply-handler.handler"
+  runtime          = "nodejs20.x"
+  memory_size      = 1024
+  timeout          = 900
+  filename         = "../projects/shop-api/dist/color-apply-handler.zip"
+  source_code_hash = filebase64sha256("../projects/shop-api/dist/color-apply-handler.zip")
 
   environment {
     variables = {
