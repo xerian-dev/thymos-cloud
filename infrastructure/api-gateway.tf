@@ -393,3 +393,52 @@ resource "aws_apigatewayv2_route" "get_brands_apply_status" {
   authorization_type = "CUSTOM"
   authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
 }
+
+# -----------------------------------------------------------------------------
+# Color Management Routes
+# -----------------------------------------------------------------------------
+
+resource "aws_apigatewayv2_route" "post_colors_scan_cluster" {
+  api_id    = aws_apigatewayv2_api.shop_api.id
+  route_key = "POST /api/colors/scan-cluster"
+  target    = "integrations/${aws_apigatewayv2_integration.monolambda.id}"
+
+  authorization_type = "CUSTOM"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "get_colors_mappings" {
+  api_id    = aws_apigatewayv2_api.shop_api.id
+  route_key = "GET /api/colors/mappings"
+  target    = "integrations/${aws_apigatewayv2_integration.monolambda.id}"
+
+  authorization_type = "CUSTOM"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "put_colors_mappings" {
+  api_id    = aws_apigatewayv2_api.shop_api.id
+  route_key = "PUT /api/colors/mappings"
+  target    = "integrations/${aws_apigatewayv2_integration.monolambda.id}"
+
+  authorization_type = "CUSTOM"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "post_colors_apply" {
+  api_id    = aws_apigatewayv2_api.shop_api.id
+  route_key = "POST /api/colors/apply"
+  target    = "integrations/${aws_apigatewayv2_integration.monolambda.id}"
+
+  authorization_type = "CUSTOM"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "get_colors_apply_status" {
+  api_id    = aws_apigatewayv2_api.shop_api.id
+  route_key = "GET /api/colors/apply-status"
+  target    = "integrations/${aws_apigatewayv2_integration.monolambda.id}"
+
+  authorization_type = "CUSTOM"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}

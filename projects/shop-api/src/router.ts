@@ -36,6 +36,13 @@ import {
   applyMappings,
   getApplyStatus,
 } from "./routes/brand-management.js";
+import {
+  scanClusterColors,
+  getColorMappings,
+  saveColorMappings,
+  applyColorMappings,
+  getColorApplyStatus,
+} from "./routes/color-management.js";
 import { jsonResponse } from "./response.js";
 
 type RouteHandler = (
@@ -73,6 +80,11 @@ const routes: Record<string, RouteHandler> = {
   "PUT /api/brands/mappings": saveMappings,
   "POST /api/brands/apply": applyMappings,
   "GET /api/brands/apply-status": getApplyStatus,
+  "POST /api/colors/scan-cluster": scanClusterColors,
+  "GET /api/colors/mappings": getColorMappings,
+  "PUT /api/colors/mappings": saveColorMappings,
+  "POST /api/colors/apply": applyColorMappings,
+  "GET /api/colors/apply-status": getColorApplyStatus,
 };
 
 export function routeRequest(

@@ -12,6 +12,7 @@ import { ImportsPage } from "@/features/imports/imports-page";
 import { ItemCapturePage } from "@/features/item-capture/item-capture-page";
 import { AdjustmentReportPage } from "@/features/pricing/adjustment-report-page";
 import { BrandManagementPage } from "@/features/brands/brand-management-page";
+import { ColorManagementPage } from "@/features/colors/color-management-page";
 
 /**
  * Application route configuration.
@@ -72,6 +73,10 @@ export const router = createBrowserRouter([
           {
             path: "brands",
             Component: BrandManagementPage,
+          },
+          {
+            path: "colors",
+            Component: ColorManagementPage,
           },
         ],
       },

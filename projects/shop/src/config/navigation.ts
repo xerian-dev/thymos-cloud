@@ -2,6 +2,7 @@ import {
   Download,
   HelpCircle,
   Package,
+  Palette,
   Receipt,
   Sparkles,
   Tag,
@@ -26,5 +27,6 @@ export const navigationItems: NavItem[] = [
   { label: "Item Capture", path: "/item-capture", icon: Sparkles },
   { label: "Pricing", path: "/pricing/adjustments", icon: TrendingUp },
   { label: "Brands", path: "/brands", icon: Tag },
+  { label: "Colors", path: "/colors", icon: Palette },
   { label: "Help", path: "/help", icon: HelpCircle },
 ];
