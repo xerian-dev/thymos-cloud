@@ -131,8 +131,12 @@ function lookupCanonical(raw: string): string | null {
   for (const sep of ["/", "-", " "]) {
     if (normalized.includes(sep)) {
       const parts = normalized.split(sep);
-      const mapped = parts.map((p) => BASE_COLOR_MAP[p.trim()] ?? null);
-      if (mapped.every((m) => m !== null)) {
+      const mapped = parts.map((p) => {
+        const trimmed = p.trim();
+        if (trimmed.length === 0) return null;
+        return BASE_COLOR_MAP[trimmed] ?? null;
+      });
+      if (mapped.every((m): m is string => typeof m === "string")) {
         return mapped.join(sep === " " ? "/" : sep);
       }
     }
@@ -146,6 +150,9 @@ function clusterColors(colors: ColorEntry[]): ColorMapping[] {
   const unmapped: ColorEntry[] = [];
 
   for (const entry of colors) {
+    if (!entry.raw || typeof entry.raw !== "string") {
+      continue;
+    }
     const canonical = lookupCanonical(entry.raw);
     if (canonical && canonical.toLowerCase() !== entry.raw.toLowerCase()) {
       mappings.push({ raw: entry.raw, canonical });
@@ -162,7 +169,8 @@ function clusterColors(colors: ColorEntry[]): ColorMapping[] {
   // For unmapped colors, use Title Case of the raw value as canonical
   // (human can review and fix these)
   for (const entry of unmapped) {
-    const titleCase = entry.raw.charAt(0).toUpperCase() + entry.raw.slice(1).toLowerCase();
+    const titleCase =
+      entry.raw.charAt(0).toUpperCase() + entry.raw.slice(1).toLowerCase();
     if (entry.raw !== titleCase) {
       mappings.push({ raw: entry.raw, canonical: titleCase });
     }
@@ -205,8 +213,8 @@ export async function handler(): Promise<void> {
     totalItems += items.length;
 
     for (const item of items) {
-      const color = item.color as string;
-      if (color.trim().length > 0) {
+      const color = item.color as string | undefined;
+      if (color && typeof color === "string" && color.trim().length > 0) {
         const current = colorCounts.get(color) ?? 0;
         colorCounts.set(color, current + 1);
       }
