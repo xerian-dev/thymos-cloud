@@ -1,5 +1,6 @@
 import {
   Download,
+  FileText,
   HelpCircle,
   Package,
   Palette,
@@ -28,5 +29,6 @@ export const navigationItems: NavItem[] = [
   { label: "Pricing", path: "/pricing/adjustments", icon: TrendingUp },
   { label: "Brands", path: "/brands", icon: Tag },
   { label: "Colors", path: "/colors", icon: Palette },
+  { label: "Descriptions", path: "/descriptions", icon: FileText },
   { label: "Help", path: "/help", icon: HelpCircle },
 ];

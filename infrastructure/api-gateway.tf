@@ -442,3 +442,52 @@ resource "aws_apigatewayv2_route" "get_colors_apply_status" {
   authorization_type = "CUSTOM"
   authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
 }
+
+# -----------------------------------------------------------------------------
+# Description Management Routes
+# -----------------------------------------------------------------------------
+
+resource "aws_apigatewayv2_route" "post_descriptions_scan_cluster" {
+  api_id    = aws_apigatewayv2_api.shop_api.id
+  route_key = "POST /api/descriptions/scan-cluster"
+  target    = "integrations/${aws_apigatewayv2_integration.monolambda.id}"
+
+  authorization_type = "CUSTOM"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "get_descriptions_mappings" {
+  api_id    = aws_apigatewayv2_api.shop_api.id
+  route_key = "GET /api/descriptions/mappings"
+  target    = "integrations/${aws_apigatewayv2_integration.monolambda.id}"
+
+  authorization_type = "CUSTOM"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "put_descriptions_mappings" {
+  api_id    = aws_apigatewayv2_api.shop_api.id
+  route_key = "PUT /api/descriptions/mappings"
+  target    = "integrations/${aws_apigatewayv2_integration.monolambda.id}"
+
+  authorization_type = "CUSTOM"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "post_descriptions_apply" {
+  api_id    = aws_apigatewayv2_api.shop_api.id
+  route_key = "POST /api/descriptions/apply"
+  target    = "integrations/${aws_apigatewayv2_integration.monolambda.id}"
+
+  authorization_type = "CUSTOM"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "get_descriptions_apply_status" {
+  api_id    = aws_apigatewayv2_api.shop_api.id
+  route_key = "GET /api/descriptions/apply-status"
+  target    = "integrations/${aws_apigatewayv2_integration.monolambda.id}"
+
+  authorization_type = "CUSTOM"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
