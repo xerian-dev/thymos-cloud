@@ -20,12 +20,12 @@ const DRAFT_KEY = "color-mappings/draft.json";
 
 // --- Types ---
 
-interface ColorEntry {
+export interface ColorEntry {
   raw: string;
   count: number;
 }
 
-interface ColorMapping {
+export interface ColorMapping {
   raw: string;
   canonical: string;
 }
@@ -108,7 +108,7 @@ const PREFIXES: Record<string, string> = {
 
 // --- Clustering logic ---
 
-function lookupCanonical(raw: string): string | null {
+export function lookupCanonical(raw: string): string | null {
   const normalized = raw.trim().toLowerCase();
 
   // Direct lookup
@@ -145,7 +145,7 @@ function lookupCanonical(raw: string): string | null {
   return null;
 }
 
-function clusterColors(colors: ColorEntry[]): ColorMapping[] {
+export function clusterColors(colors: ColorEntry[]): ColorMapping[] {
   const mappings: ColorMapping[] = [];
   const unmapped: ColorEntry[] = [];
 
