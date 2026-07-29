@@ -154,9 +154,12 @@ function clusterColors(colors: ColorEntry[]): ColorMapping[] {
       continue;
     }
     const canonical = lookupCanonical(entry.raw);
-    if (canonical && canonical.toLowerCase() !== entry.raw.toLowerCase()) {
+    if (
+      typeof canonical === "string" &&
+      canonical.toLowerCase() !== entry.raw.toLowerCase()
+    ) {
       mappings.push({ raw: entry.raw, canonical });
-    } else if (canonical) {
+    } else if (typeof canonical === "string") {
       // Case variant — map to properly cased canonical
       if (entry.raw !== canonical) {
         mappings.push({ raw: entry.raw, canonical });
