@@ -43,6 +43,13 @@ import {
   applyColorMappings,
   getColorApplyStatus,
 } from "./routes/color-management.js";
+import {
+  scanClusterDescriptions,
+  getDescriptionMappings,
+  saveDescriptionMappings,
+  applyDescriptionMappings,
+  getDescriptionApplyStatus,
+} from "./routes/description-management.js";
 import { jsonResponse } from "./response.js";
 
 type RouteHandler = (
@@ -85,6 +92,11 @@ const routes: Record<string, RouteHandler> = {
   "PUT /api/colors/mappings": saveColorMappings,
   "POST /api/colors/apply": applyColorMappings,
   "GET /api/colors/apply-status": getColorApplyStatus,
+  "POST /api/descriptions/scan-cluster": scanClusterDescriptions,
+  "GET /api/descriptions/mappings": getDescriptionMappings,
+  "PUT /api/descriptions/mappings": saveDescriptionMappings,
+  "POST /api/descriptions/apply": applyDescriptionMappings,
+  "GET /api/descriptions/apply-status": getDescriptionApplyStatus,
 };
 
 export function routeRequest(

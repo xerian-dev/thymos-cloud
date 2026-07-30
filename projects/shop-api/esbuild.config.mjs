@@ -19,6 +19,8 @@ await build({
     "src/brand-apply-handler.ts",
     "src/color-cluster-handler.ts",
     "src/color-apply-handler.ts",
+    "src/description-cluster-handler.ts",
+    "src/description-apply-handler.ts",
   ],
   bundle: true,
   platform: "node",
@@ -67,6 +69,18 @@ execSync(
 );
 execSync(
   `cd ${outdir} && zip -j color-apply-handler.zip color-apply-handler.js`,
+  {
+    stdio: "inherit",
+  },
+);
+execSync(
+  `cd ${outdir} && zip -j description-cluster-handler.zip description-cluster-handler.js`,
+  {
+    stdio: "inherit",
+  },
+);
+execSync(
+  `cd ${outdir} && zip -j description-apply-handler.zip description-apply-handler.js`,
   {
     stdio: "inherit",
   },
