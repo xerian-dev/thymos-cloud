@@ -8,6 +8,7 @@ export interface AggregatorItem {
   brand: string | null;
   categoryId: string;
   categoryName: string;
+  description: string | null;
   tagPrice: number;
   salePrice: number | null;
   status: string;
@@ -30,13 +31,31 @@ export interface GroupStatistics {
   medianDaysOnShelf: number;
   discountFrequency: number;
   sampleSize: number;
+  totalItems: number;
+  unsoldCount: number;
+  colorAdjustments: Record<string, number>;
+  sizeAdjustments: Record<string, number>;
+}
+
+export interface DescriptionGroupStatistics {
+  groupKey: string;
+  brand: string;
+  description: string;
+  medianTagPrice: number;
+  medianSalePrice: number;
+  sellThroughRate: number;
+  medianDaysOnShelf: number;
+  discountFrequency: number;
+  sampleSize: number;
+  totalItems: number;
+  unsoldCount: number;
   colorAdjustments: Record<string, number>;
   sizeAdjustments: Record<string, number>;
 }
 
 const NONE_BRAND = "_NONE_";
 
-function canonicalizeBrand(brand: string | null): string {
+export function canonicalizeBrand(brand: string | null): string {
   if (brand === null || brand.trim() === "") {
     return NONE_BRAND;
   }
@@ -76,7 +95,7 @@ export function groupItemsByBrandCategory(
     const categoryName = groupItems[0].categoryName;
 
     const medianTagPrice = computeMedian(
-      soldItems.map((item) => item.tagPrice),
+      groupItems.map((item) => item.tagPrice),
     );
     const medianSalePrice = computeMedian(
       soldItems.map((item) => item.salePrice as number),
@@ -104,6 +123,9 @@ export function groupItemsByBrandCategory(
     );
     const sizeAdjustments = computeSizeAdjustments(soldItems, medianSalePrice);
 
+    const totalItems = groupItems.length;
+    const unsoldCount = totalItems - soldItems.length;
+
     result.set(key, {
       groupKey: key,
       brand,
@@ -115,6 +137,8 @@ export function groupItemsByBrandCategory(
       medianDaysOnShelf,
       discountFrequency,
       sampleSize: soldItems.length,
+      totalItems,
+      unsoldCount,
       colorAdjustments,
       sizeAdjustments,
     });
@@ -185,4 +209,88 @@ function computeSizeAdjustments(
   }
 
   return adjustments;
+}
+
+export function groupItemsByBrandDescription(
+  items: AggregatorItem[],
+): Map<string, DescriptionGroupStatistics> {
+  const groups = new Map<string, AggregatorItem[]>();
+
+  for (const item of items) {
+    const normalized = item.description?.trim() ?? "";
+    if (normalized === "") {
+      continue;
+    }
+
+    const brand = canonicalizeBrand(item.brand);
+    const key = `${brand}#DESC#${normalized}`;
+
+    const group = groups.get(key);
+    if (group) {
+      group.push(item);
+    } else {
+      groups.set(key, [item]);
+    }
+  }
+
+  const result = new Map<string, DescriptionGroupStatistics>();
+
+  for (const [key, groupItems] of groups) {
+    const soldItems = groupItems.filter(
+      (item) => item.status === "sold" && item.salePrice !== null,
+    );
+
+    const brand = canonicalizeBrand(groupItems[0].brand);
+    const description = groupItems[0].description!.trim();
+
+    const medianTagPrice = computeMedian(
+      groupItems.map((item) => item.tagPrice),
+    );
+    const medianSalePrice = computeMedian(
+      soldItems.map((item) => item.salePrice as number),
+    );
+
+    const sellThroughRate = computeSellThrough(
+      soldItems.length,
+      groupItems.length,
+    );
+
+    const daysOnShelfValues = soldItems
+      .map((item) => item.daysOnShelf)
+      .filter((d): d is number => d !== null);
+    const medianDaysOnShelf = computeMedian(daysOnShelfValues);
+
+    const discountedCount = soldItems.filter((item) => item.discounted).length;
+    const discountFrequency = computeDiscountFrequency(
+      discountedCount,
+      soldItems.length,
+    );
+
+    const colorAdjustments = computeColorAdjustments(
+      soldItems,
+      medianSalePrice,
+    );
+    const sizeAdjustments = computeSizeAdjustments(soldItems, medianSalePrice);
+
+    const totalItems = groupItems.length;
+    const unsoldCount = totalItems - soldItems.length;
+
+    result.set(key, {
+      groupKey: key,
+      brand,
+      description,
+      medianTagPrice,
+      medianSalePrice,
+      sellThroughRate,
+      medianDaysOnShelf,
+      discountFrequency,
+      sampleSize: soldItems.length,
+      totalItems,
+      unsoldCount,
+      colorAdjustments,
+      sizeAdjustments,
+    });
+  }
+
+  return result;
 }

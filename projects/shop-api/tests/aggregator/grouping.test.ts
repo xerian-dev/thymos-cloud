@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   groupItemsByBrandCategory,
+  groupItemsByBrandDescription,
   AggregatorItem,
 } from "../../src/aggregator/grouping";
 
@@ -9,6 +10,7 @@ function makeItem(overrides: Partial<AggregatorItem> = {}): AggregatorItem {
     brand: "TestBrand",
     categoryId: "cat-1",
     categoryName: "Shoes",
+    description: null,
     tagPrice: 100,
     salePrice: 85,
     status: "sold",
@@ -68,7 +70,7 @@ describe("aggregator/grouping", () => {
       expect(result.has("_NONE_#cat-1")).toBe(true);
     });
 
-    it("computes medianTagPrice and medianSalePrice from sold items only", () => {
+    it("computes medianTagPrice from ALL items and medianSalePrice from sold items only", () => {
       const items: AggregatorItem[] = [
         makeItem({ tagPrice: 100, salePrice: 80, status: "sold" }),
         makeItem({ tagPrice: 120, salePrice: 100, status: "sold" }),
@@ -77,8 +79,8 @@ describe("aggregator/grouping", () => {
 
       const result = groupItemsByBrandCategory(items);
       const group = result.get("TestBrand#cat-1")!;
-      // Sold items tagPrices: [100, 120] → median = 110
-      expect(group.medianTagPrice).toBe(110);
+      // ALL items tagPrices: [100, 120, 200] → median = 120
+      expect(group.medianTagPrice).toBe(120);
       // Sold items salePrices: [80, 100] → median = 90
       expect(group.medianSalePrice).toBe(90);
     });
@@ -153,10 +155,13 @@ describe("aggregator/grouping", () => {
       const result = groupItemsByBrandCategory(items);
       const group = result.get("TestBrand#cat-1")!;
       expect(group.sampleSize).toBe(0);
-      expect(group.medianTagPrice).toBe(0);
+      // medianTagPrice is from ALL items: [100, 100] → 100
+      expect(group.medianTagPrice).toBe(100);
       expect(group.medianSalePrice).toBe(0);
       expect(group.sellThroughRate).toBe(0);
       expect(group.medianDaysOnShelf).toBe(0);
+      expect(group.totalItems).toBe(2);
+      expect(group.unsoldCount).toBe(2);
     });
 
     it("skips null/empty colors and sizes for adjustments", () => {
@@ -182,6 +187,132 @@ describe("aggregator/grouping", () => {
       const group = result.get("TestBrand#cat-1")!;
       expect(group.colorAdjustments).toEqual({});
       expect(group.sizeAdjustments).toEqual({});
+    });
+
+    it("includes totalItems and unsoldCount on category groups", () => {
+      const items: AggregatorItem[] = [
+        makeItem({ status: "sold", salePrice: 80 }),
+        makeItem({ status: "sold", salePrice: 90 }),
+        makeItem({ status: "active", salePrice: null }),
+      ];
+
+      const result = groupItemsByBrandCategory(items);
+      const group = result.get("TestBrand#cat-1")!;
+      expect(group.totalItems).toBe(3);
+      expect(group.unsoldCount).toBe(1);
+      expect(group.sampleSize).toBe(2);
+    });
+  });
+
+  describe("groupItemsByBrandDescription", () => {
+    it("groups items by brand × description", () => {
+      const items: AggregatorItem[] = [
+        makeItem({ brand: "Nike", description: "Hose" }),
+        makeItem({ brand: "Nike", description: "Hose" }),
+        makeItem({ brand: "Nike", description: "Sandalen" }),
+        makeItem({ brand: "Adidas", description: "Hose" }),
+      ];
+
+      const result = groupItemsByBrandDescription(items);
+      expect(result.size).toBe(3);
+      expect(result.has("Nike#DESC#Hose")).toBe(true);
+      expect(result.has("Nike#DESC#Sandalen")).toBe(true);
+      expect(result.has("Adidas#DESC#Hose")).toBe(true);
+    });
+
+    it("skips items with null description", () => {
+      const items: AggregatorItem[] = [
+        makeItem({ description: null }),
+        makeItem({ description: "Hose" }),
+      ];
+
+      const result = groupItemsByBrandDescription(items);
+      expect(result.size).toBe(1);
+      expect(result.has("TestBrand#DESC#Hose")).toBe(true);
+    });
+
+    it("skips items with empty or whitespace-only description", () => {
+      const items: AggregatorItem[] = [
+        makeItem({ description: "" }),
+        makeItem({ description: "   " }),
+        makeItem({ description: "Hose" }),
+      ];
+
+      const result = groupItemsByBrandDescription(items);
+      expect(result.size).toBe(1);
+      expect(result.has("TestBrand#DESC#Hose")).toBe(true);
+    });
+
+    it("normalizes descriptions by trimming whitespace", () => {
+      const items: AggregatorItem[] = [
+        makeItem({ description: "  Hose  " }),
+        makeItem({ description: "Hose" }),
+      ];
+
+      const result = groupItemsByBrandDescription(items);
+      expect(result.size).toBe(1);
+      expect(result.has("TestBrand#DESC#Hose")).toBe(true);
+      const group = result.get("TestBrand#DESC#Hose")!;
+      expect(group.description).toBe("Hose");
+      expect(group.sampleSize).toBe(2);
+    });
+
+    it('uses "_NONE_" for null/empty brand', () => {
+      const items: AggregatorItem[] = [
+        makeItem({ brand: null, description: "Hose" }),
+        makeItem({ brand: "", description: "Sandalen" }),
+      ];
+
+      const result = groupItemsByBrandDescription(items);
+      expect(result.has("_NONE_#DESC#Hose")).toBe(true);
+      expect(result.has("_NONE_#DESC#Sandalen")).toBe(true);
+    });
+
+    it("computes medianTagPrice from ALL items in description group", () => {
+      const items: AggregatorItem[] = [
+        makeItem({
+          description: "Hose",
+          tagPrice: 100,
+          salePrice: 80,
+          status: "sold",
+        }),
+        makeItem({
+          description: "Hose",
+          tagPrice: 200,
+          salePrice: null,
+          status: "active",
+        }),
+      ];
+
+      const result = groupItemsByBrandDescription(items);
+      const group = result.get("TestBrand#DESC#Hose")!;
+      // ALL items tagPrices: [100, 200] → median = 150
+      expect(group.medianTagPrice).toBe(150);
+      // Only sold items for medianSalePrice: [80] → 80
+      expect(group.medianSalePrice).toBe(80);
+    });
+
+    it("computes totalItems and unsoldCount correctly", () => {
+      const items: AggregatorItem[] = [
+        makeItem({ description: "Hose", status: "sold", salePrice: 80 }),
+        makeItem({ description: "Hose", status: "active", salePrice: null }),
+        makeItem({ description: "Hose", status: "active", salePrice: null }),
+      ];
+
+      const result = groupItemsByBrandDescription(items);
+      const group = result.get("TestBrand#DESC#Hose")!;
+      expect(group.totalItems).toBe(3);
+      expect(group.unsoldCount).toBe(2);
+      expect(group.sampleSize).toBe(1);
+    });
+
+    it("stores description on the group statistics", () => {
+      const items: AggregatorItem[] = [makeItem({ description: "Schlafsack" })];
+
+      const result = groupItemsByBrandDescription(items);
+      const group = result.get("TestBrand#DESC#Schlafsack")!;
+      expect(group.description).toBe("Schlafsack");
+      expect(group.brand).toBe("TestBrand");
     });
   });
 });

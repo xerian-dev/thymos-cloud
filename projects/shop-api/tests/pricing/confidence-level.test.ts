@@ -2,9 +2,9 @@ import { describe, it, expect } from "vitest";
 import { classifyConfidence } from "../../src/pricing/confidence-level";
 
 describe("classifyConfidence", () => {
-  describe("high confidence (>= 20)", () => {
-    it("returns high for exactly 20", () => {
-      expect(classifyConfidence(20)).toBe("high");
+  describe("high confidence (>= 10)", () => {
+    it("returns high for exactly 10", () => {
+      expect(classifyConfidence(10)).toBe("high");
     });
 
     it("returns high for large sample sizes", () => {
@@ -12,17 +12,17 @@ describe("classifyConfidence", () => {
     });
   });
 
-  describe("medium confidence (5-19)", () => {
+  describe("medium confidence (5-9)", () => {
     it("returns medium for exactly 5", () => {
       expect(classifyConfidence(5)).toBe("medium");
     });
 
-    it("returns medium for 19", () => {
-      expect(classifyConfidence(19)).toBe("medium");
+    it("returns medium for 9", () => {
+      expect(classifyConfidence(9)).toBe("medium");
     });
 
     it("returns medium for value in the middle of range", () => {
-      expect(classifyConfidence(12)).toBe("medium");
+      expect(classifyConfidence(7)).toBe("medium");
     });
   });
 

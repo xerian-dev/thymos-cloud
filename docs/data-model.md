@@ -190,17 +190,20 @@ Pricing data lives in a separate DynamoDB table from the operational shop data. 
 
 ### Entities
 
-| Entity           | PK                                          | SK         | GSI1PK              | GSI1SK                                      |
-|------------------|---------------------------------------------|------------|---------------------|---------------------------------------------|
-| Pricing Ref      | `PRICING_REF#<brand>#<categoryId>`          | `METADATA` | `PRICING_REFS`      | `PRICING_REF#<brand>#<categoryId>`          |
-| Adjustment Event | `ADJUSTMENT#<uuid>`                         | `METADATA` | `ADJUSTMENTS`       | `ADJUSTMENT#<timestamp>`                    |
-| Employee Pricing | `EMPLOYEE_PRICING#<employeeId>`             | `METADATA` | —                   | —                                           |
+| Entity                     | PK                                               | SK         | GSI1PK              | GSI1SK                                           |
+|----------------------------|--------------------------------------------------|------------|---------------------|--------------------------------------------------|
+| Pricing Ref (category)     | `PRICING_REF#<brand>#<categoryId>`               | `METADATA` | `PRICING_REFS`      | `PRICING_REF#<brand>#<categoryId>`               |
+| Pricing Ref (description)  | `PRICING_REF#<brand>#DESC#<description>`         | `METADATA` | `PRICING_REFS`      | `PRICING_REF#<brand>#DESC#<description>`         |
+| Adjustment Event           | `ADJUSTMENT#<uuid>`                              | `METADATA` | `ADJUSTMENTS`       | `ADJUSTMENT#<timestamp>`                         |
+| Employee Pricing           | `EMPLOYEE_PRICING#<employeeId>`                  | `METADATA` | —                   | —                                                |
 
 ### Key Design Principles
 
 - **Separate table for pricing**: Pricing data has a different lifecycle (batch-computed by the aggregator) and access pattern (read at item-creation time, queried for reports) than operational data. Isolation prevents aggregator write bursts from contending with shop traffic.
 - **Single GSI**: GSI1 supports listing all pricing refs (`GSI1PK: PRICING_REFS`) and querying adjustments by date (`GSI1PK: ADJUSTMENTS`, `GSI1SK: ADJUSTMENT#<timestamp>`).
-- **Brand `_NONE_`**: Items without a brand are grouped under the synthetic brand `_NONE_`, enabling category-only fallback lookups.
+- **Brand `_NONE_`**: Items without a brand are grouped under the synthetic brand `_NONE_`, enabling category-only or description-only fallback lookups.
+- **`DESC#` infix**: Description-based keys use the `DESC#` infix (e.g., `PRICING_REF#<brand>#DESC#<description>`) to prevent collisions with category-based keys. Category IDs are UUIDs and never contain "DESC#", so the two key spaces are guaranteed disjoint.
+- **Description-based refs**: Use the item's normalized description keyword as the key suffix. These refs capture pricing statistics for items sharing the same description, independent of category assignment.
 - **Employee pricing by direct key**: Looked up by `PK: EMPLOYEE_PRICING#<employeeId>` — no GSI needed since access is always by known employee ID.
 
 ### Pricing Ref Attributes
@@ -208,23 +211,43 @@ Pricing data lives in a separate DynamoDB table from the operational shop data. 
 | Attribute              | Type              | Description                                           |
 |------------------------|-------------------|-------------------------------------------------------|
 | `brand`                | string            | Canonical brand name (or `_NONE_`)                    |
-| `categoryId`           | string (UUID)     | Category UUID                                         |
-| `categoryName`         | string            | Category display name                                 |
+| `categoryId`           | string (UUID) \| undefined | Category UUID (present on category-based refs only) |
+| `categoryName`         | string \| undefined | Category display name (present on category-based refs only) |
+| `description`          | string \| undefined | Item description keyword (present on description-based refs only) |
 | `referencePrice`       | number (CHF)      | Computed reference price (median sale price)          |
 | `previousReferencePrice` | number \| null  | Previous aggregation's reference price                |
 | `originalBaseline`     | number (CHF)      | First-ever reference price for drift cap             |
-| `medianTagPrice`       | number (CHF)      | Median tag price of sold items in group              |
+| `medianTagPrice`       | number (CHF)      | Median tag price of ALL items in group (sold and unsold) |
 | `medianSalePrice`      | number (CHF)      | Median actual sale price                             |
 | `sellThroughRate`      | number (0–1)      | Ratio of sold to total items                         |
 | `medianDaysOnShelf`    | number            | Median days before sale                              |
 | `discountFrequency`    | number (0–1)      | Proportion of items sold at a discount               |
 | `sampleSize`           | number            | Count of sold items in group                         |
+| `totalItems`           | number            | Count of all items in group (sold + unsold)          |
+| `unsoldCount`          | number            | Count of unsold items (totalItems - sampleSize)      |
 | `velocityMultiplier`   | number (0.90–1.10)| Demand-based adjustment                              |
 | `lowConfidence`        | boolean           | True if sampleSize < 5                               |
 | `colorAdjustments`     | Record<string, number> | Per-color price ratio                           |
 | `sizeAdjustments`      | Record<string, number> | Per-size price ratio                            |
 | `computedAt`           | string (ISO 8601) | When this ref was last computed                      |
 | `updatedAt`            | string (ISO 8601) | Last write timestamp                                 |
+
+### Suggest-Price Fallback Chain
+
+The `suggest-price` route resolves a PRICING_REF using a 6-level fallback chain that combines both key patterns:
+
+| Level | Tier          | Key Pattern                                  | Source   |
+|-------|---------------|----------------------------------------------|----------|
+| 1     | Tier 1 (sold) | `PRICING_REF#<brand>#DESC#<description>`     | sold     |
+| 2     | Tier 1 (sold) | `PRICING_REF#_NONE_#DESC#<description>`      | sold     |
+| 3     | Tier 1 (sold) | `PRICING_REF#<brand>#<categoryId>`           | sold     |
+| 4     | Tier 1 (sold) | `PRICING_REF#_NONE_#<categoryId>`            | sold     |
+| 5     | Tier 2 (unsold) | `PRICING_REF#<brand>#DESC#<description>`   | unsold   |
+| 6     | Tier 2 (unsold) | `PRICING_REF#_NONE_#DESC#<description>`    | unsold   |
+
+- **Tier 1** uses `medianSalePrice` from sold items as the reference price
+- **Tier 2** uses `medianTagPrice` × 0.90 (10% discount) from unsold items when no sold data exists
+- Each level requires the ref to exist AND have relevant items (`sampleSize > 0` for Tier 1, `unsoldCount > 0` for Tier 2)
 
 ## Enumerations
 

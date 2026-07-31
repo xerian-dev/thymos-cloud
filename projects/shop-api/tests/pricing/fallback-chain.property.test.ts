@@ -1,111 +1,65 @@
 import { describe, it, expect } from "vitest";
 import fc from "fast-check";
 import { resolvePricingRef } from "../../src/pricing/fallback-lookup.js";
+import type { PricingRefData } from "../../src/pricing/fallback-lookup.js";
 
 /**
- * Feature: auto-tag-price, Property 7: Fallback chain
+ * Feature: description-pricing, Property: 6-level fallback chain
  *
- * Validates: Requirements 5.4, 5.5, 5.6
+ * Validates: Requirements FR-2
  *
- * For any item with brand B and category C:
- * - If `PRICING_REF#B#C` exists → use it (brand×category match)
- * - If not, if `PRICING_REF#_NONE_#C` exists → use it (category-only fallback)
- * - If neither exists → return null suggestion
- * - The fallback never skips a level (never returns category-only when brand×category exists)
+ * For any item with brand B, description D, and category C:
+ * - Tier 1 (sold): brand×desc → desc → brand×cat → cat
+ * - Tier 2 (unsold): brand×desc → desc
+ * - The fallback never skips a level
  */
 
 /** Arbitrary for non-empty brand strings (alphanumeric, no hash characters) */
-const arbBrand = fc.string({ minLength: 1, maxLength: 30 }).filter(
-  (s) => s.trim().length > 0 && !s.includes("#"),
-);
+const arbBrand = fc
+  .string({ minLength: 1, maxLength: 30 })
+  .filter((s) => s.trim().length > 0 && !s.includes("#"));
 
 /** Arbitrary for category IDs (UUID-like strings) */
 const arbCategoryId = fc.uuid();
 
-describe("Fallback chain properties", () => {
-  it("returns brand_category when brand×category key exists in the map", () => {
-    fc.assert(
-      fc.property(arbBrand, arbCategoryId, (brand: string, categoryId: string) => {
-        const refData = { referencePrice: 50 };
-        const refs = new Map<string, unknown>();
-        refs.set(`PRICING_REF#${brand}#${categoryId}`, refData);
-        // Also add a category-only key to ensure it's not chosen
-        refs.set(`PRICING_REF#_NONE_#${categoryId}`, { referencePrice: 30 });
+/** Arbitrary for description strings */
+const arbDescription = fc
+  .string({ minLength: 1, maxLength: 30 })
+  .filter((s) => s.trim().length > 0 && !s.includes("#"));
 
-        const result = resolvePricingRef({ brand, categoryId }, refs);
+function makeSoldRef(price: number): PricingRefData {
+  return { sampleSize: 10, unsoldCount: 0 };
+}
 
-        expect(result.found).toBe(true);
-        if (result.found) {
-          expect(result.source).toBe("brand_category");
-          expect(result.ref).toBe(refData);
-        }
-      }),
-      { numRuns: 100 },
-    );
-  });
+function makeUnsoldRef(): PricingRefData {
+  return { sampleSize: 0, unsoldCount: 5 };
+}
 
-  it("returns category_only when brand×category doesn't exist but category-only does", () => {
-    fc.assert(
-      fc.property(arbBrand, arbCategoryId, (brand: string, categoryId: string) => {
-        const refData = { referencePrice: 30 };
-        const refs = new Map<string, unknown>();
-        // No brand×category key, only category-only
-        refs.set(`PRICING_REF#_NONE_#${categoryId}`, refData);
-
-        const result = resolvePricingRef({ brand, categoryId }, refs);
-
-        expect(result.found).toBe(true);
-        if (result.found) {
-          expect(result.source).toBe("category_only");
-          expect(result.ref).toBe(refData);
-        }
-      }),
-      { numRuns: 100 },
-    );
-  });
-
-  it("returns found=false when neither brand×category nor category-only exists", () => {
-    fc.assert(
-      fc.property(arbBrand, arbCategoryId, (brand: string, categoryId: string) => {
-        const refs = new Map<string, unknown>();
-        // Empty map — nothing exists
-
-        const result = resolvePricingRef({ brand, categoryId }, refs);
-
-        expect(result.found).toBe(false);
-        expect(result.source).toBeNull();
-        expect(result.ref).toBeNull();
-      }),
-      { numRuns: 100 },
-    );
-  });
-
-  it("never returns category_only when brand×category is available (consistency)", () => {
+describe("6-level fallback chain properties", () => {
+  it("level 1: returns brand×description when it exists with sampleSize > 0", () => {
     fc.assert(
       fc.property(
         arbBrand,
+        arbDescription,
         arbCategoryId,
-        fc.boolean(),
-        (brand: string, categoryId: string, includeCategoryOnly: boolean) => {
-          const brandCategoryRef = { referencePrice: 50 };
-          const categoryOnlyRef = { referencePrice: 30 };
-          const refs = new Map<string, unknown>();
+        (brand, description, categoryId) => {
+          const refData = makeSoldRef(50);
+          const refs = new Map<string, PricingRefData>();
+          refs.set(`PRICING_REF#${brand}#DESC#${description}`, refData);
+          // Also add lower-priority keys to confirm they're not chosen
+          refs.set(`PRICING_REF#_NONE_#DESC#${description}`, makeSoldRef(40));
+          refs.set(`PRICING_REF#${brand}#${categoryId}`, makeSoldRef(30));
 
-          // Always include brand×category
-          refs.set(`PRICING_REF#${brand}#${categoryId}`, brandCategoryRef);
+          const result = resolvePricingRef(
+            { brand, description, categoryId },
+            refs,
+          );
 
-          // Optionally include category-only as well
-          if (includeCategoryOnly) {
-            refs.set(`PRICING_REF#_NONE_#${categoryId}`, categoryOnlyRef);
-          }
-
-          const result = resolvePricingRef({ brand, categoryId }, refs);
-
-          // Must always pick brand×category, never category-only
           expect(result.found).toBe(true);
           if (result.found) {
-            expect(result.source).toBe("brand_category");
-            expect(result.ref).toBe(brandCategoryRef);
+            expect(result.source).toBe("sold");
+            expect(result.level).toBe(1);
+            expect(result.ref).toBe(refData);
           }
         },
       ),
@@ -113,18 +67,231 @@ describe("Fallback chain properties", () => {
     );
   });
 
-  it("falls back to category_only when brand is null", () => {
+  it("level 2: returns description-only when brand×desc not found", () => {
     fc.assert(
-      fc.property(arbCategoryId, (categoryId: string) => {
-        const refData = { referencePrice: 25 };
-        const refs = new Map<string, unknown>();
-        refs.set(`PRICING_REF#_NONE_#${categoryId}`, refData);
+      fc.property(
+        arbBrand,
+        arbDescription,
+        arbCategoryId,
+        (brand, description, categoryId) => {
+          const refData = makeSoldRef(40);
+          const refs = new Map<string, PricingRefData>();
+          // No brand×desc key
+          refs.set(`PRICING_REF#_NONE_#DESC#${description}`, refData);
+          refs.set(`PRICING_REF#${brand}#${categoryId}`, makeSoldRef(30));
 
-        const result = resolvePricingRef({ brand: null, categoryId }, refs);
+          const result = resolvePricingRef(
+            { brand, description, categoryId },
+            refs,
+          );
+
+          expect(result.found).toBe(true);
+          if (result.found) {
+            expect(result.source).toBe("sold");
+            expect(result.level).toBe(2);
+            expect(result.ref).toBe(refData);
+          }
+        },
+      ),
+      { numRuns: 100 },
+    );
+  });
+
+  it("level 3: returns brand×category when desc levels not found", () => {
+    fc.assert(
+      fc.property(
+        arbBrand,
+        arbDescription,
+        arbCategoryId,
+        (brand, description, categoryId) => {
+          const refData = makeSoldRef(30);
+          const refs = new Map<string, PricingRefData>();
+          // No desc-based keys
+          refs.set(`PRICING_REF#${brand}#${categoryId}`, refData);
+          refs.set(`PRICING_REF#_NONE_#${categoryId}`, makeSoldRef(20));
+
+          const result = resolvePricingRef(
+            { brand, description, categoryId },
+            refs,
+          );
+
+          expect(result.found).toBe(true);
+          if (result.found) {
+            expect(result.source).toBe("sold");
+            expect(result.level).toBe(3);
+            expect(result.ref).toBe(refData);
+          }
+        },
+      ),
+      { numRuns: 100 },
+    );
+  });
+
+  it("level 4: returns category-only when brand×cat not found", () => {
+    fc.assert(
+      fc.property(
+        arbBrand,
+        arbDescription,
+        arbCategoryId,
+        (brand, description, categoryId) => {
+          const refData = makeSoldRef(20);
+          const refs = new Map<string, PricingRefData>();
+          // No brand×cat key
+          refs.set(`PRICING_REF#_NONE_#${categoryId}`, refData);
+
+          const result = resolvePricingRef(
+            { brand, description, categoryId },
+            refs,
+          );
+
+          expect(result.found).toBe(true);
+          if (result.found) {
+            expect(result.source).toBe("sold");
+            expect(result.level).toBe(4);
+            expect(result.ref).toBe(refData);
+          }
+        },
+      ),
+      { numRuns: 100 },
+    );
+  });
+
+  it("level 5: returns unsold brand×description when all Tier 1 miss", () => {
+    fc.assert(
+      fc.property(
+        arbBrand,
+        arbDescription,
+        arbCategoryId,
+        (brand, description, categoryId) => {
+          const refData = makeUnsoldRef();
+          const refs = new Map<string, PricingRefData>();
+          // Only unsold brand×desc exists
+          refs.set(`PRICING_REF#${brand}#DESC#${description}`, refData);
+
+          const result = resolvePricingRef(
+            { brand, description, categoryId },
+            refs,
+          );
+
+          expect(result.found).toBe(true);
+          if (result.found) {
+            expect(result.source).toBe("unsold");
+            expect(result.level).toBe(5);
+            expect(result.ref).toBe(refData);
+          }
+        },
+      ),
+      { numRuns: 100 },
+    );
+  });
+
+  it("level 6: returns unsold description-only when brand×desc unsold not found", () => {
+    fc.assert(
+      fc.property(
+        arbBrand,
+        arbDescription,
+        arbCategoryId,
+        (brand, description, categoryId) => {
+          const refData = makeUnsoldRef();
+          const refs = new Map<string, PricingRefData>();
+          // Only unsold desc-only exists
+          refs.set(`PRICING_REF#_NONE_#DESC#${description}`, refData);
+
+          const result = resolvePricingRef(
+            { brand, description, categoryId },
+            refs,
+          );
+
+          expect(result.found).toBe(true);
+          if (result.found) {
+            expect(result.source).toBe("unsold");
+            expect(result.level).toBe(6);
+            expect(result.ref).toBe(refData);
+          }
+        },
+      ),
+      { numRuns: 100 },
+    );
+  });
+
+  it("returns found=false when no refs exist at any level", () => {
+    fc.assert(
+      fc.property(
+        arbBrand,
+        arbDescription,
+        arbCategoryId,
+        (brand, description, categoryId) => {
+          const refs = new Map<string, PricingRefData>();
+
+          const result = resolvePricingRef(
+            { brand, description, categoryId },
+            refs,
+          );
+
+          expect(result.found).toBe(false);
+          expect(result.source).toBeNull();
+          expect(result.level).toBe(0);
+          expect(result.ref).toBeNull();
+        },
+      ),
+      { numRuns: 100 },
+    );
+  });
+
+  it("never skips a higher-priority level (consistency)", () => {
+    fc.assert(
+      fc.property(
+        arbBrand,
+        arbDescription,
+        arbCategoryId,
+        fc.boolean(),
+        (brand, description, categoryId, includeLowerLevels) => {
+          const level1Ref = makeSoldRef(50);
+          const refs = new Map<string, PricingRefData>();
+
+          // Always include level 1
+          refs.set(`PRICING_REF#${brand}#DESC#${description}`, level1Ref);
+
+          // Optionally include lower levels
+          if (includeLowerLevels) {
+            refs.set(`PRICING_REF#_NONE_#DESC#${description}`, makeSoldRef(40));
+            refs.set(`PRICING_REF#${brand}#${categoryId}`, makeSoldRef(30));
+            refs.set(`PRICING_REF#_NONE_#${categoryId}`, makeSoldRef(20));
+          }
+
+          const result = resolvePricingRef(
+            { brand, description, categoryId },
+            refs,
+          );
+
+          // Must always pick level 1
+          expect(result.found).toBe(true);
+          if (result.found) {
+            expect(result.level).toBe(1);
+            expect(result.ref).toBe(level1Ref);
+          }
+        },
+      ),
+      { numRuns: 100 },
+    );
+  });
+
+  it("skips desc levels when description is null", () => {
+    fc.assert(
+      fc.property(arbBrand, arbCategoryId, (brand, categoryId) => {
+        const refData = makeSoldRef(30);
+        const refs = new Map<string, PricingRefData>();
+        refs.set(`PRICING_REF#${brand}#${categoryId}`, refData);
+
+        const result = resolvePricingRef(
+          { brand, description: null, categoryId },
+          refs,
+        );
 
         expect(result.found).toBe(true);
         if (result.found) {
-          expect(result.source).toBe("category_only");
+          expect(result.source).toBe("sold");
+          expect(result.level).toBe(3);
           expect(result.ref).toBe(refData);
         }
       }),
@@ -132,16 +299,23 @@ describe("Fallback chain properties", () => {
     );
   });
 
-  it("returns found=false when brand is null and no category-only exists", () => {
+  it("skips category levels when categoryId is null", () => {
     fc.assert(
-      fc.property(arbCategoryId, (categoryId: string) => {
-        const refs = new Map<string, unknown>();
+      fc.property(arbBrand, arbDescription, (brand, description) => {
+        const refData = makeSoldRef(50);
+        const refs = new Map<string, PricingRefData>();
+        refs.set(`PRICING_REF#${brand}#DESC#${description}`, refData);
 
-        const result = resolvePricingRef({ brand: null, categoryId }, refs);
+        const result = resolvePricingRef(
+          { brand, description, categoryId: null },
+          refs,
+        );
 
-        expect(result.found).toBe(false);
-        expect(result.source).toBeNull();
-        expect(result.ref).toBeNull();
+        expect(result.found).toBe(true);
+        if (result.found) {
+          expect(result.source).toBe("sold");
+          expect(result.level).toBe(1);
+        }
       }),
       { numRuns: 100 },
     );
