@@ -6,7 +6,10 @@ import {
   PutCommand,
 } from "@aws-sdk/lib-dynamodb";
 import { computeVelocityMultiplier } from "../pricing/velocity-multiplier.js";
-import { groupItemsByBrandCategory } from "./grouping.js";
+import {
+  groupItemsByBrandCategory,
+  groupItemsByBrandDescription,
+} from "./grouping.js";
 import type { AggregatorItem } from "./grouping.js";
 import { computeEmployeeAccuracy } from "./employee-accuracy.js";
 import type { EmployeeSaleRecord } from "./employee-accuracy.js";
@@ -27,6 +30,7 @@ interface ItemRecord {
   brand?: string;
   categoryId?: string;
   categoryName?: string;
+  description?: string;
   tagPrice?: number;
   status?: string;
   color?: string;
@@ -52,6 +56,7 @@ interface ExistingPricingRef {
   brand: string;
   categoryId: string;
   categoryName: string;
+  description?: string;
   referencePrice: number;
   previousReferencePrice?: number;
   originalBaseline?: number;
@@ -61,6 +66,8 @@ interface ExistingPricingRef {
   medianDaysOnShelf: number;
   discountFrequency: number;
   sampleSize: number;
+  totalItems?: number;
+  unsoldCount?: number;
   velocityMultiplier: number;
   lowConfidence: boolean;
   colorAdjustments?: Record<string, number>;
@@ -191,6 +198,7 @@ function buildAggregatorItems(
       brand: item.brand ?? null,
       categoryId: item.categoryId,
       categoryName: item.categoryName ?? item.categoryId,
+      description: item.description ?? null,
       tagPrice: item.tagPrice ?? 0,
       salePrice,
       status: item.status ?? "active",
@@ -295,7 +303,15 @@ export async function handler(): Promise<void> {
   // Step 3: Build AggregatorItem array and group by brand×category
   const aggregatorItems = buildAggregatorItems(windowItems, lineItemsByItemId);
   const groupStats = groupItemsByBrandCategory(aggregatorItems);
-  console.log(`[Aggregator] Computed statistics for ${groupStats.size} groups`);
+  console.log(
+    `[Aggregator] Computed statistics for ${groupStats.size} category groups`,
+  );
+
+  // Step 3b: Group by brand×description
+  const descGroupStats = groupItemsByBrandDescription(aggregatorItems);
+  console.log(
+    `[Aggregator] Computed statistics for ${descGroupStats.size} description groups`,
+  );
 
   // Step 4: Compute employee accuracy
   const employeeSaleRecords = buildEmployeeSaleRecords(
@@ -402,6 +418,8 @@ export async function handler(): Promise<void> {
             medianDaysOnShelf: stats.medianDaysOnShelf,
             discountFrequency: stats.discountFrequency,
             sampleSize: stats.sampleSize,
+            totalItems: stats.totalItems,
+            unsoldCount: stats.unsoldCount,
             velocityMultiplier,
             lowConfidence: stats.sampleSize < 5,
             colorAdjustments: stats.colorAdjustments,
@@ -450,6 +468,60 @@ export async function handler(): Promise<void> {
     }
   }
 
+  // Step 6b: Process description-based groups
+  let descRecordsWritten = 0;
+  for (const [groupKey, stats] of descGroupStats) {
+    try {
+      const computedAt = now.toISOString();
+
+      const velocityMultiplier = computeVelocityMultiplier(
+        stats.sellThroughRate,
+        stats.medianTagPrice > 0
+          ? stats.medianSalePrice / stats.medianTagPrice
+          : 1,
+        stats.medianDaysOnShelf,
+        stats.sampleSize,
+      );
+
+      await docClient.send(
+        new PutCommand({
+          TableName: PRICING_TABLE_NAME,
+          Item: {
+            PK: `PRICING_REF#${groupKey}`,
+            SK: "METADATA",
+            GSI1PK: "PRICING_REFS",
+            GSI1SK: `PRICING_REF#${groupKey}`,
+            brand: stats.brand,
+            description: stats.description,
+            referencePrice: stats.medianSalePrice,
+            medianTagPrice: stats.medianTagPrice,
+            medianSalePrice: stats.medianSalePrice,
+            sellThroughRate: stats.sellThroughRate,
+            medianDaysOnShelf: stats.medianDaysOnShelf,
+            discountFrequency: stats.discountFrequency,
+            sampleSize: stats.sampleSize,
+            totalItems: stats.totalItems,
+            unsoldCount: stats.unsoldCount,
+            velocityMultiplier,
+            lowConfidence: stats.sampleSize < 5,
+            colorAdjustments: stats.colorAdjustments,
+            sizeAdjustments: stats.sizeAdjustments,
+            computedAt,
+            updatedAt: computedAt,
+          },
+        }),
+      );
+      descRecordsWritten++;
+    } catch (error) {
+      console.error(
+        `[Aggregator] Error processing description group ${groupKey}:`,
+        error,
+      );
+    }
+  }
+
+  recordsWritten += descRecordsWritten;
+
   // Step 8: Write EMPLOYEE_PRICING records
   let employeeRecordsWritten = 0;
   for (const [employeeId, records] of employeeSaleRecords) {
@@ -485,8 +557,11 @@ export async function handler(): Promise<void> {
   // Step 10: Log execution metrics
   const duration = Date.now() - startTime;
   console.log(`[Aggregator] Completed pricing aggregation:`);
-  console.log(`  Groups processed: ${groupsProcessed}`);
-  console.log(`  Pricing refs written: ${groupsProcessed}`);
+  console.log(`  Category groups processed: ${groupsProcessed}`);
+  console.log(`  Description groups processed: ${descRecordsWritten}`);
+  console.log(
+    `  Pricing refs written: ${groupsProcessed + descRecordsWritten}`,
+  );
   console.log(`  Employee records written: ${employeeRecordsWritten}`);
   console.log(`  Adjustment events written: ${adjustmentEventsWritten}`);
   console.log(

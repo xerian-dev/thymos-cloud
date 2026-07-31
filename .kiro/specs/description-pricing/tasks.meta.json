@@ -1,0 +1,209 @@
+{
+  "pbtResults": {},
+  "executionHistory": {
+    "1. Add description-based grouping to the aggregator handler": [
+      {
+        "executionId": "fccf6546-92fb-46fe-a5e8-4aa9713f4498",
+        "chatSessionId": "sess_b197f433-c241-4783-bb11-ad6dcc735c35",
+        "timestamp": 1785394254288
+      },
+      {
+        "executionId": "fccf6546-92fb-46fe-a5e8-4aa9713f4498",
+        "chatSessionId": "sess_b197f433-c241-4783-bb11-ad6dcc735c35",
+        "timestamp": 1785394303523
+      },
+      {
+        "executionId": "fccf6546-92fb-46fe-a5e8-4aa9713f4498",
+        "chatSessionId": "sess_b197f433-c241-4783-bb11-ad6dcc735c35",
+        "timestamp": 1785394619164
+      }
+    ],
+    "2. Update PRICING_REF record schema": [
+      {
+        "executionId": "fccf6546-92fb-46fe-a5e8-4aa9713f4498",
+        "chatSessionId": "sess_b197f433-c241-4783-bb11-ad6dcc735c35",
+        "timestamp": 1785394254324
+      },
+      {
+        "executionId": "fccf6546-92fb-46fe-a5e8-4aa9713f4498",
+        "chatSessionId": "sess_b197f433-c241-4783-bb11-ad6dcc735c35",
+        "timestamp": 1785394626721
+      },
+      {
+        "executionId": "fccf6546-92fb-46fe-a5e8-4aa9713f4498",
+        "chatSessionId": "sess_b197f433-c241-4783-bb11-ad6dcc735c35",
+        "timestamp": 1785394746315
+      }
+    ],
+    "3. Implement fallback chain in suggest-price route": [
+      {
+        "executionId": "fccf6546-92fb-46fe-a5e8-4aa9713f4498",
+        "chatSessionId": "sess_b197f433-c241-4783-bb11-ad6dcc735c35",
+        "timestamp": 1785394254376
+      },
+      {
+        "executionId": "fccf6546-92fb-46fe-a5e8-4aa9713f4498",
+        "chatSessionId": "sess_b197f433-c241-4783-bb11-ad6dcc735c35",
+        "timestamp": 1785394750183
+      },
+      {
+        "executionId": "fccf6546-92fb-46fe-a5e8-4aa9713f4498",
+        "chatSessionId": "sess_b197f433-c241-4783-bb11-ad6dcc735c35",
+        "timestamp": 1785395141612
+      }
+    ],
+    "4. Implement Tier 2 unsold fallback": [
+      {
+        "executionId": "fccf6546-92fb-46fe-a5e8-4aa9713f4498",
+        "chatSessionId": "sess_b197f433-c241-4783-bb11-ad6dcc735c35",
+        "timestamp": 1785394254448
+      },
+      {
+        "executionId": "fccf6546-92fb-46fe-a5e8-4aa9713f4498",
+        "chatSessionId": "sess_b197f433-c241-4783-bb11-ad6dcc735c35",
+        "timestamp": 1785395146198
+      },
+      {
+        "executionId": "fccf6546-92fb-46fe-a5e8-4aa9713f4498",
+        "chatSessionId": "sess_b197f433-c241-4783-bb11-ad6dcc735c35",
+        "timestamp": 1785395280348
+      }
+    ],
+    "5. Update response shape": [
+      {
+        "executionId": "fccf6546-92fb-46fe-a5e8-4aa9713f4498",
+        "chatSessionId": "sess_b197f433-c241-4783-bb11-ad6dcc735c35",
+        "timestamp": 1785394254502
+      },
+      {
+        "executionId": "fccf6546-92fb-46fe-a5e8-4aa9713f4498",
+        "chatSessionId": "sess_b197f433-c241-4783-bb11-ad6dcc735c35",
+        "timestamp": 1785395284417
+      },
+      {
+        "executionId": "fccf6546-92fb-46fe-a5e8-4aa9713f4498",
+        "chatSessionId": "sess_b197f433-c241-4783-bb11-ad6dcc735c35",
+        "timestamp": 1785395343380
+      }
+    ],
+    "6. Update explanation builder for description-based lookups": [
+      {
+        "executionId": "fccf6546-92fb-46fe-a5e8-4aa9713f4498",
+        "chatSessionId": "sess_b197f433-c241-4783-bb11-ad6dcc735c35",
+        "timestamp": 1785394254552
+      },
+      {
+        "executionId": "fccf6546-92fb-46fe-a5e8-4aa9713f4498",
+        "chatSessionId": "sess_b197f433-c241-4783-bb11-ad6dcc735c35",
+        "timestamp": 1785395347575
+      },
+      {
+        "executionId": "fccf6546-92fb-46fe-a5e8-4aa9713f4498",
+        "chatSessionId": "sess_b197f433-c241-4783-bb11-ad6dcc735c35",
+        "timestamp": 1785395497709
+      }
+    ],
+    "7. Update confidence classification": [
+      {
+        "executionId": "fccf6546-92fb-46fe-a5e8-4aa9713f4498",
+        "chatSessionId": "sess_b197f433-c241-4783-bb11-ad6dcc735c35",
+        "timestamp": 1785394254603
+      },
+      {
+        "executionId": "fccf6546-92fb-46fe-a5e8-4aa9713f4498",
+        "chatSessionId": "sess_b197f433-c241-4783-bb11-ad6dcc735c35",
+        "timestamp": 1785395501946
+      },
+      {
+        "executionId": "fccf6546-92fb-46fe-a5e8-4aa9713f4498",
+        "chatSessionId": "sess_b197f433-c241-4783-bb11-ad6dcc735c35",
+        "timestamp": 1785395615687
+      }
+    ],
+    "8. Unit tests for fallback chain": [
+      {
+        "executionId": "fccf6546-92fb-46fe-a5e8-4aa9713f4498",
+        "chatSessionId": "sess_b197f433-c241-4783-bb11-ad6dcc735c35",
+        "timestamp": 1785394254650
+      },
+      {
+        "executionId": "fccf6546-92fb-46fe-a5e8-4aa9713f4498",
+        "chatSessionId": "sess_b197f433-c241-4783-bb11-ad6dcc735c35",
+        "timestamp": 1785395620004
+      },
+      {
+        "executionId": "fccf6546-92fb-46fe-a5e8-4aa9713f4498",
+        "chatSessionId": "sess_b197f433-c241-4783-bb11-ad6dcc735c35",
+        "timestamp": 1785395705539
+      }
+    ],
+    "9. Unit tests for Tier 2 behavior": [
+      {
+        "executionId": "fccf6546-92fb-46fe-a5e8-4aa9713f4498",
+        "chatSessionId": "sess_b197f433-c241-4783-bb11-ad6dcc735c35",
+        "timestamp": 1785394254701
+      },
+      {
+        "executionId": "fccf6546-92fb-46fe-a5e8-4aa9713f4498",
+        "chatSessionId": "sess_b197f433-c241-4783-bb11-ad6dcc735c35",
+        "timestamp": 1785395710071
+      },
+      {
+        "executionId": "fccf6546-92fb-46fe-a5e8-4aa9713f4498",
+        "chatSessionId": "sess_b197f433-c241-4783-bb11-ad6dcc735c35",
+        "timestamp": 1785395781529
+      }
+    ],
+    "10. Run aggregator and verify description-based refs are created": [
+      {
+        "executionId": "fccf6546-92fb-46fe-a5e8-4aa9713f4498",
+        "chatSessionId": "sess_b197f433-c241-4783-bb11-ad6dcc735c35",
+        "timestamp": 1785394254750
+      },
+      {
+        "executionId": "fccf6546-92fb-46fe-a5e8-4aa9713f4498",
+        "chatSessionId": "sess_b197f433-c241-4783-bb11-ad6dcc735c35",
+        "timestamp": 1785395786636
+      },
+      {
+        "executionId": "fccf6546-92fb-46fe-a5e8-4aa9713f4498",
+        "chatSessionId": "sess_b197f433-c241-4783-bb11-ad6dcc735c35",
+        "timestamp": 1785395914384
+      }
+    ],
+    "11. Update data-model.md with new PRICING_REF key pattern": [
+      {
+        "executionId": "fccf6546-92fb-46fe-a5e8-4aa9713f4498",
+        "chatSessionId": "sess_b197f433-c241-4783-bb11-ad6dcc735c35",
+        "timestamp": 1785394254799
+      },
+      {
+        "executionId": "fccf6546-92fb-46fe-a5e8-4aa9713f4498",
+        "chatSessionId": "sess_b197f433-c241-4783-bb11-ad6dcc735c35",
+        "timestamp": 1785395919188
+      },
+      {
+        "executionId": "fccf6546-92fb-46fe-a5e8-4aa9713f4498",
+        "chatSessionId": "sess_b197f433-c241-4783-bb11-ad6dcc735c35",
+        "timestamp": 1785396051467
+      }
+    ],
+    "12. Update auto-pricing-strategy.md steering with description-based approach": [
+      {
+        "executionId": "fccf6546-92fb-46fe-a5e8-4aa9713f4498",
+        "chatSessionId": "sess_b197f433-c241-4783-bb11-ad6dcc735c35",
+        "timestamp": 1785394254849
+      },
+      {
+        "executionId": "fccf6546-92fb-46fe-a5e8-4aa9713f4498",
+        "chatSessionId": "sess_b197f433-c241-4783-bb11-ad6dcc735c35",
+        "timestamp": 1785395920362
+      },
+      {
+        "executionId": "fccf6546-92fb-46fe-a5e8-4aa9713f4498",
+        "chatSessionId": "sess_b197f433-c241-4783-bb11-ad6dcc735c35",
+        "timestamp": 1785396052397
+      }
+    ]
+  }
+}

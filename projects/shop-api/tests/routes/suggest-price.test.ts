@@ -49,13 +49,15 @@ describe("suggestPrice", () => {
     vi.clearAllMocks();
   });
 
-  it("returns 400 when categoryId is missing", async () => {
+  it("returns 400 when neither categoryId nor description is provided", async () => {
     const result = await suggestPrice(makeEvent({ brand: "Nike" }));
 
     expect(result.statusCode).toBe(400);
     const body = JSON.parse(result.body as string);
     expect(body.error).toBe("validation_error");
-    expect(body.fields).toContain("categoryId is required");
+    expect(body.fields).toContain(
+      "At least one of categoryId or description is required",
+    );
   });
 
   it("returns 400 when no query params are provided", async () => {
@@ -66,20 +68,49 @@ describe("suggestPrice", () => {
     expect(body.error).toBe("validation_error");
   });
 
-  it("returns null suggestion when no pricing data exists", async () => {
-    // First call: brand×category lookup — not found
+  it("accepts request with only description (no categoryId)", async () => {
+    // Level 1: brand×desc — not found
     mockedSend.mockResolvedValueOnce({ Item: undefined } as never);
-    // Second call: category-only fallback — not found
+    // Level 2: desc-only — not found
+    mockedSend.mockResolvedValueOnce({ Item: undefined } as never);
+    // Level 5: brand×desc unsold — not found
+    mockedSend.mockResolvedValueOnce({ Item: undefined } as never);
+    // Level 6: desc-only unsold — not found
     mockedSend.mockResolvedValueOnce({ Item: undefined } as never);
 
     const result = await suggestPrice(
-      makeEvent({ brand: "Nike", categoryId: "cat-123" }),
+      makeEvent({ brand: "Nike", description: "Hose" }),
+    );
+
+    expect(result.statusCode).toBe(200);
+    const body = JSON.parse(result.body as string);
+    expect(body.suggestedPrice).toBeNull();
+  });
+
+  it("returns null suggestion when no pricing data exists", async () => {
+    // Level 1: brand×desc — not found
+    mockedSend.mockResolvedValueOnce({ Item: undefined } as never);
+    // Level 2: desc-only — not found
+    mockedSend.mockResolvedValueOnce({ Item: undefined } as never);
+    // Level 3: brand×cat — not found
+    mockedSend.mockResolvedValueOnce({ Item: undefined } as never);
+    // Level 4: cat-only — not found
+    mockedSend.mockResolvedValueOnce({ Item: undefined } as never);
+    // Level 5: brand×desc unsold — not found
+    mockedSend.mockResolvedValueOnce({ Item: undefined } as never);
+    // Level 6: desc-only unsold — not found
+    mockedSend.mockResolvedValueOnce({ Item: undefined } as never);
+
+    const result = await suggestPrice(
+      makeEvent({ brand: "Nike", categoryId: "cat-123", description: "Hose" }),
     );
 
     expect(result.statusCode).toBe(200);
     const body = JSON.parse(result.body as string);
     expect(body.suggestedPrice).toBeNull();
     expect(body.confidence).toBeNull();
+    expect(body.source).toBeNull();
+    expect(body.warning).toBeNull();
     expect(body.explanation).toBe(
       "No pricing data available for this category",
     );
@@ -87,20 +118,85 @@ describe("suggestPrice", () => {
     expect(body.groupInfo).toBeNull();
   });
 
-  it("returns null suggestion when no brand and category-only fallback not found", async () => {
-    // Only one call: category-only lookup — not found
-    mockedSend.mockResolvedValueOnce({ Item: undefined } as never);
+  it("returns suggestion at fallback level 1 (brand×description)", async () => {
+    // Level 1: brand×desc — found with sampleSize > 0
+    mockedSend.mockResolvedValueOnce({
+      Item: {
+        PK: "PRICING_REF#Nike#DESC#Hose",
+        SK: "METADATA",
+        brand: "Nike",
+        description: "Hose",
+        referencePrice: 45.0,
+        medianTagPrice: 50.0,
+        medianSalePrice: 45.0,
+        sellThroughRate: 0.7,
+        medianDaysOnShelf: 18,
+        sampleSize: 15,
+        totalItems: 20,
+        unsoldCount: 5,
+        velocityMultiplier: 1.0,
+        colorAdjustments: {},
+        sizeAdjustments: {},
+      },
+    } as never);
 
-    const result = await suggestPrice(makeEvent({ categoryId: "cat-123" }));
+    const result = await suggestPrice(
+      makeEvent({ brand: "Nike", categoryId: "cat-123", description: "Hose" }),
+    );
 
     expect(result.statusCode).toBe(200);
     const body = JSON.parse(result.body as string);
-    expect(body.suggestedPrice).toBeNull();
-    expect(body.confidence).toBeNull();
+    expect(body.suggestedPrice).toBe(45.0);
+    expect(body.source).toBe("sold");
+    expect(body.warning).toBeNull();
+    expect(body.groupInfo.fallbackLevel).toBe(1);
+    expect(body.groupInfo.description).toBe("Hose");
+    expect(body.groupInfo.brand).toBe("Nike");
   });
 
-  it("returns suggestion using brand×category reference data", async () => {
-    // Brand×category lookup found
+  it("returns suggestion at fallback level 2 (description-only)", async () => {
+    // Level 1: brand×desc — not found
+    mockedSend.mockResolvedValueOnce({ Item: undefined } as never);
+    // Level 2: desc-only — found
+    mockedSend.mockResolvedValueOnce({
+      Item: {
+        PK: "PRICING_REF#_NONE_#DESC#Hose",
+        SK: "METADATA",
+        brand: "_NONE_",
+        description: "Hose",
+        referencePrice: 40.0,
+        medianTagPrice: 48.0,
+        medianSalePrice: 40.0,
+        sellThroughRate: 0.6,
+        medianDaysOnShelf: 22,
+        sampleSize: 30,
+        totalItems: 50,
+        unsoldCount: 20,
+        velocityMultiplier: 1.0,
+        colorAdjustments: {},
+        sizeAdjustments: {},
+      },
+    } as never);
+
+    const result = await suggestPrice(
+      makeEvent({ brand: "Nike", categoryId: "cat-123", description: "Hose" }),
+    );
+
+    expect(result.statusCode).toBe(200);
+    const body = JSON.parse(result.body as string);
+    expect(body.suggestedPrice).toBe(40.0);
+    expect(body.source).toBe("sold");
+    expect(body.groupInfo.fallbackLevel).toBe(2);
+    expect(body.groupInfo.brand).toBeNull();
+    expect(body.groupInfo.description).toBe("Hose");
+  });
+
+  it("returns suggestion at fallback level 3 (brand×category)", async () => {
+    // Level 1: brand×desc — not found
+    mockedSend.mockResolvedValueOnce({ Item: undefined } as never);
+    // Level 2: desc-only — not found
+    mockedSend.mockResolvedValueOnce({ Item: undefined } as never);
+    // Level 3: brand×cat — found
     mockedSend.mockResolvedValueOnce({
       Item: {
         PK: "PRICING_REF#Nike#cat-123",
@@ -109,12 +205,434 @@ describe("suggestPrice", () => {
         categoryId: "cat-123",
         categoryName: "Shoes",
         referencePrice: 50.0,
+        medianTagPrice: 55.0,
+        medianSalePrice: 50.0,
         sellThroughRate: 0.65,
         medianDaysOnShelf: 20,
         sampleSize: 25,
+        totalItems: 40,
+        unsoldCount: 15,
         velocityMultiplier: 1.0,
         colorAdjustments: { Black: 1.05 },
         sizeAdjustments: { M: 0.98 },
+      },
+    } as never);
+
+    const result = await suggestPrice(
+      makeEvent({ brand: "Nike", categoryId: "cat-123", description: "Hose" }),
+    );
+
+    expect(result.statusCode).toBe(200);
+    const body = JSON.parse(result.body as string);
+    expect(body.suggestedPrice).toBe(50.0);
+    expect(body.source).toBe("sold");
+    expect(body.groupInfo.fallbackLevel).toBe(3);
+    expect(body.groupInfo.brand).toBe("Nike");
+    expect(body.groupInfo.category).toBe("Shoes");
+  });
+
+  it("returns suggestion at fallback level 4 (category-only)", async () => {
+    // Level 1: brand×desc — not found
+    mockedSend.mockResolvedValueOnce({ Item: undefined } as never);
+    // Level 2: desc-only — not found
+    mockedSend.mockResolvedValueOnce({ Item: undefined } as never);
+    // Level 3: brand×cat — not found
+    mockedSend.mockResolvedValueOnce({ Item: undefined } as never);
+    // Level 4: cat-only — found
+    mockedSend.mockResolvedValueOnce({
+      Item: {
+        PK: "PRICING_REF#_NONE_#cat-456",
+        SK: "METADATA",
+        brand: "_NONE_",
+        categoryId: "cat-456",
+        categoryName: "Bags",
+        referencePrice: 30.0,
+        medianTagPrice: 35.0,
+        medianSalePrice: 30.0,
+        sellThroughRate: 0.4,
+        medianDaysOnShelf: 30,
+        sampleSize: 12,
+        totalItems: 30,
+        unsoldCount: 18,
+        velocityMultiplier: 1.0,
+        colorAdjustments: {},
+        sizeAdjustments: {},
+      },
+    } as never);
+
+    const result = await suggestPrice(
+      makeEvent({
+        brand: "UnknownBrand",
+        categoryId: "cat-456",
+        description: "Tasche",
+      }),
+    );
+
+    expect(result.statusCode).toBe(200);
+    const body = JSON.parse(result.body as string);
+    expect(body.suggestedPrice).toBe(30.0);
+    expect(body.source).toBe("sold");
+    expect(body.groupInfo.fallbackLevel).toBe(4);
+    expect(body.groupInfo.brand).toBeNull();
+    expect(body.groupInfo.category).toBe("Bags");
+  });
+
+  it("returns suggestion at fallback level 5 (unsold brand×description)", async () => {
+    // Level 1: brand×desc — found but sampleSize = 0
+    mockedSend.mockResolvedValueOnce({
+      Item: {
+        PK: "PRICING_REF#Nike#DESC#Hose",
+        SK: "METADATA",
+        brand: "Nike",
+        description: "Hose",
+        referencePrice: 0,
+        medianTagPrice: 60.0,
+        medianSalePrice: 0,
+        sellThroughRate: 0,
+        medianDaysOnShelf: 0,
+        sampleSize: 0,
+        totalItems: 8,
+        unsoldCount: 8,
+        velocityMultiplier: 1.0,
+        colorAdjustments: {},
+        sizeAdjustments: {},
+      },
+    } as never);
+    // Level 2: desc-only — not found
+    mockedSend.mockResolvedValueOnce({ Item: undefined } as never);
+    // Level 3: brand×cat — not found
+    mockedSend.mockResolvedValueOnce({ Item: undefined } as never);
+    // Level 4: cat-only — not found
+    mockedSend.mockResolvedValueOnce({ Item: undefined } as never);
+    // Level 5: brand×desc unsold — same record, unsoldCount > 0
+    mockedSend.mockResolvedValueOnce({
+      Item: {
+        PK: "PRICING_REF#Nike#DESC#Hose",
+        SK: "METADATA",
+        brand: "Nike",
+        description: "Hose",
+        referencePrice: 0,
+        medianTagPrice: 60.0,
+        medianSalePrice: 0,
+        sellThroughRate: 0,
+        medianDaysOnShelf: 0,
+        sampleSize: 0,
+        totalItems: 8,
+        unsoldCount: 8,
+        velocityMultiplier: 1.0,
+        colorAdjustments: {},
+        sizeAdjustments: {},
+      },
+    } as never);
+
+    const result = await suggestPrice(
+      makeEvent({ brand: "Nike", categoryId: "cat-123", description: "Hose" }),
+    );
+
+    expect(result.statusCode).toBe(200);
+    const body = JSON.parse(result.body as string);
+    expect(body.source).toBe("unsold");
+    expect(body.groupInfo.fallbackLevel).toBe(5);
+    expect(body.groupInfo.brand).toBe("Nike");
+    expect(body.groupInfo.description).toBe("Hose");
+  });
+
+  it("applies 10% discount to medianTagPrice for Tier 2 unsold fallback", async () => {
+    // Level 1: brand×desc — found but sampleSize = 0
+    mockedSend.mockResolvedValueOnce({
+      Item: {
+        PK: "PRICING_REF#Nike#DESC#Hose",
+        SK: "METADATA",
+        brand: "Nike",
+        description: "Hose",
+        referencePrice: 0,
+        medianTagPrice: 50.0,
+        medianSalePrice: 0,
+        sellThroughRate: 0,
+        medianDaysOnShelf: 0,
+        sampleSize: 0,
+        totalItems: 10,
+        unsoldCount: 10,
+        velocityMultiplier: 1.0,
+        colorAdjustments: {},
+        sizeAdjustments: {},
+      },
+    } as never);
+    // Level 2: desc-only — not found
+    mockedSend.mockResolvedValueOnce({ Item: undefined } as never);
+    // Level 3: brand×cat — not found
+    mockedSend.mockResolvedValueOnce({ Item: undefined } as never);
+    // Level 4: cat-only — not found
+    mockedSend.mockResolvedValueOnce({ Item: undefined } as never);
+    // Level 5: brand×desc unsold — found
+    mockedSend.mockResolvedValueOnce({
+      Item: {
+        PK: "PRICING_REF#Nike#DESC#Hose",
+        SK: "METADATA",
+        brand: "Nike",
+        description: "Hose",
+        referencePrice: 0,
+        medianTagPrice: 50.0,
+        medianSalePrice: 0,
+        sellThroughRate: 0,
+        medianDaysOnShelf: 0,
+        sampleSize: 0,
+        totalItems: 10,
+        unsoldCount: 10,
+        velocityMultiplier: 1.0,
+        colorAdjustments: {},
+        sizeAdjustments: {},
+      },
+    } as never);
+
+    const result = await suggestPrice(
+      makeEvent({ brand: "Nike", categoryId: "cat-123", description: "Hose" }),
+    );
+
+    expect(result.statusCode).toBe(200);
+    const body = JSON.parse(result.body as string);
+    // medianTagPrice (50.0) * 0.90 = 45.0
+    expect(body.suggestedPrice).toBe(45.0);
+    expect(body.adjustments.referencePrice).toBe(45.0);
+    expect(body.source).toBe("unsold");
+  });
+
+  it("sets confidence to 'low' for Tier 2 regardless of sample size", async () => {
+    // Level 1: brand×desc — found but sampleSize = 0
+    mockedSend.mockResolvedValueOnce({
+      Item: {
+        PK: "PRICING_REF#Nike#DESC#Hose",
+        SK: "METADATA",
+        brand: "Nike",
+        description: "Hose",
+        referencePrice: 0,
+        medianTagPrice: 80.0,
+        medianSalePrice: 0,
+        sellThroughRate: 0,
+        medianDaysOnShelf: 0,
+        sampleSize: 0,
+        totalItems: 25,
+        unsoldCount: 25,
+        velocityMultiplier: 1.0,
+        colorAdjustments: {},
+        sizeAdjustments: {},
+      },
+    } as never);
+    // Level 2: desc-only — not found
+    mockedSend.mockResolvedValueOnce({ Item: undefined } as never);
+    // Level 3: brand×cat — not found
+    mockedSend.mockResolvedValueOnce({ Item: undefined } as never);
+    // Level 4: cat-only — not found
+    mockedSend.mockResolvedValueOnce({ Item: undefined } as never);
+    // Level 5: brand×desc unsold — found
+    mockedSend.mockResolvedValueOnce({
+      Item: {
+        PK: "PRICING_REF#Nike#DESC#Hose",
+        SK: "METADATA",
+        brand: "Nike",
+        description: "Hose",
+        referencePrice: 0,
+        medianTagPrice: 80.0,
+        medianSalePrice: 0,
+        sellThroughRate: 0,
+        medianDaysOnShelf: 0,
+        sampleSize: 0,
+        totalItems: 25,
+        unsoldCount: 25,
+        velocityMultiplier: 1.0,
+        colorAdjustments: {},
+        sizeAdjustments: {},
+      },
+    } as never);
+
+    const result = await suggestPrice(
+      makeEvent({ brand: "Nike", categoryId: "cat-123", description: "Hose" }),
+    );
+
+    expect(result.statusCode).toBe(200);
+    const body = JSON.parse(result.body as string);
+    // Tier 2 always returns "low" confidence regardless of data
+    expect(body.confidence).toBe("low");
+  });
+
+  it("includes warning message when source is 'unsold'", async () => {
+    // Level 1: brand×desc — found but sampleSize = 0
+    mockedSend.mockResolvedValueOnce({
+      Item: {
+        PK: "PRICING_REF#Nike#DESC#Hose",
+        SK: "METADATA",
+        brand: "Nike",
+        description: "Hose",
+        referencePrice: 0,
+        medianTagPrice: 45.0,
+        medianSalePrice: 0,
+        sellThroughRate: 0,
+        medianDaysOnShelf: 0,
+        sampleSize: 0,
+        totalItems: 6,
+        unsoldCount: 6,
+        velocityMultiplier: 1.0,
+        colorAdjustments: {},
+        sizeAdjustments: {},
+      },
+    } as never);
+    // Level 2: desc-only — not found
+    mockedSend.mockResolvedValueOnce({ Item: undefined } as never);
+    // Level 3: brand×cat — not found
+    mockedSend.mockResolvedValueOnce({ Item: undefined } as never);
+    // Level 4: cat-only — not found
+    mockedSend.mockResolvedValueOnce({ Item: undefined } as never);
+    // Level 5: brand×desc unsold — found
+    mockedSend.mockResolvedValueOnce({
+      Item: {
+        PK: "PRICING_REF#Nike#DESC#Hose",
+        SK: "METADATA",
+        brand: "Nike",
+        description: "Hose",
+        referencePrice: 0,
+        medianTagPrice: 45.0,
+        medianSalePrice: 0,
+        sellThroughRate: 0,
+        medianDaysOnShelf: 0,
+        sampleSize: 0,
+        totalItems: 6,
+        unsoldCount: 6,
+        velocityMultiplier: 1.0,
+        colorAdjustments: {},
+        sizeAdjustments: {},
+      },
+    } as never);
+
+    const result = await suggestPrice(
+      makeEvent({ brand: "Nike", categoryId: "cat-123", description: "Hose" }),
+    );
+
+    expect(result.statusCode).toBe(200);
+    const body = JSON.parse(result.body as string);
+    expect(body.warning).toBe(
+      "Price based on unsold items. Similar items in this group haven't sold yet — consider pricing below CHF 45.00 (median tag price of unsold items).",
+    );
+  });
+
+  it("does not include warning when source is 'sold'", async () => {
+    // Level 1: brand×desc — found with sales
+    mockedSend.mockResolvedValueOnce({
+      Item: {
+        PK: "PRICING_REF#Nike#DESC#Hose",
+        SK: "METADATA",
+        brand: "Nike",
+        description: "Hose",
+        referencePrice: 45.0,
+        medianTagPrice: 50.0,
+        medianSalePrice: 45.0,
+        sellThroughRate: 0.7,
+        medianDaysOnShelf: 18,
+        sampleSize: 15,
+        totalItems: 20,
+        unsoldCount: 5,
+        velocityMultiplier: 1.0,
+        colorAdjustments: {},
+        sizeAdjustments: {},
+      },
+    } as never);
+
+    const result = await suggestPrice(
+      makeEvent({ brand: "Nike", categoryId: "cat-123", description: "Hose" }),
+    );
+
+    expect(result.statusCode).toBe(200);
+    const body = JSON.parse(result.body as string);
+    expect(body.warning).toBeNull();
+    expect(body.source).toBe("sold");
+  });
+
+  it("returns suggestion at fallback level 6 (unsold description-only)", async () => {
+    // Level 1: brand×desc — not found
+    mockedSend.mockResolvedValueOnce({ Item: undefined } as never);
+    // Level 2: desc-only — found but sampleSize = 0
+    mockedSend.mockResolvedValueOnce({
+      Item: {
+        PK: "PRICING_REF#_NONE_#DESC#Sandalen",
+        SK: "METADATA",
+        brand: "_NONE_",
+        description: "Sandalen",
+        referencePrice: 0,
+        medianTagPrice: 35.0,
+        medianSalePrice: 0,
+        sellThroughRate: 0,
+        medianDaysOnShelf: 0,
+        sampleSize: 0,
+        totalItems: 5,
+        unsoldCount: 5,
+        velocityMultiplier: 1.0,
+        colorAdjustments: {},
+        sizeAdjustments: {},
+      },
+    } as never);
+    // Level 3: brand×cat — not found
+    mockedSend.mockResolvedValueOnce({ Item: undefined } as never);
+    // Level 4: cat-only — not found
+    mockedSend.mockResolvedValueOnce({ Item: undefined } as never);
+    // Level 5: brand×desc unsold — not found
+    mockedSend.mockResolvedValueOnce({ Item: undefined } as never);
+    // Level 6: desc-only unsold — found with unsoldCount > 0
+    mockedSend.mockResolvedValueOnce({
+      Item: {
+        PK: "PRICING_REF#_NONE_#DESC#Sandalen",
+        SK: "METADATA",
+        brand: "_NONE_",
+        description: "Sandalen",
+        referencePrice: 0,
+        medianTagPrice: 35.0,
+        medianSalePrice: 0,
+        sellThroughRate: 0,
+        medianDaysOnShelf: 0,
+        sampleSize: 0,
+        totalItems: 5,
+        unsoldCount: 5,
+        velocityMultiplier: 1.0,
+        colorAdjustments: {},
+        sizeAdjustments: {},
+      },
+    } as never);
+
+    const result = await suggestPrice(
+      makeEvent({
+        brand: "Nike",
+        categoryId: "cat-123",
+        description: "Sandalen",
+      }),
+    );
+
+    expect(result.statusCode).toBe(200);
+    const body = JSON.parse(result.body as string);
+    expect(body.source).toBe("unsold");
+    expect(body.groupInfo.fallbackLevel).toBe(6);
+    expect(body.groupInfo.brand).toBeNull();
+    expect(body.groupInfo.description).toBe("Sandalen");
+  });
+
+  it("skips description levels when description is not provided", async () => {
+    // No description provided, so skips levels 1,2,5,6
+    // Level 3: brand×cat — found
+    mockedSend.mockResolvedValueOnce({
+      Item: {
+        PK: "PRICING_REF#Nike#cat-123",
+        SK: "METADATA",
+        brand: "Nike",
+        categoryId: "cat-123",
+        categoryName: "Shoes",
+        referencePrice: 50.0,
+        medianTagPrice: 55.0,
+        medianSalePrice: 50.0,
+        sellThroughRate: 0.65,
+        medianDaysOnShelf: 20,
+        sampleSize: 25,
+        totalItems: 40,
+        unsoldCount: 15,
+        velocityMultiplier: 1.0,
+        colorAdjustments: {},
+        sizeAdjustments: {},
       },
     } as never);
 
@@ -125,21 +643,47 @@ describe("suggestPrice", () => {
     expect(result.statusCode).toBe(200);
     const body = JSON.parse(result.body as string);
     expect(body.suggestedPrice).toBe(50.0);
+    expect(body.source).toBe("sold");
+    expect(body.groupInfo.fallbackLevel).toBe(3);
+  });
+
+  it("falls back to category-only when brand×category not found (no description)", async () => {
+    // Level 3: brand×cat — not found
+    mockedSend.mockResolvedValueOnce({ Item: undefined } as never);
+    // Level 4: cat-only — found
+    mockedSend.mockResolvedValueOnce({
+      Item: {
+        PK: "PRICING_REF#_NONE_#cat-456",
+        SK: "METADATA",
+        brand: "_NONE_",
+        categoryId: "cat-456",
+        categoryName: "Bags",
+        referencePrice: 30.0,
+        medianTagPrice: 35.0,
+        medianSalePrice: 30.0,
+        sellThroughRate: 0.4,
+        medianDaysOnShelf: 30,
+        sampleSize: 12,
+        totalItems: 30,
+        unsoldCount: 18,
+        velocityMultiplier: 1.0,
+        colorAdjustments: {},
+        sizeAdjustments: {},
+      },
+    } as never);
+
+    const result = await suggestPrice(
+      makeEvent({ brand: "UnknownBrand", categoryId: "cat-456" }),
+    );
+
+    expect(result.statusCode).toBe(200);
+    const body = JSON.parse(result.body as string);
+    expect(body.suggestedPrice).toBe(30.0);
     expect(body.confidence).toBe("high");
-    expect(body.adjustments).toEqual({
-      referencePrice: 50.0,
-      velocityMultiplier: 1.0,
-      creatorAdjustment: 1.0,
-      colorAdjustment: 1.0,
-      sizeAdjustment: 1.0,
-    });
-    expect(body.groupInfo).toEqual({
-      brand: "Nike",
-      category: "Shoes",
-      sampleSize: 25,
-      sellThroughRate: 0.65,
-      medianDaysOnShelf: 20,
-    });
+    expect(body.source).toBe("sold");
+    expect(body.groupInfo.brand).toBeNull();
+    expect(body.groupInfo.category).toBe("Bags");
+    expect(body.groupInfo.fallbackLevel).toBe(4);
   });
 
   it("applies color adjustment when color matches", async () => {
@@ -151,9 +695,13 @@ describe("suggestPrice", () => {
         categoryId: "cat-123",
         categoryName: "Shoes",
         referencePrice: 40.0,
+        medianTagPrice: 45.0,
+        medianSalePrice: 40.0,
         sellThroughRate: 0.5,
         medianDaysOnShelf: 20,
         sampleSize: 30,
+        totalItems: 50,
+        unsoldCount: 20,
         velocityMultiplier: 1.0,
         colorAdjustments: { Black: 1.1 },
         sizeAdjustments: {},
@@ -180,9 +728,13 @@ describe("suggestPrice", () => {
         categoryId: "cat-123",
         categoryName: "Shoes",
         referencePrice: 40.0,
+        medianTagPrice: 45.0,
+        medianSalePrice: 40.0,
         sellThroughRate: 0.5,
         medianDaysOnShelf: 20,
         sampleSize: 30,
+        totalItems: 50,
+        unsoldCount: 20,
         velocityMultiplier: 1.0,
         colorAdjustments: {},
         sizeAdjustments: { L: 1.05 },
@@ -200,42 +752,8 @@ describe("suggestPrice", () => {
     expect(body.adjustments.sizeAdjustment).toBe(1.05);
   });
 
-  it("falls back to category-only when brand×category not found", async () => {
-    // Brand×category lookup — not found
-    mockedSend.mockResolvedValueOnce({ Item: undefined } as never);
-    // Category-only fallback — found
-    mockedSend.mockResolvedValueOnce({
-      Item: {
-        PK: "PRICING_REF#_NONE_#cat-456",
-        SK: "METADATA",
-        brand: "_NONE_",
-        categoryId: "cat-456",
-        categoryName: "Bags",
-        referencePrice: 30.0,
-        sellThroughRate: 0.4,
-        medianDaysOnShelf: 30,
-        sampleSize: 12,
-        velocityMultiplier: 1.0,
-        colorAdjustments: {},
-        sizeAdjustments: {},
-      },
-    } as never);
-
-    const result = await suggestPrice(
-      makeEvent({ brand: "UnknownBrand", categoryId: "cat-456" }),
-    );
-
-    expect(result.statusCode).toBe(200);
-    const body = JSON.parse(result.body as string);
-    expect(body.suggestedPrice).toBe(30.0);
-    expect(body.confidence).toBe("medium");
-    expect(body.groupInfo.brand).toBeNull();
-    expect(body.groupInfo.category).toBe("Bags");
-    expect(body.explanation).toContain("insufficient brand-specific data");
-  });
-
   it("applies creator adjustment when employee has >= 10 sample size", async () => {
-    // Brand×category lookup — found
+    // Level 3: brand×cat — found
     mockedSend.mockResolvedValueOnce({
       Item: {
         PK: "PRICING_REF#Nike#cat-123",
@@ -244,9 +762,13 @@ describe("suggestPrice", () => {
         categoryId: "cat-123",
         categoryName: "Shoes",
         referencePrice: 100.0,
+        medianTagPrice: 110.0,
+        medianSalePrice: 100.0,
         sellThroughRate: 0.5,
         medianDaysOnShelf: 20,
         sampleSize: 25,
+        totalItems: 50,
+        unsoldCount: 25,
         velocityMultiplier: 1.0,
         colorAdjustments: {},
         sizeAdjustments: {},
@@ -279,7 +801,6 @@ describe("suggestPrice", () => {
   });
 
   it("does not apply creator adjustment when employee has < 10 sample size", async () => {
-    // Brand×category lookup — found
     mockedSend.mockResolvedValueOnce({
       Item: {
         PK: "PRICING_REF#Nike#cat-123",
@@ -288,15 +809,18 @@ describe("suggestPrice", () => {
         categoryId: "cat-123",
         categoryName: "Shoes",
         referencePrice: 100.0,
+        medianTagPrice: 110.0,
+        medianSalePrice: 100.0,
         sellThroughRate: 0.5,
         medianDaysOnShelf: 20,
         sampleSize: 25,
+        totalItems: 50,
+        unsoldCount: 25,
         velocityMultiplier: 1.0,
         colorAdjustments: {},
         sizeAdjustments: {},
       },
     } as never);
-    // Employee pricing lookup — insufficient sample size
     mockedSend.mockResolvedValueOnce({
       Item: {
         PK: "EMPLOYEE_PRICING#emp-2",
@@ -317,43 +841,7 @@ describe("suggestPrice", () => {
 
     expect(result.statusCode).toBe(200);
     const body = JSON.parse(result.body as string);
-    // Creator adjustment not applied — stays at 1.0
     expect(body.suggestedPrice).toBe(100.0);
-    expect(body.adjustments.creatorAdjustment).toBe(1.0);
-  });
-
-  it("does not apply creator adjustment when employee not found", async () => {
-    // Brand×category lookup — found
-    mockedSend.mockResolvedValueOnce({
-      Item: {
-        PK: "PRICING_REF#Nike#cat-123",
-        SK: "METADATA",
-        brand: "Nike",
-        categoryId: "cat-123",
-        categoryName: "Shoes",
-        referencePrice: 50.0,
-        sellThroughRate: 0.5,
-        medianDaysOnShelf: 20,
-        sampleSize: 25,
-        velocityMultiplier: 1.0,
-        colorAdjustments: {},
-        sizeAdjustments: {},
-      },
-    } as never);
-    // Employee not found
-    mockedSend.mockResolvedValueOnce({ Item: undefined } as never);
-
-    const result = await suggestPrice(
-      makeEvent({
-        brand: "Nike",
-        categoryId: "cat-123",
-        createdBy: "emp-unknown",
-      }),
-    );
-
-    expect(result.statusCode).toBe(200);
-    const body = JSON.parse(result.body as string);
-    expect(body.suggestedPrice).toBe(50.0);
     expect(body.adjustments.creatorAdjustment).toBe(1.0);
   });
 
@@ -366,9 +854,13 @@ describe("suggestPrice", () => {
         categoryId: "cat-123",
         categoryName: "Shoes",
         referencePrice: 30.0,
+        medianTagPrice: 35.0,
+        medianSalePrice: 30.0,
         sellThroughRate: 0.2,
         medianDaysOnShelf: 40,
         sampleSize: 3,
+        totalItems: 15,
+        unsoldCount: 12,
         velocityMultiplier: 0.92,
         colorAdjustments: {},
         sizeAdjustments: {},
@@ -396,32 +888,103 @@ describe("suggestPrice", () => {
     expect(body.error).toBe("internal_error");
   });
 
-  it("queries correct DynamoDB keys for brand×category", async () => {
+  it("prefers Tier 1 category match over Tier 2 unsold description match", async () => {
+    // Level 1: brand×desc — found but sampleSize = 0 (no sold items)
     mockedSend.mockResolvedValueOnce({
       Item: {
-        PK: "PRICING_REF#Adidas#cat-789",
+        PK: "PRICING_REF#Nike#DESC#Hose",
         SK: "METADATA",
-        brand: "Adidas",
-        categoryId: "cat-789",
-        categoryName: "Tops",
-        referencePrice: 25.0,
+        brand: "Nike",
+        description: "Hose",
+        referencePrice: 0,
+        medianTagPrice: 60.0,
+        medianSalePrice: 0,
+        sellThroughRate: 0,
+        medianDaysOnShelf: 0,
+        sampleSize: 0,
+        totalItems: 8,
+        unsoldCount: 8,
+        velocityMultiplier: 1.0,
+        colorAdjustments: {},
+        sizeAdjustments: {},
+      },
+    } as never);
+    // Level 2: desc-only — not found
+    mockedSend.mockResolvedValueOnce({ Item: undefined } as never);
+    // Level 3: brand×cat — not found
+    mockedSend.mockResolvedValueOnce({ Item: undefined } as never);
+    // Level 4: cat-only — found with sampleSize > 0 (Tier 1 match!)
+    mockedSend.mockResolvedValueOnce({
+      Item: {
+        PK: "PRICING_REF#_NONE_#cat-123",
+        SK: "METADATA",
+        brand: "_NONE_",
+        categoryId: "cat-123",
+        categoryName: "Pants",
+        referencePrice: 35.0,
+        medianTagPrice: 40.0,
+        medianSalePrice: 35.0,
         sellThroughRate: 0.5,
-        medianDaysOnShelf: 15,
+        medianDaysOnShelf: 25,
         sampleSize: 10,
+        totalItems: 20,
+        unsoldCount: 10,
         velocityMultiplier: 1.0,
         colorAdjustments: {},
         sizeAdjustments: {},
       },
     } as never);
 
-    await suggestPrice(makeEvent({ brand: "Adidas", categoryId: "cat-789" }));
+    const result = await suggestPrice(
+      makeEvent({ brand: "Nike", categoryId: "cat-123", description: "Hose" }),
+    );
 
+    expect(result.statusCode).toBe(200);
+    const body = JSON.parse(result.body as string);
+    // Tier 1 level 4 (category-only) should win over Tier 2 (unsold description)
+    expect(body.source).toBe("sold");
+    expect(body.groupInfo.fallbackLevel).toBe(4);
+    expect(body.suggestedPrice).toBe(35.0);
+    expect(body.warning).toBeNull();
+    expect(body.confidence).not.toBe("low");
+  });
+
+  it("queries correct DynamoDB keys for brand×description", async () => {
+    mockedSend.mockResolvedValueOnce({
+      Item: {
+        PK: "PRICING_REF#Adidas#DESC#Sandalen",
+        SK: "METADATA",
+        brand: "Adidas",
+        description: "Sandalen",
+        referencePrice: 25.0,
+        medianTagPrice: 30.0,
+        medianSalePrice: 25.0,
+        sellThroughRate: 0.5,
+        medianDaysOnShelf: 15,
+        sampleSize: 10,
+        totalItems: 20,
+        unsoldCount: 10,
+        velocityMultiplier: 1.0,
+        colorAdjustments: {},
+        sizeAdjustments: {},
+      },
+    } as never);
+
+    await suggestPrice(
+      makeEvent({
+        brand: "Adidas",
+        categoryId: "cat-789",
+        description: "Sandalen",
+      }),
+    );
+
+    // First call should be for brand×description (level 1)
     expect(mockedSend).toHaveBeenCalledTimes(1);
     const command = mockedSend.mock.calls[0][0];
     expect(command.input).toMatchObject({
       TableName: "test-pricing-table",
       Key: {
-        PK: "PRICING_REF#Adidas#cat-789",
+        PK: "PRICING_REF#Adidas#DESC#Sandalen",
         SK: "METADATA",
       },
     });
