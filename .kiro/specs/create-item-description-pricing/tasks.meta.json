@@ -1,0 +1,227 @@
+{
+  "pbtResults": {},
+  "executionHistory": {
+    "1.1 Add `listCanonicalDescriptions` handler to `canonical-lists.ts`": [
+      {
+        "executionId": "579637a9-fcd4-4b0d-89a9-50d10311bc2b",
+        "chatSessionId": "sess_44cc7997-6d77-428e-a9bd-d54febb0487f",
+        "timestamp": 1785569812535
+      },
+      {
+        "executionId": "579637a9-fcd4-4b0d-89a9-50d10311bc2b",
+        "chatSessionId": "sess_44cc7997-6d77-428e-a9bd-d54febb0487f",
+        "timestamp": 1785569820317
+      },
+      {
+        "executionId": "579637a9-fcd4-4b0d-89a9-50d10311bc2b",
+        "chatSessionId": "sess_44cc7997-6d77-428e-a9bd-d54febb0487f",
+        "timestamp": 1785569891133
+      }
+    ],
+    "1.2 Register route in `router.ts`": [
+      {
+        "executionId": "579637a9-fcd4-4b0d-89a9-50d10311bc2b",
+        "chatSessionId": "sess_44cc7997-6d77-428e-a9bd-d54febb0487f",
+        "timestamp": 1785569812592
+      },
+      {
+        "executionId": "579637a9-fcd4-4b0d-89a9-50d10311bc2b",
+        "chatSessionId": "sess_44cc7997-6d77-428e-a9bd-d54febb0487f",
+        "timestamp": 1785569896664
+      },
+      {
+        "executionId": "579637a9-fcd4-4b0d-89a9-50d10311bc2b",
+        "chatSessionId": "sess_44cc7997-6d77-428e-a9bd-d54febb0487f",
+        "timestamp": 1785569972627
+      }
+    ],
+    "2.1 Create `projects/shop/src/lib/levenshtein.ts`": [
+      {
+        "executionId": "579637a9-fcd4-4b0d-89a9-50d10311bc2b",
+        "chatSessionId": "sess_44cc7997-6d77-428e-a9bd-d54febb0487f",
+        "timestamp": 1785569812690
+      },
+      {
+        "executionId": "579637a9-fcd4-4b0d-89a9-50d10311bc2b",
+        "chatSessionId": "sess_44cc7997-6d77-428e-a9bd-d54febb0487f",
+        "timestamp": 1785569821057
+      },
+      {
+        "executionId": "579637a9-fcd4-4b0d-89a9-50d10311bc2b",
+        "chatSessionId": "sess_44cc7997-6d77-428e-a9bd-d54febb0487f",
+        "timestamp": 1785569891962
+      }
+    ],
+    "2.2 Update `brand-autocomplete.tsx` to import from shared lib": [
+      {
+        "executionId": "579637a9-fcd4-4b0d-89a9-50d10311bc2b",
+        "chatSessionId": "sess_44cc7997-6d77-428e-a9bd-d54febb0487f",
+        "timestamp": 1785569812748
+      },
+      {
+        "executionId": "579637a9-fcd4-4b0d-89a9-50d10311bc2b",
+        "chatSessionId": "sess_44cc7997-6d77-428e-a9bd-d54febb0487f",
+        "timestamp": 1785569897422
+      },
+      {
+        "executionId": "579637a9-fcd4-4b0d-89a9-50d10311bc2b",
+        "chatSessionId": "sess_44cc7997-6d77-428e-a9bd-d54febb0487f",
+        "timestamp": 1785569973377
+      }
+    ],
+    "3.1 Add `fetchCanonicalDescriptions` function to `pricing-api.ts`": [
+      {
+        "executionId": "579637a9-fcd4-4b0d-89a9-50d10311bc2b",
+        "chatSessionId": "sess_44cc7997-6d77-428e-a9bd-d54febb0487f",
+        "timestamp": 1785569812800
+      },
+      {
+        "executionId": "579637a9-fcd4-4b0d-89a9-50d10311bc2b",
+        "chatSessionId": "sess_44cc7997-6d77-428e-a9bd-d54febb0487f",
+        "timestamp": 1785569821929
+      },
+      {
+        "executionId": "579637a9-fcd4-4b0d-89a9-50d10311bc2b",
+        "chatSessionId": "sess_44cc7997-6d77-428e-a9bd-d54febb0487f",
+        "timestamp": 1785569892857
+      }
+    ],
+    "3.2 Add `description` parameter to `fetchPriceSuggestion`": [
+      {
+        "executionId": "579637a9-fcd4-4b0d-89a9-50d10311bc2b",
+        "chatSessionId": "sess_44cc7997-6d77-428e-a9bd-d54febb0487f",
+        "timestamp": 1785569812859
+      },
+      {
+        "executionId": "579637a9-fcd4-4b0d-89a9-50d10311bc2b",
+        "chatSessionId": "sess_44cc7997-6d77-428e-a9bd-d54febb0487f",
+        "timestamp": 1785569898229
+      },
+      {
+        "executionId": "579637a9-fcd4-4b0d-89a9-50d10311bc2b",
+        "chatSessionId": "sess_44cc7997-6d77-428e-a9bd-d54febb0487f",
+        "timestamp": 1785569974173
+      }
+    ],
+    "4. Checkpoint - Ensure all tests pass": [
+      {
+        "executionId": "579637a9-fcd4-4b0d-89a9-50d10311bc2b",
+        "chatSessionId": "sess_44cc7997-6d77-428e-a9bd-d54febb0487f",
+        "timestamp": 1785569812908
+      },
+      {
+        "executionId": "579637a9-fcd4-4b0d-89a9-50d10311bc2b",
+        "chatSessionId": "sess_44cc7997-6d77-428e-a9bd-d54febb0487f",
+        "timestamp": 1785569987195
+      },
+      {
+        "executionId": "579637a9-fcd4-4b0d-89a9-50d10311bc2b",
+        "chatSessionId": "sess_44cc7997-6d77-428e-a9bd-d54febb0487f",
+        "timestamp": 1785570046625
+      }
+    ],
+    "5.1 Create `projects/shop/src/features/item-capture/description-autocomplete.tsx`": [
+      {
+        "executionId": "579637a9-fcd4-4b0d-89a9-50d10311bc2b",
+        "chatSessionId": "sess_44cc7997-6d77-428e-a9bd-d54febb0487f",
+        "timestamp": 1785569812960
+      },
+      {
+        "executionId": "579637a9-fcd4-4b0d-89a9-50d10311bc2b",
+        "chatSessionId": "sess_44cc7997-6d77-428e-a9bd-d54febb0487f",
+        "timestamp": 1785569988041
+      },
+      {
+        "executionId": "579637a9-fcd4-4b0d-89a9-50d10311bc2b",
+        "chatSessionId": "sess_44cc7997-6d77-428e-a9bd-d54febb0487f",
+        "timestamp": 1785570047454
+      }
+    ],
+    "6.1 Add description field to `item-capture-page.tsx`": [
+      {
+        "executionId": "579637a9-fcd4-4b0d-89a9-50d10311bc2b",
+        "chatSessionId": "sess_44cc7997-6d77-428e-a9bd-d54febb0487f",
+        "timestamp": 1785569813023
+      },
+      {
+        "executionId": "579637a9-fcd4-4b0d-89a9-50d10311bc2b",
+        "chatSessionId": "sess_44cc7997-6d77-428e-a9bd-d54febb0487f",
+        "timestamp": 1785570052074
+      },
+      {
+        "executionId": "579637a9-fcd4-4b0d-89a9-50d10311bc2b",
+        "chatSessionId": "sess_44cc7997-6d77-428e-a9bd-d54febb0487f",
+        "timestamp": 1785570112878
+      }
+    ],
+    "6.2 Update `PriceSuggestionPanel` trigger logic": [
+      {
+        "executionId": "579637a9-fcd4-4b0d-89a9-50d10311bc2b",
+        "chatSessionId": "sess_44cc7997-6d77-428e-a9bd-d54febb0487f",
+        "timestamp": 1785569813081
+      },
+      {
+        "executionId": "579637a9-fcd4-4b0d-89a9-50d10311bc2b",
+        "chatSessionId": "sess_44cc7997-6d77-428e-a9bd-d54febb0487f",
+        "timestamp": 1785570123895
+      },
+      {
+        "executionId": "579637a9-fcd4-4b0d-89a9-50d10311bc2b",
+        "chatSessionId": "sess_44cc7997-6d77-428e-a9bd-d54febb0487f",
+        "timestamp": 1785570238319
+      }
+    ],
+    "7. Final checkpoint - Ensure all tests pass": [
+      {
+        "executionId": "579637a9-fcd4-4b0d-89a9-50d10311bc2b",
+        "chatSessionId": "sess_44cc7997-6d77-428e-a9bd-d54febb0487f",
+        "timestamp": 1785569813149
+      },
+      {
+        "executionId": "579637a9-fcd4-4b0d-89a9-50d10311bc2b",
+        "chatSessionId": "sess_44cc7997-6d77-428e-a9bd-d54febb0487f",
+        "timestamp": 1785570242514
+      },
+      {
+        "executionId": "579637a9-fcd4-4b0d-89a9-50d10311bc2b",
+        "chatSessionId": "sess_44cc7997-6d77-428e-a9bd-d54febb0487f",
+        "timestamp": 1785570288344
+      }
+    ],
+    "1. Backend: Add canonical descriptions endpoint": [
+      {
+        "executionId": "579637a9-fcd4-4b0d-89a9-50d10311bc2b",
+        "chatSessionId": "sess_44cc7997-6d77-428e-a9bd-d54febb0487f",
+        "timestamp": 1785569972697
+      }
+    ],
+    "2. Frontend: Extract levenshtein utility to shared lib": [
+      {
+        "executionId": "579637a9-fcd4-4b0d-89a9-50d10311bc2b",
+        "chatSessionId": "sess_44cc7997-6d77-428e-a9bd-d54febb0487f",
+        "timestamp": 1785569973428
+      }
+    ],
+    "3. Frontend: Add `fetchCanonicalDescriptions` to pricing API client": [
+      {
+        "executionId": "579637a9-fcd4-4b0d-89a9-50d10311bc2b",
+        "chatSessionId": "sess_44cc7997-6d77-428e-a9bd-d54febb0487f",
+        "timestamp": 1785569974229
+      }
+    ],
+    "5. Frontend: Create DescriptionAutocomplete component": [
+      {
+        "executionId": "579637a9-fcd4-4b0d-89a9-50d10311bc2b",
+        "chatSessionId": "sess_44cc7997-6d77-428e-a9bd-d54febb0487f",
+        "timestamp": 1785570047506
+      }
+    ],
+    "6. Frontend: Integrate description into item capture page and price suggestion": [
+      {
+        "executionId": "579637a9-fcd4-4b0d-89a9-50d10311bc2b",
+        "chatSessionId": "sess_44cc7997-6d77-428e-a9bd-d54febb0487f",
+        "timestamp": 1785570238411
+      }
+    ]
+  }
+}
