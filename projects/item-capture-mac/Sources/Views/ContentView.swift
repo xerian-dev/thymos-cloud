@@ -6,6 +6,7 @@ import SwiftData
 struct ContentView: View {
     @Environment(\.modelContext) private var modelContext
     let authService: AuthService
+    @AppStorage("imageAIEnabled") private var imageAIEnabled = false
 
     @State private var pricingEngine: PricingEngine?
     @State private var syncService: SyncService?
@@ -31,7 +32,7 @@ struct ContentView: View {
 
             // Right: Camera viewfinder + Price suggestion + sync status
             VStack(alignment: .leading, spacing: 16) {
-                CameraView()
+                CameraView(enabled: imageAIEnabled)
 
                 Spacer()
                     .frame(height: 100)
@@ -51,6 +52,8 @@ struct ContentView: View {
             .padding()
             .frame(width: 280)
         }
+        .background(AppTheme.warmBackground)
+        .toolbarBackground(AppTheme.lightSage, for: .windowToolbar)
         .navigationTitle("Thymos Ticket")
         .toolbar {
             ToolbarItem(placement: .automatic) {

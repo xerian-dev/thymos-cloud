@@ -29,13 +29,14 @@ struct ItemCaptureApp: App {
     var body: some Scene {
         WindowGroup {
             AuthGateView(authService: authService)
-                .frame(minWidth: 800, minHeight: 600)
+                .frame(width: 960, height: 700)
                 .task {
                     await authService.restoreSession()
                 }
         }
         .modelContainer(modelContainer)
         .windowStyle(.titleBar)
+        .windowResizability(.contentSize)
         .defaultSize(width: 960, height: 700)
 
         #if os(macOS)

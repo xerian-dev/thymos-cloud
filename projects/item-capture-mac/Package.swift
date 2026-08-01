@@ -3,7 +3,7 @@
 import PackageDescription
 
 let package = Package(
-    name: "ItemCapture",
+    name: "ThymosTicket",
     platforms: [
         .macOS(.v14)
     ],
@@ -12,11 +12,15 @@ let package = Package(
     ],
     targets: [
         .executableTarget(
-            name: "ItemCapture",
+            name: "ThymosTicket",
             dependencies: [
                 .product(name: "AWSCognitoIdentityProvider", package: "aws-sdk-swift"),
             ],
-            path: "Sources"
+            path: "Sources",
+            resources: [
+                .process("Resources/app-icon.png"),
+                .copy("Resources/AppIcon.icns"),
+            ]
         )
     ]
 )

@@ -5,6 +5,7 @@ import AppKit
 /// Live camera viewfinder with a capture button.
 /// Uses AVCaptureSession to display real-time video from the Mac's camera.
 struct CameraView: View {
+    var enabled: Bool = true
     @State private var cameraManager = CameraManager()
     @State private var capturedImage: NSImage?
 
@@ -12,32 +13,25 @@ struct CameraView: View {
         VStack(spacing: 12) {
             // Viewfinder
             ZStack {
-                if cameraManager.isRunning {
+                if enabled && cameraManager.isRunning {
                     CameraPreviewRepresentable(session: cameraManager.session)
                         .aspectRatio(4/3, contentMode: .fit)
-                        .clipShape(RoundedRectangle(cornerRadius: 8))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 8)
-                                .stroke(Color.secondary.opacity(0.3), lineWidth: 1)
-                        )
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                        .shadow(color: .black.opacity(0.08), radius: 8, y: 3)
                 } else {
-                    RoundedRectangle(cornerRadius: 8)
-                        .fill(Color.black.opacity(0.05))
+                    RoundedRectangle(cornerRadius: 12)
+                        .fill(AppTheme.lightSage)
                         .aspectRatio(4/3, contentMode: .fit)
                         .overlay {
                             VStack(spacing: 8) {
-                                Image(systemName: "camera.fill")
+                                Image(systemName: enabled ? "camera.fill" : "camera.fill")
                                     .font(.title)
-                                    .foregroundStyle(.tertiary)
-                                Text(cameraManager.errorMessage ?? "Starting camera...")
+                                    .foregroundStyle(enabled ? AppTheme.softTeal : Color.gray)
+                                Text(enabled ? (cameraManager.errorMessage ?? "Starting camera...") : "Enable Image AI in Settings")
                                     .font(.caption)
-                                    .foregroundStyle(.tertiary)
+                                    .foregroundStyle(.secondary)
                             }
                         }
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 8)
-                                .stroke(Color.secondary.opacity(0.2), lineWidth: 1)
-                        )
                 }
 
                 // Show captured image flash overlay
@@ -56,17 +50,27 @@ struct CameraView: View {
                 Label("Capture", systemImage: "camera.shutter.button.fill")
             }
             .buttonStyle(.borderedProminent)
+            .tint(AppTheme.captureButton)
             .controlSize(.large)
-            .disabled(!cameraManager.isRunning)
+            .disabled(!enabled || !cameraManager.isRunning)
             .keyboardShortcut(" ", modifiers: [])
             .accessibilityLabel("Capture photo")
             .accessibilityHint("Takes a photo of the item")
         }
         .onAppear {
-            cameraManager.start()
+            if enabled {
+                cameraManager.start()
+            }
         }
         .onDisappear {
             cameraManager.stop()
+        }
+        .onChange(of: enabled) { _, newValue in
+            if newValue {
+                cameraManager.start()
+            } else {
+                cameraManager.stop()
+            }
         }
     }
 

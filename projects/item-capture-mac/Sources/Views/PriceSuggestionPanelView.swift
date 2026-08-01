@@ -8,23 +8,29 @@ struct PriceSuggestionPanelView: View {
     let onUseSuggestion: (Double) -> Void
 
     var body: some View {
-        GroupBox {
-            VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 12) {
+            // Header with icon
+            HStack(spacing: 6) {
+                Image(systemName: "sparkles")
+                    .foregroundStyle(AppTheme.softTeal)
+                    .font(.subheadline)
                 Text("Price Suggestion")
                     .font(.headline)
-                    .foregroundStyle(.secondary)
-
-                if isLoading {
-                    loadingView
-                } else if let suggestion {
-                    suggestionView(suggestion)
-                } else {
-                    emptyView
-                }
+                    .foregroundStyle(AppTheme.darkAccent)
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(4)
+
+            if isLoading {
+                loadingView
+            } else if let suggestion {
+                suggestionView(suggestion)
+            } else {
+                emptyView
+            }
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(16)
+        .background(AppTheme.lightSage)
+        .clipShape(RoundedRectangle(cornerRadius: 10))
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Price suggestion panel")
     }
@@ -32,19 +38,20 @@ struct PriceSuggestionPanelView: View {
     // MARK: - States
 
     private var loadingView: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        HStack(spacing: 8) {
             ProgressView()
                 .controlSize(.small)
+                .tint(AppTheme.primary)
             Text("Calculating...")
-                .font(.caption)
+                .font(.callout)
                 .foregroundStyle(.secondary)
         }
     }
 
     private var emptyView: some View {
-        Text("Enter item details to see a price suggestion")
+        Text("Waiting for item details...")
             .font(.callout)
-            .foregroundStyle(.tertiary)
+            .foregroundStyle(.secondary)
     }
 
     private func suggestionView(_ suggestion: PriceSuggestion) -> some View {
@@ -53,6 +60,7 @@ struct PriceSuggestionPanelView: View {
             HStack(alignment: .firstTextBaseline, spacing: 8) {
                 Text("CHF \(suggestion.suggestedPrice, specifier: "%.2f")")
                     .font(.title2.bold().monospacedDigit())
+                    .foregroundStyle(AppTheme.priceText)
 
                 ConfidenceBadge(confidence: suggestion.confidence)
             }
@@ -74,6 +82,7 @@ struct PriceSuggestionPanelView: View {
                     .frame(maxWidth: .infinity)
             }
             .buttonStyle(.borderedProminent)
+            .tint(AppTheme.buttonPrimary)
             .controlSize(.regular)
             .keyboardShortcut(.return, modifiers: [.command])
             .accessibilityHint("Sets the tag price to the suggested value")
@@ -89,8 +98,8 @@ private struct ConfidenceBadge: View {
     var body: some View {
         Text(confidence.rawValue.capitalized)
             .font(.caption.weight(.medium))
-            .padding(.horizontal, 6)
-            .padding(.vertical, 2)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 3)
             .background(backgroundColor)
             .foregroundStyle(foregroundColor)
             .clipShape(Capsule())
@@ -98,17 +107,17 @@ private struct ConfidenceBadge: View {
 
     private var backgroundColor: Color {
         switch confidence {
-        case .high: return .green.opacity(0.15)
-        case .medium: return .orange.opacity(0.15)
-        case .low: return .gray.opacity(0.15)
+        case .high: return AppTheme.primary.opacity(0.15)
+        case .medium: return AppTheme.confidenceMedium.opacity(0.15)
+        case .low: return AppTheme.confidenceLow.opacity(0.12)
         }
     }
 
     private var foregroundColor: Color {
         switch confidence {
-        case .high: return .green
-        case .medium: return .orange
-        case .low: return .secondary
+        case .high: return AppTheme.primary
+        case .medium: return AppTheme.confidenceMedium
+        case .low: return AppTheme.confidenceLow
         }
     }
 }
