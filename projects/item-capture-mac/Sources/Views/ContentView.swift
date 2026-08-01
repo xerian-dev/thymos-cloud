@@ -5,6 +5,7 @@ import SwiftData
 /// and price suggestion panel on the right.
 struct ContentView: View {
     @Environment(\.modelContext) private var modelContext
+    let authService: AuthService
 
     @State private var pricingEngine: PricingEngine?
     @State private var syncService: SyncService?
@@ -33,6 +34,7 @@ struct ContentView: View {
                 CameraView()
 
                 Spacer()
+                    .frame(height: 100)
 
                 PriceSuggestionPanelView(
                     suggestion: currentSuggestion,
@@ -42,33 +44,33 @@ struct ContentView: View {
                     }
                 )
 
+                Spacer(minLength: 0)
+
                 syncStatusView
             }
             .padding()
             .frame(width: 280)
         }
-        .navigationTitle("Item Capture")
+        .navigationTitle("Thymos Ticket")
         .toolbar {
-            ToolbarItem(placement: .primaryAction) {
-                syncButton
+            ToolbarItem(placement: .automatic) {
+                if case .authenticated(let username) = authService.state {
+                    Text(username)
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                        .padding(.leading, 8)
+                }
+            }
+            ToolbarItem(placement: .automatic) {
+                Button(action: { authService.signOut() }) {
+                    Label("Sign Out", systemImage: "rectangle.portrait.and.arrow.right")
+                }
+                .help("Sign out")
             }
         }
         .onAppear {
             setupServices()
         }
-        .onReceive(NotificationCenter.default.publisher(for: .syncPricingData)) { _ in
-            triggerSync()
-        }
-    }
-
-    // MARK: - Sync Button
-
-    private var syncButton: some View {
-        Button(action: triggerSync) {
-            Label("Sync", systemImage: "arrow.triangle.2.circlepath")
-        }
-        .disabled(syncService?.state == .syncing(progress: ""))
-        .help("Sync pricing data (Cmd+Shift+R)")
     }
 
     // MARK: - Sync Status
@@ -105,7 +107,7 @@ struct ContentView: View {
     private func setupServices() {
         let container = modelContext.container
         let config = loadAPIConfiguration()
-        let client = APIClient(configuration: config)
+        let client = APIClient(configuration: config, authService: authService)
 
         pricingEngine = PricingEngine(modelContainer: container)
         syncService = SyncService(apiClient: client, modelContainer: container)
@@ -162,8 +164,7 @@ struct ContentView: View {
     private func loadAPIConfiguration() -> APIConfiguration {
         let defaults = UserDefaults.standard
         let baseURL = defaults.string(forKey: "apiBaseURL") ?? APIConfiguration.default.baseURL
-        let token = defaults.string(forKey: "apiAuthToken") ?? ""
 
-        return APIConfiguration(baseURL: baseURL, authToken: token)
+        return APIConfiguration(baseURL: baseURL, authToken: "")
     }
 }

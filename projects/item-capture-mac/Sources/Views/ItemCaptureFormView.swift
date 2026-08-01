@@ -29,10 +29,12 @@ struct ItemCaptureFormView: View {
     @State private var title = ""
     @State private var tagPrice = ""
     @State private var printOnSave = true
+    @State private var comment = ""
 
     let onPriceFieldsChanged: (_ brand: String, _ categoryId: String, _ description: String, _ color: String, _ size: String) -> Void
 
     var body: some View {
+        VStack(spacing: 0) {
         Form {
             Section("Item Details") {
                 LabeledContent("Category") {
@@ -140,6 +142,15 @@ struct ItemCaptureFormView: View {
             }
         }
         .formStyle(.grouped)
+
+        // Comment field — spans full form width (both label + value columns)
+        TextField("", text: $comment, prompt: Text("Comment").foregroundStyle(.tertiary), axis: .vertical)
+            .textFieldStyle(.roundedBorder)
+            .lineLimit(4...8)
+            .padding(.horizontal, 20)
+            .padding(.bottom, 12)
+            .accessibilityLabel("Comment")
+        } // VStack
         .onChange(of: brand) { _, _ in notifyPriceFields() }
         .onChange(of: categoryId) { _, _ in notifyPriceFields() }
         .onChange(of: description) { _, _ in notifyPriceFields() }
