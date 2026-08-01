@@ -6,6 +6,7 @@ import AppKit
 struct ItemCaptureApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     let modelContainer: ModelContainer
+    @State private var authService = AuthService()
 
     init() {
         let schema = Schema([
@@ -27,26 +28,38 @@ struct ItemCaptureApp: App {
 
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            AuthGateView(authService: authService)
                 .frame(minWidth: 800, minHeight: 600)
+                .task {
+                    await authService.restoreSession()
+                }
         }
         .modelContainer(modelContainer)
         .windowStyle(.titleBar)
         .defaultSize(width: 960, height: 700)
-        .commands {
-            CommandGroup(after: .appInfo) {
-                Button("Sync Pricing Data") {
-                    NotificationCenter.default.post(name: .syncPricingData, object: nil)
-                }
-                .keyboardShortcut("r", modifiers: [.command, .shift])
-            }
-        }
 
         #if os(macOS)
         Settings {
             SettingsView()
         }
         #endif
+    }
+}
+
+/// Shows LoginView when unauthenticated, ContentView when authenticated.
+struct AuthGateView: View {
+    let authService: AuthService
+
+    var body: some View {
+        switch authService.state {
+        case .unknown:
+            ProgressView("Restoring session...")
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+        case .unauthenticated:
+            LoginView(authService: authService)
+        case .authenticated:
+            ContentView(authService: authService)
+        }
     }
 }
 

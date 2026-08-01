@@ -28,7 +28,7 @@ enum APIError: Error, LocalizedError {
 }
 
 /// Configuration for the API client, loaded from the app's settings.
-struct APIConfiguration: Codable, Sendable {
+struct APIConfiguration: Sendable {
     var baseURL: String
     var authToken: String
 
@@ -42,11 +42,13 @@ struct APIConfiguration: Codable, Sendable {
 /// Handles authentication, pagination, and error mapping.
 actor APIClient {
     private let configuration: APIConfiguration
+    private let authService: AuthService?
     private let session: URLSession
     private let decoder: JSONDecoder
 
-    init(configuration: APIConfiguration) {
+    init(configuration: APIConfiguration, authService: AuthService? = nil) {
         self.configuration = configuration
+        self.authService = authService
 
         let sessionConfig = URLSessionConfiguration.default
         sessionConfig.timeoutIntervalForRequest = 30
@@ -114,7 +116,14 @@ actor APIClient {
         }
 
         var urlRequest = URLRequest(url: url)
-        urlRequest.setValue("Bearer \(configuration.authToken)", forHTTPHeaderField: "Authorization")
+        // Get token from AuthService if available, otherwise fall back to config
+        let token: String
+        if let authService {
+            token = (try? await authService.getAccessToken()) ?? configuration.authToken
+        } else {
+            token = configuration.authToken
+        }
+        urlRequest.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         urlRequest.setValue("application/json", forHTTPHeaderField: "Accept")
 
         do {

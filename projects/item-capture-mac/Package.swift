@@ -7,9 +7,15 @@ let package = Package(
     platforms: [
         .macOS(.v14)
     ],
+    dependencies: [
+        .package(url: "https://github.com/awslabs/aws-sdk-swift.git", from: "1.0.0"),
+    ],
     targets: [
         .executableTarget(
             name: "ItemCapture",
+            dependencies: [
+                .product(name: "AWSCognitoIdentityProvider", package: "aws-sdk-swift"),
+            ],
             path: "Sources"
         )
     ]
