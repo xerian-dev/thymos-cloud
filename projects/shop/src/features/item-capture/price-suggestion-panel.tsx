@@ -5,6 +5,7 @@ import type { PriceSuggestionResponse } from "@/features/pricing/pricing-types";
 export interface PriceSuggestionPanelProps {
   brand: string;
   categoryId: string;
+  description: string;
   color: string;
   size: string;
   createdBy?: string;
@@ -38,6 +39,7 @@ function getConfidenceBadgeClasses(
 export function PriceSuggestionPanel({
   brand,
   categoryId,
+  description,
   color,
   size,
   createdBy,
@@ -46,7 +48,7 @@ export function PriceSuggestionPanel({
   const [state, setState] = React.useState<PanelState>({ status: "idle" });
 
   React.useEffect(() => {
-    if (!categoryId) {
+    if (!categoryId && !description) {
       setState({ status: "idle" });
       return;
     }
@@ -56,7 +58,14 @@ export function PriceSuggestionPanel({
     const controller = new AbortController();
     const timeoutId = setTimeout(() => {
       fetchPriceSuggestion(
-        { brand: brand || undefined, categoryId, color: color || undefined, size: size || undefined, createdBy },
+        {
+          brand: brand || undefined,
+          categoryId: categoryId || undefined,
+          description: description || undefined,
+          color: color || undefined,
+          size: size || undefined,
+          createdBy,
+        },
         controller.signal,
       )
         .then((result) => {
@@ -85,7 +94,7 @@ export function PriceSuggestionPanel({
       clearTimeout(timeoutId);
       controller.abort();
     };
-  }, [brand, categoryId, color, size, createdBy]);
+  }, [brand, categoryId, description, color, size, createdBy]);
 
   if (state.status === "idle") {
     return null;

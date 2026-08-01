@@ -1,6 +1,7 @@
 import { render, screen, fireEvent, act } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { BrandAutocomplete, levenshteinDistance } from "./brand-autocomplete";
+import { BrandAutocomplete } from "./brand-autocomplete";
+import { levenshteinDistance } from "@/lib/levenshtein";
 
 vi.mock("../pricing/pricing-api", () => ({
   fetchCanonicalBrands: vi.fn(),

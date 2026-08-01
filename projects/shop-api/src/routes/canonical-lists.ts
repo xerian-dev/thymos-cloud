@@ -16,11 +16,13 @@ interface CacheEntry {
 
 let brandsCache: CacheEntry | null = null;
 let colorsCache: CacheEntry | null = null;
+let descriptionsCache: CacheEntry | null = null;
 
 /** Reset caches — exposed for testing only. */
 export function _resetCaches(): void {
   brandsCache = null;
   colorsCache = null;
+  descriptionsCache = null;
 }
 
 function isFresh(entry: CacheEntry | null): entry is CacheEntry {
@@ -93,6 +95,27 @@ export async function listCanonicalColors(
     return jsonResponse(200, { colors });
   } catch (error: unknown) {
     console.error("listCanonicalColors error", {
+      message: error instanceof Error ? error.message : "Unknown error",
+      name: error instanceof Error ? error.name : undefined,
+    });
+    return errorResponse();
+  }
+}
+
+export async function listCanonicalDescriptions(
+  _event: APIGatewayProxyEventV2,
+): Promise<APIGatewayProxyResultV2> {
+  try {
+    if (isFresh(descriptionsCache)) {
+      return jsonResponse(200, { descriptions: descriptionsCache.data });
+    }
+
+    const descriptions = await queryCanonicalNames("CANONICAL#DESCRIPTIONS");
+    descriptionsCache = { data: descriptions, fetchedAt: Date.now() };
+
+    return jsonResponse(200, { descriptions });
+  } catch (error: unknown) {
+    console.error("listCanonicalDescriptions error", {
       message: error instanceof Error ? error.message : "Unknown error",
       name: error instanceof Error ? error.name : undefined,
     });

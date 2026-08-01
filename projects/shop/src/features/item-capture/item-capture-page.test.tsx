@@ -11,6 +11,7 @@ import { ItemCapturePage } from "./item-capture-page";
 vi.mock("../pricing/pricing-api", () => ({
   fetchCanonicalBrands: vi.fn(),
   fetchCanonicalColors: vi.fn(),
+  fetchCanonicalDescriptions: vi.fn(),
   fetchPriceSuggestion: vi.fn(),
 }));
 
@@ -21,12 +22,14 @@ vi.mock("./categories-api", () => ({
 import {
   fetchCanonicalBrands,
   fetchCanonicalColors,
+  fetchCanonicalDescriptions,
   fetchPriceSuggestion,
 } from "../pricing/pricing-api";
 import { fetchCategories } from "./categories-api";
 
 const mockFetchCanonicalBrands = vi.mocked(fetchCanonicalBrands);
 const mockFetchCanonicalColors = vi.mocked(fetchCanonicalColors);
+const mockFetchCanonicalDescriptions = vi.mocked(fetchCanonicalDescriptions);
 const mockFetchPriceSuggestion = vi.mocked(fetchPriceSuggestion);
 const mockFetchCategories = vi.mocked(fetchCategories);
 
@@ -41,6 +44,10 @@ describe("ItemCapturePage", () => {
     mockFetchCanonicalColors.mockResolvedValue({
       success: true,
       values: ["Black", "Blue", "Red"],
+    });
+    mockFetchCanonicalDescriptions.mockResolvedValue({
+      success: true,
+      values: ["Jeans", "T-Shirt", "Dress"],
     });
     mockFetchCategories.mockResolvedValue({
       success: true,

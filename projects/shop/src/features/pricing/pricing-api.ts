@@ -28,6 +28,7 @@ export async function fetchPriceSuggestion(
   params: {
     brand?: string;
     categoryId?: string;
+    description?: string;
     color?: string;
     size?: string;
     createdBy?: string;
@@ -50,6 +51,9 @@ export async function fetchPriceSuggestion(
     }
     if (params.categoryId) {
       url.searchParams.set("categoryId", params.categoryId);
+    }
+    if (params.description) {
+      url.searchParams.set("description", params.description);
     }
     if (params.color) {
       url.searchParams.set("color", params.color);
@@ -237,6 +241,50 @@ export async function fetchCanonicalBrands(
 
     const data: { brands: string[] } = await response.json();
     return { success: true, values: data.brands };
+  } catch (error: unknown) {
+    clearTimeout(timeoutId);
+
+    if (error instanceof DOMException && error.name === "AbortError") {
+      if (signal?.aborted) {
+        throw error;
+      }
+      return { success: false, error: "timeout" };
+    }
+
+    if (error instanceof TypeError) {
+      return { success: false, error: "network" };
+    }
+
+    return { success: false, error: "server" };
+  }
+}
+
+export async function fetchCanonicalDescriptions(
+  signal?: AbortSignal,
+): Promise<CanonicalListResult> {
+  const timeoutController = new AbortController();
+  const timeoutId = setTimeout(() => timeoutController.abort(), 30_000);
+
+  const combinedSignal = signal
+    ? AbortSignal.any([signal, timeoutController.signal])
+    : timeoutController.signal;
+
+  try {
+    const authHeaders = await getAuthHeaders();
+
+    const response = await fetch(`${API_BASE}/pricing/canonical/descriptions`, {
+      headers: authHeaders,
+      signal: combinedSignal,
+    });
+
+    clearTimeout(timeoutId);
+
+    if (!response.ok) {
+      return { success: false, error: "server" };
+    }
+
+    const data: { descriptions: string[] } = await response.json();
+    return { success: true, values: data.descriptions };
   } catch (error: unknown) {
     clearTimeout(timeoutId);
 
