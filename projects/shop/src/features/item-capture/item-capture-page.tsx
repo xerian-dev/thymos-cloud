@@ -5,11 +5,13 @@ import { Label } from "@/components/ui/label";
 import { BrandAutocomplete } from "./brand-autocomplete";
 import { CategoryAutocomplete } from "./category-autocomplete";
 import { ColorAutocomplete } from "./color-autocomplete";
+import { DescriptionAutocomplete } from "./description-autocomplete";
 import { PriceSuggestionPanel } from "./price-suggestion-panel";
 
 export function ItemCapturePage(): React.ReactNode {
   const [brand, setBrand] = React.useState("");
   const [categoryId, setCategoryId] = React.useState("");
+  const [description, setDescription] = React.useState("");
   const [color, setColor] = React.useState("");
   const [size, setSize] = React.useState("");
   const [title, setTitle] = React.useState("");
@@ -57,6 +59,15 @@ export function ItemCapturePage(): React.ReactNode {
           <div className="space-y-1.5">
             <Label htmlFor="category-field">Category</Label>
             <CategoryAutocomplete value={categoryId} onChange={setCategoryId} />
+          </div>
+
+          {/* Description */}
+          <div className="space-y-1.5">
+            <Label htmlFor="description-field">Description</Label>
+            <DescriptionAutocomplete
+              value={description}
+              onChange={setDescription}
+            />
           </div>
 
           {/* Color */}
@@ -120,6 +131,7 @@ export function ItemCapturePage(): React.ReactNode {
           <PriceSuggestionPanel
             brand={brand}
             categoryId={categoryId}
+            description={description}
             color={color}
             size={size}
             onUseSuggestion={handleUseSuggestion}
