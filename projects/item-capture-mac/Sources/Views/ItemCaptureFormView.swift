@@ -107,10 +107,11 @@ struct ItemCaptureFormView: View {
                 LabeledContent("Tag Price") {
                     HStack(spacing: 4) {
                         Text("CHF")
-                            .foregroundStyle(.secondary)
-                            .font(.body.monospacedDigit())
+                            .foregroundStyle(AppTheme.darkAccent)
+                            .font(.body.bold().monospacedDigit())
                         TextField("", text: $tagPrice, prompt: Text("0.00").foregroundStyle(.tertiary))
                             .textFieldStyle(.roundedBorder)
+                            .font(.title3.monospacedDigit())
                             .frame(maxWidth: 120)
                             .accessibilityLabel("Tag price in CHF")
                             .onChange(of: tagPrice) { _, newValue in
@@ -128,6 +129,7 @@ struct ItemCaptureFormView: View {
                 HStack(spacing: 16) {
                     Toggle("Print On Save", isOn: $printOnSave)
                         .toggleStyle(.checkbox)
+                        .tint(AppTheme.primary)
 
                     Spacer()
 
@@ -136,6 +138,7 @@ struct ItemCaptureFormView: View {
                             .frame(minWidth: 80)
                     }
                     .buttonStyle(.borderedProminent)
+                    .tint(AppTheme.buttonPrimary)
                     .controlSize(.large)
                     .keyboardShortcut("s", modifiers: .command)
                 }

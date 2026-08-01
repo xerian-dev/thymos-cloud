@@ -15,9 +15,10 @@ struct LoginView: View {
             VStack(spacing: 8) {
                 Image(systemName: "tag.fill")
                     .font(.system(size: 48))
-                    .foregroundStyle(Color.accentColor)
+                    .foregroundStyle(AppTheme.primary)
                 Text("Thymos Ticket")
                     .font(.title.bold())
+                    .foregroundStyle(AppTheme.darkAccent)
                 Text("Sign in to continue")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
@@ -59,6 +60,7 @@ struct LoginView: View {
                 }
             }
             .buttonStyle(.borderedProminent)
+            .tint(AppTheme.buttonPrimary)
             .controlSize(.large)
             .disabled(username.isEmpty || password.isEmpty || authService.isLoading)
             .keyboardShortcut(.return, modifiers: [])
