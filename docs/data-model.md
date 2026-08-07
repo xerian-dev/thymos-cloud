@@ -80,6 +80,8 @@ erDiagram
         string category "Optional, category name for display"
         string brand "Optional"
         string color "Optional"
+        string pattern "Optional, canonical pattern name"
+        string sourcePattern "Optional, original value that triggered pattern extraction"
         string size "Optional"
         string shelf "Optional"
         string location "Optional, store location name"
@@ -170,6 +172,8 @@ Operational entities live in the DynamoDB table (`thymos-{environment}-shop`). T
 | Account Counter  | `SEQUENCE#ACCOUNT`    | `COUNTER`             | —          | —                       | —                           | —                       | —                             | —                       |
 | Item Counter     | `SEQUENCE#ITEM`       | `COUNTER`             | —          | —                       | —                           | —                       | —                             | —                       |
 | Sale Counter     | `SEQUENCE#SALE`       | `COUNTER`             | —          | —                       | —                           | —                       | —                             | —                       |
+| Canonical Color  | `CANONICAL#COLORS`    | `COLOR#<name>`        | —          | —                       | —                           | —                       | —                             | —                       |
+| Canonical Pattern| `CANONICAL#PATTERNS`  | `PATTERN#<name>`      | —          | —                       | —                           | —                       | —                             | —                       |
 
 ### Key Design Principles
 
@@ -183,6 +187,7 @@ Operational entities live in the DynamoDB table (`thymos-{environment}-shop`). T
 - **Sale line items**: Stored under the same PK as the sale (`SALE#<uuid>`) with SK `LINE_ITEM#<index>`. This allows fetching a sale and all its line items in a single Query. Each line item references the Item UUID and stores the price/portions at time of sale.
 - **Sale number**: The operator-facing identifier for sales. For imported sales, the number comes directly from ConsignCloud (not generated). The sequence counter is seeded to max(imported number) after the first full import to prevent collisions with future locally-created sales. Queryable via GSI1 (`GSI1PK: SALES`, `GSI1SK: SALE#<number>`).
 - **Sequence counters**: Separate counter records for each entity type, atomically incremented via DynamoDB conditional expressions
+- **Canonical lists**: `CANONICAL#COLORS` and `CANONICAL#PATTERNS` store the master list of canonical color and pattern names with their known aliases. Seeded by the color-apply Lambda after applying mappings. Used by the `GET /api/pricing/canonical/colors` and `GET /api/pricing/canonical/patterns` routes.
 
 ## Pricing Table (`thymos-{environment}-pricing`)
 
@@ -293,6 +298,64 @@ Derived from the ConsignCloud status breakdown object. For items with quantity >
 | `lost`                | 9        | Item is lost or unaccounted for.                                                                      |
 | `stolen`              | 10       | Item reported stolen.                                                                                 |
 | `damaged`             | 11       | Item damaged and removed from inventory.                                                              |
+
+### Canonical Patterns
+
+Patterns describe the visual pattern/print of an item, separated from the actual color. The pattern field stores one of the following canonical German values:
+
+| Value         | Description        | Known Variants                                                       |
+| ------------- | ------------------ | -------------------------------------------------------------------- |
+| `Gestreift`   | Striped            | gestreift, stripes, striped, streifen, geringelt                     |
+| `Punkte`      | Dots/Polka         | punkte, dots, gepunktet, polka, tupfen                               |
+| `Kariert`     | Checked/Plaid      | kariert, checked, karo, karos, plaid                                 |
+| `Bedruckt`    | Printed/Image      | bedruckt, print, motiv, muster, druck, blumen, floral, tiere, animal, sterne, stars, herzen, hearts, leopard, zebra, tiger |
+| `Camouflage`  | Camo               | camouflage, camo, tarn, armee                                        |
+| `Uni`         | Solid/Plain        | uni, einfarbig, solid, plain                                         |
+
+> **Note**: Blumen (floral), Tiere (animal), Sterne (stars), and Herzen (hearts) are consolidated under `Bedruckt` (printed) since they represent printed imagery rather than distinct repeating patterns.
+
+### Canonical Colors
+
+Colors are normalized to German canonical names. Compound colors use `/` as separator with segments sorted alphabetically (e.g., `Beige/Blau` not `Blau/Beige`). Each segment starts with a capital letter.
+
+**Base colors:**
+
+| Canonical     | English      | Common variants                               |
+| ------------- | ------------ | --------------------------------------------- |
+| `Blau`        | Blue         | blau, blue, bleu, blu                         |
+| `Rot`         | Red          | rot, red                                      |
+| `Grün`        | Green        | grün, gruen, green                            |
+| `Gelb`        | Yellow       | gelb, yellow                                  |
+| `Schwarz`     | Black        | schwarz, black                                |
+| `Weiss`       | White        | weiss, weiß, white                            |
+| `Braun`       | Brown        | braun, brown, brun                            |
+| `Grau`        | Grey         | grau, grey, gray                              |
+| `Rosa`        | Pink (soft)  | rosa                                          |
+| `Lila`        | Purple       | lila, purple, lilac                           |
+| `Orange`      | Orange       | orange                                        |
+| `Violett`     | Violet       | violett, violet                               |
+| `Pink`        | Pink (hot)   | pink                                          |
+| `Beige`       | Beige        | beige, tan                                    |
+| `Türkis`      | Turquoise    | türkis, turquoise, teal                       |
+| `Weinrot`     | Burgundy     | weinrot, burgundy, bordeaux, maroon           |
+| `Silber`      | Silver       | silber, silver, chrome                        |
+| `Gold`        | Gold         | gold                                          |
+| `Anthrazit`   | Charcoal     | anthrazit, anthracite, charcoal               |
+| `Lachs`       | Salmon       | lachs, salmon                                 |
+| `Petrol`      | Teal         | petrol                                        |
+| `Koralle`     | Coral        | koralle, coral                                |
+| `Mint`        | Mint         | mint                                          |
+| `Creme`       | Cream        | creme, cream, ivory, off-white                |
+| `Khaki`       | Khaki        | khaki                                         |
+| `Olive`       | Olive        | olive, oliv                                   |
+| `Neon`        | Neon         | neon                                          |
+| `Bunt`        | Multi        | bunt, colorful, mehrfarbig                    |
+
+**Prefix modifiers:** `Dunkel` (dark), `Hell` (light) — e.g., `Dunkelblau`, `Hellgrün`
+
+**Compound format:** Colors separated by `/`, segments sorted alphabetically. Example: `Beige/Blau/Rot`
+
+**Null canonical:** Entries that are not colors (sizes, brands, objects, animals) have `canonical: null`.
 
 ## Tech Debt
 

@@ -1,0 +1,295 @@
+{
+  "pbtResults": {},
+  "executionHistory": {
+    "1.1 Remove pattern routes from router and route source files": [
+      {
+        "executionId": "5968f907-3390-463c-9b68-15e2a2916e91",
+        "chatSessionId": "sess_3bf58fc5-8e74-4aa5-9747-0f08f0cbdca9",
+        "timestamp": 1785835752437
+      },
+      {
+        "executionId": "5968f907-3390-463c-9b68-15e2a2916e91",
+        "chatSessionId": "sess_3bf58fc5-8e74-4aa5-9747-0f08f0cbdca9",
+        "timestamp": 1785835760676
+      },
+      {
+        "executionId": "5968f907-3390-463c-9b68-15e2a2916e91",
+        "chatSessionId": "sess_3bf58fc5-8e74-4aa5-9747-0f08f0cbdca9",
+        "timestamp": 1785836323388
+      }
+    ],
+    "1.2 Remove pattern Lambda handlers and esbuild entry points": [
+      {
+        "executionId": "5968f907-3390-463c-9b68-15e2a2916e91",
+        "chatSessionId": "sess_3bf58fc5-8e74-4aa5-9747-0f08f0cbdca9",
+        "timestamp": 1785835752506
+      },
+      {
+        "executionId": "5968f907-3390-463c-9b68-15e2a2916e91",
+        "chatSessionId": "sess_3bf58fc5-8e74-4aa5-9747-0f08f0cbdca9",
+        "timestamp": 1785835761411
+      },
+      {
+        "executionId": "5968f907-3390-463c-9b68-15e2a2916e91",
+        "chatSessionId": "sess_3bf58fc5-8e74-4aa5-9747-0f08f0cbdca9",
+        "timestamp": 1785836324126
+      }
+    ],
+    "1.3 Remove pattern backend source directory and tests": [
+      {
+        "executionId": "5968f907-3390-463c-9b68-15e2a2916e91",
+        "chatSessionId": "sess_3bf58fc5-8e74-4aa5-9747-0f08f0cbdca9",
+        "timestamp": 1785835752574
+      },
+      {
+        "executionId": "5968f907-3390-463c-9b68-15e2a2916e91",
+        "chatSessionId": "sess_3bf58fc5-8e74-4aa5-9747-0f08f0cbdca9",
+        "timestamp": 1785836332172
+      },
+      {
+        "executionId": "5968f907-3390-463c-9b68-15e2a2916e91",
+        "chatSessionId": "sess_3bf58fc5-8e74-4aa5-9747-0f08f0cbdca9",
+        "timestamp": 1785836447523
+      }
+    ],
+    "1.4 Remove pattern frontend feature and navigation": [
+      {
+        "executionId": "5968f907-3390-463c-9b68-15e2a2916e91",
+        "chatSessionId": "sess_3bf58fc5-8e74-4aa5-9747-0f08f0cbdca9",
+        "timestamp": 1785835752637
+      },
+      {
+        "executionId": "5968f907-3390-463c-9b68-15e2a2916e91",
+        "chatSessionId": "sess_3bf58fc5-8e74-4aa5-9747-0f08f0cbdca9",
+        "timestamp": 1785835762214
+      },
+      {
+        "executionId": "5968f907-3390-463c-9b68-15e2a2916e91",
+        "chatSessionId": "sess_3bf58fc5-8e74-4aa5-9747-0f08f0cbdca9",
+        "timestamp": 1785836324793
+      }
+    ],
+    "1.5 Remove pattern infrastructure from Terraform": [
+      {
+        "executionId": "5968f907-3390-463c-9b68-15e2a2916e91",
+        "chatSessionId": "sess_3bf58fc5-8e74-4aa5-9747-0f08f0cbdca9",
+        "timestamp": 1785835752706
+      },
+      {
+        "executionId": "5968f907-3390-463c-9b68-15e2a2916e91",
+        "chatSessionId": "sess_3bf58fc5-8e74-4aa5-9747-0f08f0cbdca9",
+        "timestamp": 1785836332915
+      },
+      {
+        "executionId": "5968f907-3390-463c-9b68-15e2a2916e91",
+        "chatSessionId": "sess_3bf58fc5-8e74-4aa5-9747-0f08f0cbdca9",
+        "timestamp": 1785836448221
+      }
+    ],
+    "2. Checkpoint - Verify removal is clean": [
+      {
+        "executionId": "5968f907-3390-463c-9b68-15e2a2916e91",
+        "chatSessionId": "sess_3bf58fc5-8e74-4aa5-9747-0f08f0cbdca9",
+        "timestamp": 1785835752776
+      },
+      {
+        "executionId": "5968f907-3390-463c-9b68-15e2a2916e91",
+        "chatSessionId": "sess_3bf58fc5-8e74-4aa5-9747-0f08f0cbdca9",
+        "timestamp": 1785836461132
+      },
+      {
+        "executionId": "5968f907-3390-463c-9b68-15e2a2916e91",
+        "chatSessionId": "sess_3bf58fc5-8e74-4aa5-9747-0f08f0cbdca9",
+        "timestamp": 1785836573381
+      }
+    ],
+    "3.1 Add `PATTERN_MAP` and `splitColorPattern` to `scan-cluster.ts`": [
+      {
+        "executionId": "5968f907-3390-463c-9b68-15e2a2916e91",
+        "chatSessionId": "sess_3bf58fc5-8e74-4aa5-9747-0f08f0cbdca9",
+        "timestamp": 1785835752836
+      },
+      {
+        "executionId": "5968f907-3390-463c-9b68-15e2a2916e91",
+        "chatSessionId": "sess_3bf58fc5-8e74-4aa5-9747-0f08f0cbdca9",
+        "timestamp": 1785836461962
+      },
+      {
+        "executionId": "5968f907-3390-463c-9b68-15e2a2916e91",
+        "chatSessionId": "sess_3bf58fc5-8e74-4aa5-9747-0f08f0cbdca9",
+        "timestamp": 1785836574188
+      }
+    ],
+    "3.2 Update `clusterColors` to produce extended `MappingEntry` format": [
+      {
+        "executionId": "5968f907-3390-463c-9b68-15e2a2916e91",
+        "chatSessionId": "sess_3bf58fc5-8e74-4aa5-9747-0f08f0cbdca9",
+        "timestamp": 1785835752888
+      },
+      {
+        "executionId": "5968f907-3390-463c-9b68-15e2a2916e91",
+        "chatSessionId": "sess_3bf58fc5-8e74-4aa5-9747-0f08f0cbdca9",
+        "timestamp": 1785836582643
+      },
+      {
+        "executionId": "5968f907-3390-463c-9b68-15e2a2916e91",
+        "chatSessionId": "sess_3bf58fc5-8e74-4aa5-9747-0f08f0cbdca9",
+        "timestamp": 1785836700336
+      }
+    ],
+    "4.1 Extend `apply-mappings.ts` with pattern write branches": [
+      {
+        "executionId": "5968f907-3390-463c-9b68-15e2a2916e91",
+        "chatSessionId": "sess_3bf58fc5-8e74-4aa5-9747-0f08f0cbdca9",
+        "timestamp": 1785835752946
+      },
+      {
+        "executionId": "5968f907-3390-463c-9b68-15e2a2916e91",
+        "chatSessionId": "sess_3bf58fc5-8e74-4aa5-9747-0f08f0cbdca9",
+        "timestamp": 1785836709266
+      },
+      {
+        "executionId": "5968f907-3390-463c-9b68-15e2a2916e91",
+        "chatSessionId": "sess_3bf58fc5-8e74-4aa5-9747-0f08f0cbdca9",
+        "timestamp": 1785836839050
+      }
+    ],
+    "5.1 Update `color-management.ts` route validation": [
+      {
+        "executionId": "5968f907-3390-463c-9b68-15e2a2916e91",
+        "chatSessionId": "sess_3bf58fc5-8e74-4aa5-9747-0f08f0cbdca9",
+        "timestamp": 1785835753003
+      },
+      {
+        "executionId": "5968f907-3390-463c-9b68-15e2a2916e91",
+        "chatSessionId": "sess_3bf58fc5-8e74-4aa5-9747-0f08f0cbdca9",
+        "timestamp": 1785836582696
+      },
+      {
+        "executionId": "5968f907-3390-463c-9b68-15e2a2916e91",
+        "chatSessionId": "sess_3bf58fc5-8e74-4aa5-9747-0f08f0cbdca9",
+        "timestamp": 1785836701192
+      }
+    ],
+    "6. Checkpoint - Ensure backend tests pass": [
+      {
+        "executionId": "5968f907-3390-463c-9b68-15e2a2916e91",
+        "chatSessionId": "sess_3bf58fc5-8e74-4aa5-9747-0f08f0cbdca9",
+        "timestamp": 1785835753063
+      },
+      {
+        "executionId": "5968f907-3390-463c-9b68-15e2a2916e91",
+        "chatSessionId": "sess_3bf58fc5-8e74-4aa5-9747-0f08f0cbdca9",
+        "timestamp": 1785836872532
+      },
+      {
+        "executionId": "5968f907-3390-463c-9b68-15e2a2916e91",
+        "chatSessionId": "sess_3bf58fc5-8e74-4aa5-9747-0f08f0cbdca9",
+        "timestamp": 1785836968507
+      }
+    ],
+    "7.1 Update frontend types": [
+      {
+        "executionId": "5968f907-3390-463c-9b68-15e2a2916e91",
+        "chatSessionId": "sess_3bf58fc5-8e74-4aa5-9747-0f08f0cbdca9",
+        "timestamp": 1785835753114
+      },
+      {
+        "executionId": "5968f907-3390-463c-9b68-15e2a2916e91",
+        "chatSessionId": "sess_3bf58fc5-8e74-4aa5-9747-0f08f0cbdca9",
+        "timestamp": 1785836873310
+      },
+      {
+        "executionId": "5968f907-3390-463c-9b68-15e2a2916e91",
+        "chatSessionId": "sess_3bf58fc5-8e74-4aa5-9747-0f08f0cbdca9",
+        "timestamp": 1785836967853
+      }
+    ],
+    "7.2 Add pattern column to color management page": [
+      {
+        "executionId": "5968f907-3390-463c-9b68-15e2a2916e91",
+        "chatSessionId": "sess_3bf58fc5-8e74-4aa5-9747-0f08f0cbdca9",
+        "timestamp": 1785835753193
+      },
+      {
+        "executionId": "5968f907-3390-463c-9b68-15e2a2916e91",
+        "chatSessionId": "sess_3bf58fc5-8e74-4aa5-9747-0f08f0cbdca9",
+        "timestamp": 1785836977502
+      },
+      {
+        "executionId": "5968f907-3390-463c-9b68-15e2a2916e91",
+        "chatSessionId": "sess_3bf58fc5-8e74-4aa5-9747-0f08f0cbdca9",
+        "timestamp": 1785837071329
+      }
+    ],
+    "7.3 Update existing color scanner test to remove `isPurePattern` references": [
+      {
+        "executionId": "5968f907-3390-463c-9b68-15e2a2916e91",
+        "chatSessionId": "sess_3bf58fc5-8e74-4aa5-9747-0f08f0cbdca9",
+        "timestamp": 1785835753253
+      },
+      {
+        "executionId": "5968f907-3390-463c-9b68-15e2a2916e91",
+        "chatSessionId": "sess_3bf58fc5-8e74-4aa5-9747-0f08f0cbdca9",
+        "timestamp": 1785836978475
+      },
+      {
+        "executionId": "5968f907-3390-463c-9b68-15e2a2916e91",
+        "chatSessionId": "sess_3bf58fc5-8e74-4aa5-9747-0f08f0cbdca9",
+        "timestamp": 1785837072407
+      }
+    ],
+    "8. Final checkpoint - Ensure all tests pass": [
+      {
+        "executionId": "5968f907-3390-463c-9b68-15e2a2916e91",
+        "chatSessionId": "sess_3bf58fc5-8e74-4aa5-9747-0f08f0cbdca9",
+        "timestamp": 1785835753305
+      },
+      {
+        "executionId": "5968f907-3390-463c-9b68-15e2a2916e91",
+        "chatSessionId": "sess_3bf58fc5-8e74-4aa5-9747-0f08f0cbdca9",
+        "timestamp": 1785837077287
+      },
+      {
+        "executionId": "5968f907-3390-463c-9b68-15e2a2916e91",
+        "chatSessionId": "sess_3bf58fc5-8e74-4aa5-9747-0f08f0cbdca9",
+        "timestamp": 1785837123674
+      }
+    ],
+    "1. Remove standalone pattern system": [
+      {
+        "executionId": "5968f907-3390-463c-9b68-15e2a2916e91",
+        "chatSessionId": "sess_3bf58fc5-8e74-4aa5-9747-0f08f0cbdca9",
+        "timestamp": 1785836448280
+      }
+    ],
+    "3. Integrate pattern detection into color scanner": [
+      {
+        "executionId": "5968f907-3390-463c-9b68-15e2a2916e91",
+        "chatSessionId": "sess_3bf58fc5-8e74-4aa5-9747-0f08f0cbdca9",
+        "timestamp": 1785836700399
+      }
+    ],
+    "5. Update API route validation for extended format": [
+      {
+        "executionId": "5968f907-3390-463c-9b68-15e2a2916e91",
+        "chatSessionId": "sess_3bf58fc5-8e74-4aa5-9747-0f08f0cbdca9",
+        "timestamp": 1785836701285
+      }
+    ],
+    "4. Update color applier for pattern writes": [
+      {
+        "executionId": "5968f907-3390-463c-9b68-15e2a2916e91",
+        "chatSessionId": "sess_3bf58fc5-8e74-4aa5-9747-0f08f0cbdca9",
+        "timestamp": 1785836839131
+      }
+    ],
+    "7. Update frontend for pattern column": [
+      {
+        "executionId": "5968f907-3390-463c-9b68-15e2a2916e91",
+        "chatSessionId": "sess_3bf58fc5-8e74-4aa5-9747-0f08f0cbdca9",
+        "timestamp": 1785837072505
+      }
+    ]
+  }
+}
