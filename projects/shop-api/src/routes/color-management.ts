@@ -23,8 +23,7 @@ import { jsonResponse, errorResponse } from "../response.js";
 const BUCKET_NAME = process.env.BUCKET_NAME ?? "";
 const COLOR_CLUSTER_FUNCTION_NAME =
   process.env.COLOR_CLUSTER_FUNCTION_NAME ?? "";
-const COLOR_APPLY_FUNCTION_NAME =
-  process.env.COLOR_APPLY_FUNCTION_NAME ?? "";
+const COLOR_APPLY_FUNCTION_NAME = process.env.COLOR_APPLY_FUNCTION_NAME ?? "";
 
 const lambdaClient = new LambdaClient({});
 const s3Client = new S3Client({});
@@ -34,7 +33,8 @@ const STATUS_KEY = "color-mappings/apply-status.json";
 
 interface MappingEntry {
   raw: string;
-  canonical: string;
+  canonical: string | null;
+  pattern: string | null;
 }
 
 // --- POST /api/colors/scan-cluster ---
@@ -51,7 +51,8 @@ export async function scanClusterColors(
     );
 
     return jsonResponse(202, {
-      message: "Scan & cluster started. Poll GET /api/colors/mappings for results.",
+      message:
+        "Scan & cluster started. Poll GET /api/colors/mappings for results.",
     });
   } catch (error: unknown) {
     console.error("scanClusterColors error", {
@@ -113,9 +114,19 @@ export async function saveColorMappings(
     }
 
     for (const entry of mappings) {
-      if (typeof entry.raw !== "string" || typeof entry.canonical !== "string") {
+      if (typeof entry.raw !== "string") {
         return jsonResponse(400, {
-          error: "Each mapping must have string 'raw' and 'canonical' fields",
+          error: "Each mapping must have a string 'raw' field",
+        });
+      }
+      if (entry.canonical !== null && typeof entry.canonical !== "string") {
+        return jsonResponse(400, {
+          error: "Each mapping 'canonical' field must be a string or null",
+        });
+      }
+      if (entry.pattern !== null && typeof entry.pattern !== "string") {
+        return jsonResponse(400, {
+          error: "Each mapping 'pattern' field must be a string or null",
         });
       }
     }

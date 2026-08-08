@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   lookupCanonical,
+  splitColorPattern,
   clusterColors,
   type ColorEntry,
 } from "../../src/colors/scan-cluster.js";
@@ -151,81 +152,203 @@ describe("lookupCanonical", () => {
   });
 });
 
+describe("splitColorPattern", () => {
+  describe("pure pattern values", () => {
+    it("returns null color for 'gestreift'", () => {
+      expect(splitColorPattern("gestreift")).toEqual({
+        color: null,
+        pattern: "Gestreift",
+      });
+    });
+
+    it("returns null color for 'kariert'", () => {
+      expect(splitColorPattern("kariert")).toEqual({
+        color: null,
+        pattern: "Kariert",
+      });
+    });
+
+    it("returns null color for 'punkte'", () => {
+      expect(splitColorPattern("punkte")).toEqual({
+        color: null,
+        pattern: "Punkte",
+      });
+    });
+
+    it("is case-insensitive for patterns", () => {
+      expect(splitColorPattern("Gestreift")).toEqual({
+        color: null,
+        pattern: "Gestreift",
+      });
+    });
+  });
+
+  describe("compound values (color + pattern)", () => {
+    it("splits 'blau gestreift' → color: Blau, pattern: Gestreift", () => {
+      expect(splitColorPattern("blau gestreift")).toEqual({
+        color: "Blau",
+        pattern: "Gestreift",
+      });
+    });
+
+    it("splits 'dunkelblau kariert' → color: Dunkelblau, pattern: Kariert", () => {
+      expect(splitColorPattern("dunkelblau kariert")).toEqual({
+        color: "Dunkelblau",
+        pattern: "Kariert",
+      });
+    });
+
+    it("splits 'rot/gestreift' → color: Rot, pattern: Gestreift", () => {
+      expect(splitColorPattern("rot/gestreift")).toEqual({
+        color: "Rot",
+        pattern: "Gestreift",
+      });
+    });
+
+    it("splits 'schwarz-punkte' → color: Schwarz, pattern: Punkte", () => {
+      expect(splitColorPattern("schwarz-punkte")).toEqual({
+        color: "Schwarz",
+        pattern: "Punkte",
+      });
+    });
+
+    it("resolves English color in compound 'red stripes'", () => {
+      expect(splitColorPattern("red stripes")).toEqual({
+        color: "Rot",
+        pattern: "Gestreift",
+      });
+    });
+  });
+
+  describe("pure color values (no pattern)", () => {
+    it("returns null pattern for 'blau'", () => {
+      expect(splitColorPattern("blau")).toEqual({
+        color: "blau",
+        pattern: null,
+      });
+    });
+
+    it("returns null pattern for 'dunkelrot'", () => {
+      expect(splitColorPattern("dunkelrot")).toEqual({
+        color: "dunkelrot",
+        pattern: null,
+      });
+    });
+
+    it("returns null pattern for unknown value", () => {
+      expect(splitColorPattern("regenbogen")).toEqual({
+        color: "regenbogen",
+        pattern: null,
+      });
+    });
+  });
+
+  describe("edge cases", () => {
+    it("returns null for both when empty string", () => {
+      expect(splitColorPattern("")).toEqual({
+        color: null,
+        pattern: null,
+      });
+    });
+
+    it("handles whitespace-only input", () => {
+      expect(splitColorPattern("   ")).toEqual({
+        color: null,
+        pattern: null,
+      });
+    });
+  });
+});
+
 describe("clusterColors", () => {
-  it("maps German raw values to canonical", () => {
+  it("maps German raw values to canonical with null pattern", () => {
     const colors: ColorEntry[] = [
       { raw: "blau", count: 100 },
       { raw: "rot", count: 50 },
     ];
 
     const result = clusterColors(colors);
-    expect(result).toContainEqual({ raw: "blau", canonical: "Blau" });
-    expect(result).toContainEqual({ raw: "rot", canonical: "Rot" });
+    expect(result).toContainEqual({
+      raw: "blau",
+      canonical: "Blau",
+      pattern: null,
+    });
+    expect(result).toContainEqual({
+      raw: "rot",
+      canonical: "Rot",
+      pattern: null,
+    });
   });
 
-  it("maps English raw values to German canonical", () => {
+  it("maps English raw values to German canonical with null pattern", () => {
     const colors: ColorEntry[] = [
       { raw: "red", count: 20 },
       { raw: "blue", count: 30 },
     ];
 
     const result = clusterColors(colors);
-    expect(result).toContainEqual({ raw: "red", canonical: "Rot" });
-    expect(result).toContainEqual({ raw: "blue", canonical: "Blau" });
+    expect(result).toContainEqual({
+      raw: "red",
+      canonical: "Rot",
+      pattern: null,
+    });
+    expect(result).toContainEqual({
+      raw: "blue",
+      canonical: "Blau",
+      pattern: null,
+    });
   });
 
-  it("maps case variants to canonical", () => {
+  it("maps case variants to canonical with null pattern", () => {
     const colors: ColorEntry[] = [
       { raw: "SCHWARZ", count: 10 },
       { raw: "Blau", count: 5 },
     ];
 
     const result = clusterColors(colors);
-    expect(result).toContainEqual({ raw: "SCHWARZ", canonical: "Schwarz" });
-    // "Blau" already matches canonical — no mapping created
-    expect(result.find((m) => m.raw === "Blau")).toBeUndefined();
+    expect(result).toContainEqual({
+      raw: "SCHWARZ",
+      canonical: "Schwarz",
+      pattern: null,
+    });
+    expect(result).toContainEqual({
+      raw: "Blau",
+      canonical: "Blau",
+      pattern: null,
+    });
   });
 
-  it("does not include mapping when raw equals canonical", () => {
-    const colors: ColorEntry[] = [{ raw: "Blau", count: 100 }];
-
-    const result = clusterColors(colors);
-    const blauMapping = result.find((m) => m.raw === "Blau");
-    expect(blauMapping).toBeUndefined();
-  });
-
-  it("title-cases unmapped values", () => {
+  it("title-cases unmapped values with null pattern", () => {
     const colors: ColorEntry[] = [{ raw: "regenbogen", count: 5 }];
 
     const result = clusterColors(colors);
     expect(result).toContainEqual({
       raw: "regenbogen",
       canonical: "Regenbogen",
+      pattern: null,
     });
   });
 
-  it("does not create mapping for already title-cased unmapped values", () => {
-    const colors: ColorEntry[] = [{ raw: "Regenbogen", count: 5 }];
-
-    const result = clusterColors(colors);
-    expect(result).toHaveLength(0);
-  });
-
-  it("handles prefix colors", () => {
+  it("handles prefix colors with null pattern", () => {
     const colors: ColorEntry[] = [{ raw: "dunkelblau", count: 50 }];
 
     const result = clusterColors(colors);
     expect(result).toContainEqual({
       raw: "dunkelblau",
       canonical: "Dunkelblau",
+      pattern: null,
     });
   });
 
-  it("handles compound colors", () => {
+  it("handles compound colors with null pattern", () => {
     const colors: ColorEntry[] = [{ raw: "blau/grün", count: 10 }];
 
     const result = clusterColors(colors);
-    expect(result).toContainEqual({ raw: "blau/grün", canonical: "Blau/Grün" });
+    expect(result).toContainEqual({
+      raw: "blau/grün",
+      canonical: "Blau/Grün",
+      pattern: null,
+    });
   });
 
   it("skips null/non-string entries gracefully", () => {
@@ -237,7 +360,11 @@ describe("clusterColors", () => {
     ];
 
     const result = clusterColors(colors);
-    expect(result).toContainEqual({ raw: "blau", canonical: "Blau" });
+    expect(result).toContainEqual({
+      raw: "blau",
+      canonical: "Blau",
+      pattern: null,
+    });
     expect(result).toHaveLength(1);
   });
 
@@ -251,5 +378,49 @@ describe("clusterColors", () => {
     const result = clusterColors(colors);
     const raws = result.map((m) => m.raw);
     expect(raws).toEqual([...raws].sort());
+  });
+
+  it("includes pure pattern values in mappings with null canonical", () => {
+    const colors: ColorEntry[] = [
+      { raw: "gestreift", count: 50 },
+      { raw: "punkte", count: 30 },
+      { raw: "blau", count: 100 },
+    ];
+
+    const result = clusterColors(colors);
+    expect(result).toContainEqual({
+      raw: "gestreift",
+      canonical: null,
+      pattern: "Gestreift",
+    });
+    expect(result).toContainEqual({
+      raw: "punkte",
+      canonical: null,
+      pattern: "Punkte",
+    });
+    expect(result).toContainEqual({
+      raw: "blau",
+      canonical: "Blau",
+      pattern: null,
+    });
+  });
+
+  it("produces compound mappings with both canonical and pattern", () => {
+    const colors: ColorEntry[] = [
+      { raw: "blau gestreift", count: 10 },
+      { raw: "dunkelblau kariert", count: 5 },
+    ];
+
+    const result = clusterColors(colors);
+    expect(result).toContainEqual({
+      raw: "blau gestreift",
+      canonical: "Blau",
+      pattern: "Gestreift",
+    });
+    expect(result).toContainEqual({
+      raw: "dunkelblau kariert",
+      canonical: "Dunkelblau",
+      pattern: "Kariert",
+    });
   });
 });

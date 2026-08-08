@@ -1,6 +1,7 @@
 export interface ColorMapping {
   raw: string;
-  canonical: string;
+  canonical: string | null;
+  pattern: string | null;
 }
 
 export interface MappingsResponse {
@@ -16,5 +17,6 @@ export interface ApplyStatus {
   itemsUpdated?: number;
   errors?: number;
   canonicalColorsSeeded?: number;
+  canonicalPatternsSeeded?: number;
   message?: string;
 }

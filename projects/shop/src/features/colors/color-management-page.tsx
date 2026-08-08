@@ -38,7 +38,8 @@ export function ColorManagementPage(): React.ReactNode {
     return mappings.filter(
       (m) =>
         m.raw.toLowerCase().includes(term) ||
-        m.canonical.toLowerCase().includes(term),
+        (m.canonical ?? "").toLowerCase().includes(term) ||
+        (m.pattern ?? "").toLowerCase().includes(term),
     );
   }, [mappings, searchTerm]);
 
@@ -66,7 +67,9 @@ export function ColorManagementPage(): React.ReactNode {
   async function handleScanCluster(): Promise<void> {
     setIsClustering(true);
     setError(null);
-    setStatusMessage("Scan & cluster started. This may take several minutes...");
+    setStatusMessage(
+      "Scan & cluster started. This may take several minutes...",
+    );
     const result = await triggerScanCluster();
     if (!result.success) {
       setError(result.error ?? "Failed to start scan & cluster");
@@ -124,7 +127,7 @@ export function ColorManagementPage(): React.ReactNode {
         clearInterval(interval);
         setIsApplying(false);
         setStatusMessage(
-          `Apply complete: ${data.itemsUpdated ?? 0} items updated, ${data.canonicalColorsSeeded ?? 0} canonical colors seeded. ${data.errors ?? 0} errors.`,
+          `Apply complete: ${data.itemsUpdated ?? 0} items updated, ${data.canonicalColorsSeeded ?? 0} canonical colors seeded, ${data.canonicalPatternsSeeded ?? 0} canonical patterns seeded. ${data.errors ?? 0} errors.`,
         );
       } else if (data.status === "error") {
         clearInterval(interval);
@@ -148,6 +151,19 @@ export function ColorManagementPage(): React.ReactNode {
     setHasUnsavedChanges(true);
   }
 
+  function handlePatternChange(filteredIndex: number, pattern: string): void {
+    const mapping = filteredMappings[filteredIndex];
+    const realIndex = mappings.indexOf(mapping);
+    if (realIndex === -1) return;
+
+    setMappings((prev) => {
+      const updated = [...prev];
+      updated[realIndex] = { ...updated[realIndex], pattern: pattern || null };
+      return updated;
+    });
+    setHasUnsavedChanges(true);
+  }
+
   function handleDeleteMapping(filteredIndex: number): void {
     const mapping = filteredMappings[filteredIndex];
     const realIndex = mappings.indexOf(mapping);
@@ -161,10 +177,13 @@ export function ColorManagementPage(): React.ReactNode {
     <div className="flex h-full flex-col gap-4">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Color Management</h1>
+          <h1 className="text-2xl font-bold tracking-tight">
+            Color Management
+          </h1>
           <p className="text-sm text-muted-foreground">
             {mappings.length} mappings
-            {lastModified && ` · Last updated ${new Date(lastModified).toLocaleString()}`}
+            {lastModified &&
+              ` · Last updated ${new Date(lastModified).toLocaleString()}`}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -258,8 +277,9 @@ export function ColorManagementPage(): React.ReactNode {
       ) : (
         <div className="flex-1 overflow-hidden rounded-md border">
           <div className="flex border-b bg-muted/50 px-4 py-2 text-sm font-medium">
-            <div className="w-1/3">Raw Value</div>
+            <div className="w-1/4">Raw Value</div>
             <div className="flex-1">Canonical</div>
+            <div className="flex-1">Pattern</div>
             <div className="w-12" />
           </div>
 
@@ -272,7 +292,9 @@ export function ColorManagementPage(): React.ReactNode {
           >
             {filteredMappings.length === 0 ? (
               <div className="px-4 py-8 text-center text-muted-foreground">
-                {searchTerm ? "No mappings match your search" : "No mappings loaded"}
+                {searchTerm
+                  ? "No mappings match your search"
+                  : "No mappings loaded"}
               </div>
             ) : (
               <div
@@ -292,17 +314,33 @@ export function ColorManagementPage(): React.ReactNode {
                       role="row"
                       aria-rowindex={virtualRow.index + 1}
                     >
-                      <div className="w-1/3 truncate pr-4 font-mono text-xs">
+                      <div className="w-1/4 truncate pr-4 font-mono text-xs">
                         {mapping.raw}
                       </div>
                       <div className="flex-1 pr-2">
                         <Input
-                          value={mapping.canonical}
+                          value={mapping.canonical ?? ""}
                           onChange={(e) =>
-                            handleMappingChange(virtualRow.index, e.target.value)
+                            handleMappingChange(
+                              virtualRow.index,
+                              e.target.value,
+                            )
                           }
                           className="h-8 text-sm"
                           aria-label={`Canonical name for ${mapping.raw}`}
+                        />
+                      </div>
+                      <div className="flex-1 pr-2">
+                        <Input
+                          value={mapping.pattern ?? ""}
+                          onChange={(e) =>
+                            handlePatternChange(
+                              virtualRow.index,
+                              e.target.value,
+                            )
+                          }
+                          className="h-8 text-sm"
+                          aria-label={`Pattern for ${mapping.raw}`}
                         />
                       </div>
                       <div className="w-12 text-center">
