@@ -87,6 +87,20 @@ actor APIClient {
         return response.descriptions
     }
 
+    func fetchCanonicalPatterns() async throws -> [String] {
+        let data = try await request(path: "/pricing/canonical/patterns")
+        let response = try decode(PatternsResponse.self, from: data)
+        return response.patterns
+    }
+
+    // MARK: - Item Creation
+
+    /// Creates a new item by POSTing the given payload dictionary to the /items endpoint.
+    /// The caller is responsible for constructing the payload with the correct fields.
+    func createItem(payload: [String: Any]) async throws {
+        try await postRequest(path: "/items", body: payload)
+    }
+
     // MARK: - Pricing Data
 
     func fetchPricingData(cursor: String? = nil, limit: Int = 100) async throws -> PricingPageResponse {
@@ -101,6 +115,53 @@ actor APIClient {
     }
 
     // MARK: - Private Helpers
+
+    private func postRequest(path: String, body: [String: Any]) async throws {
+        guard let components = URLComponents(string: configuration.baseURL + path) else {
+            throw APIError.invalidURL
+        }
+
+        guard let url = components.url else {
+            throw APIError.invalidURL
+        }
+
+        var urlRequest = URLRequest(url: url)
+        urlRequest.httpMethod = "POST"
+
+        let token: String
+        if let authService {
+            token = (try? await authService.getAccessToken()) ?? configuration.authToken
+        } else {
+            token = configuration.authToken
+        }
+        urlRequest.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        urlRequest.setValue("application/json", forHTTPHeaderField: "Accept")
+        urlRequest.httpBody = try JSONSerialization.data(withJSONObject: body)
+
+        do {
+            let (_, response) = try await session.data(for: urlRequest)
+
+            guard let httpResponse = response as? HTTPURLResponse else {
+                throw APIError.serverError(statusCode: 0)
+            }
+
+            switch httpResponse.statusCode {
+            case 200...299:
+                return
+            case 401:
+                throw APIError.unauthorized
+            default:
+                throw APIError.serverError(statusCode: httpResponse.statusCode)
+            }
+        } catch let error as APIError {
+            throw error
+        } catch let error as URLError where error.code == .timedOut {
+            throw APIError.timeout
+        } catch {
+            throw APIError.networkError(underlying: error)
+        }
+    }
 
     private func request(path: String, queryItems: [URLQueryItem] = []) async throws -> Data {
         guard var components = URLComponents(string: configuration.baseURL + path) else {
@@ -182,6 +243,10 @@ struct DescriptionsResponse: Decodable {
     let descriptions: [String]
 }
 
+struct PatternsResponse: Decodable {
+    let patterns: [String]
+}
+
 struct PricingPageResponse: Decodable {
     let records: [PricingRecordDTO]
     let nextCursor: String?
@@ -195,10 +260,33 @@ struct PricingRecordDTO: Decodable {
     let categoryName: String
     let description: String
     let color: String
+    let pattern: String
     let size: String
     let tagPrice: Double
     let soldPrice: Double?
     let daysOnShelf: Int?
     let soldAt: Date?
     let createdAt: Date
+
+    private enum CodingKeys: String, CodingKey {
+        case id, brand, categoryId, categoryName, description, color, pattern
+        case size, tagPrice, soldPrice, daysOnShelf, soldAt, createdAt
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(String.self, forKey: .id)
+        brand = try container.decode(String.self, forKey: .brand)
+        categoryId = try container.decode(String.self, forKey: .categoryId)
+        categoryName = try container.decode(String.self, forKey: .categoryName)
+        description = try container.decode(String.self, forKey: .description)
+        color = try container.decode(String.self, forKey: .color)
+        pattern = try container.decodeIfPresent(String.self, forKey: .pattern) ?? ""
+        size = try container.decode(String.self, forKey: .size)
+        tagPrice = try container.decode(Double.self, forKey: .tagPrice)
+        soldPrice = try container.decodeIfPresent(Double.self, forKey: .soldPrice)
+        daysOnShelf = try container.decodeIfPresent(Int.self, forKey: .daysOnShelf)
+        soldAt = try container.decodeIfPresent(Date.self, forKey: .soldAt)
+        createdAt = try container.decode(Date.self, forKey: .createdAt)
+    }
 }

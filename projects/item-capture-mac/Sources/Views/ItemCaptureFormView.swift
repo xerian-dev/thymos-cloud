@@ -13,6 +13,10 @@ struct ItemCaptureFormView: View {
            sort: \CanonicalValue.value)
     private var colorRecords: [CanonicalValue]
 
+    @Query(filter: #Predicate<CanonicalValue> { $0.kind == "pattern" },
+           sort: \CanonicalValue.value)
+    private var patternRecords: [CanonicalValue]
+
     @Query(filter: #Predicate<CanonicalValue> { $0.kind == "description" },
            sort: \CanonicalValue.value)
     private var descriptionRecords: [CanonicalValue]
@@ -31,7 +35,8 @@ struct ItemCaptureFormView: View {
     @State private var printOnSave = true
     @State private var comment = ""
 
-    let onPriceFieldsChanged: (_ brand: String, _ categoryId: String, _ description: String, _ color: String, _ size: String) -> Void
+    let onPriceFieldsChanged: (_ brand: String, _ categoryId: String, _ description: String, _ color: String, _ pattern: String, _ size: String) -> Void
+    let onSave: (_ payload: [String: Any], _ printLabel: Bool) -> Void
 
     var body: some View {
         VStack(spacing: 0) {
@@ -72,7 +77,7 @@ struct ItemCaptureFormView: View {
                     AutocompleteField(
                         label: "Pattern",
                         placeholder: "Pattern",
-                        candidates: [],
+                        candidates: patternRecords.map(\.value),
                         value: $pattern
                     )
                     .frame(maxWidth: 300)
@@ -158,6 +163,7 @@ struct ItemCaptureFormView: View {
         .onChange(of: categoryId) { _, _ in notifyPriceFields() }
         .onChange(of: description) { _, _ in notifyPriceFields() }
         .onChange(of: color) { _, _ in notifyPriceFields() }
+        .onChange(of: pattern) { _, _ in notifyPriceFields() }
         .onChange(of: size) { _, _ in notifyPriceFields() }
     }
 
@@ -167,11 +173,28 @@ struct ItemCaptureFormView: View {
     }
 
     private func saveItem() {
-        // TODO: Persist the item to the API
-        // If printOnSave is true, trigger label printing
+        var payload: [String: Any] = [
+            "title": title,
+            "brand": brand,
+            "categoryId": categoryId,
+            "description": description,
+            "color": color,
+            "size": size,
+            "tagPrice": Double(tagPrice) ?? 0.0
+        ]
+
+        if !pattern.isEmpty {
+            payload["pattern"] = pattern
+        }
+
+        if !comment.isEmpty {
+            payload["comment"] = comment
+        }
+
+        onSave(payload, printOnSave)
     }
 
     private func notifyPriceFields() {
-        onPriceFieldsChanged(brand, categoryId, description, color, size)
+        onPriceFieldsChanged(brand, categoryId, description, color, pattern, size)
     }
 }
