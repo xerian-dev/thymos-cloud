@@ -1,17 +1,30 @@
 import SwiftUI
+import AppKit
 
 /// Thymos Ticket color palette — warm teal/sage tones derived from brand.
 enum AppTheme {
     // Primary brand teal
     static let primary = Color(red: 0.176, green: 0.545, blue: 0.478)        // #2D8B7A
-    // Dark accent for strong emphasis
-    static let darkAccent = Color(red: 0.106, green: 0.294, blue: 0.263)     // #1B4B43
-    // Light sage tint for subtle backgrounds
-    static let lightSage = Color(red: 0.910, green: 0.957, blue: 0.941)      // #E8F4F0
+    // Dark accent for strong emphasis — adapts to dark mode
+    static let darkAccent = Color(nsColor: NSColor(name: nil, dynamicProvider: { appearance in
+        appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
+            ? NSColor(srgbRed: 0.659, green: 0.831, blue: 0.784, alpha: 1.0)  // ~#A8D4C8
+            : NSColor(srgbRed: 0.106, green: 0.294, blue: 0.263, alpha: 1.0)  // #1B4B43
+    }))
+    // Light sage tint for subtle backgrounds — adapts to dark mode
+    static let lightSage = Color(nsColor: NSColor(name: nil, dynamicProvider: { appearance in
+        appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
+            ? NSColor(srgbRed: 0.118, green: 0.180, blue: 0.165, alpha: 1.0)  // ~#1E2E2A
+            : NSColor(srgbRed: 0.910, green: 0.957, blue: 0.941, alpha: 1.0)  // #E8F4F0
+    }))
     // Softer teal for secondary elements
     static let softTeal = Color(red: 0.290, green: 0.678, blue: 0.627)       // #4AADA0
-    // Warm off-white
-    static let warmBackground = Color(red: 0.976, green: 0.980, blue: 0.984) // #F9FAFB
+    // Warm off-white — adapts to dark mode
+    static let warmBackground = Color(nsColor: NSColor(name: nil, dynamicProvider: { appearance in
+        appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
+            ? NSColor(srgbRed: 0.102, green: 0.114, blue: 0.110, alpha: 1.0)  // ~#1A1D1C
+            : NSColor(srgbRed: 0.976, green: 0.980, blue: 0.984, alpha: 1.0)  // #F9FAFB
+    }))
 
     // Semantic usage
     static let buttonPrimary = primary

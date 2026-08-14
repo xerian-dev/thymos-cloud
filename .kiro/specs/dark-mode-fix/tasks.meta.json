@@ -1,0 +1,114 @@
+{
+  "pbtResults": {},
+  "executionHistory": {
+    "1. Write bug condition exploration test": [
+      {
+        "executionId": "25c10416-7809-4adb-b54b-fe6540b53a8f",
+        "chatSessionId": "sess_9f5369af-f909-4148-b622-9fee00bb1aa9",
+        "timestamp": 1786737480440
+      },
+      {
+        "executionId": "25c10416-7809-4adb-b54b-fe6540b53a8f",
+        "chatSessionId": "sess_9f5369af-f909-4148-b622-9fee00bb1aa9",
+        "timestamp": 1786737498063
+      },
+      {
+        "executionId": "25c10416-7809-4adb-b54b-fe6540b53a8f",
+        "chatSessionId": "sess_9f5369af-f909-4148-b622-9fee00bb1aa9",
+        "timestamp": 1786737723279
+      }
+    ],
+    "2. Write preservation property tests (BEFORE implementing fix)": [
+      {
+        "executionId": "25c10416-7809-4adb-b54b-fe6540b53a8f",
+        "chatSessionId": "sess_9f5369af-f909-4148-b622-9fee00bb1aa9",
+        "timestamp": 1786737480570
+      },
+      {
+        "executionId": "25c10416-7809-4adb-b54b-fe6540b53a8f",
+        "chatSessionId": "sess_9f5369af-f909-4148-b622-9fee00bb1aa9",
+        "timestamp": 1786737730839
+      },
+      {
+        "executionId": "25c10416-7809-4adb-b54b-fe6540b53a8f",
+        "chatSessionId": "sess_9f5369af-f909-4148-b622-9fee00bb1aa9",
+        "timestamp": 1786737941161
+      }
+    ],
+    "3.1 Implement the fix in `AppTheme.swift`": [
+      {
+        "executionId": "25c10416-7809-4adb-b54b-fe6540b53a8f",
+        "chatSessionId": "sess_9f5369af-f909-4148-b622-9fee00bb1aa9",
+        "timestamp": 1786737480752
+      },
+      {
+        "executionId": "25c10416-7809-4adb-b54b-fe6540b53a8f",
+        "chatSessionId": "sess_9f5369af-f909-4148-b622-9fee00bb1aa9",
+        "timestamp": 1786737949547
+      },
+      {
+        "executionId": "25c10416-7809-4adb-b54b-fe6540b53a8f",
+        "chatSessionId": "sess_9f5369af-f909-4148-b622-9fee00bb1aa9",
+        "timestamp": 1786738171082
+      }
+    ],
+    "3.2 Verify bug condition exploration test now passes": [
+      {
+        "executionId": "25c10416-7809-4adb-b54b-fe6540b53a8f",
+        "chatSessionId": "sess_9f5369af-f909-4148-b622-9fee00bb1aa9",
+        "timestamp": 1786737480807
+      },
+      {
+        "executionId": "25c10416-7809-4adb-b54b-fe6540b53a8f",
+        "chatSessionId": "sess_9f5369af-f909-4148-b622-9fee00bb1aa9",
+        "timestamp": 1786738180838
+      },
+      {
+        "executionId": "25c10416-7809-4adb-b54b-fe6540b53a8f",
+        "chatSessionId": "sess_9f5369af-f909-4148-b622-9fee00bb1aa9",
+        "timestamp": 1786738291157
+      }
+    ],
+    "3.3 Verify preservation tests still pass": [
+      {
+        "executionId": "25c10416-7809-4adb-b54b-fe6540b53a8f",
+        "chatSessionId": "sess_9f5369af-f909-4148-b622-9fee00bb1aa9",
+        "timestamp": 1786737480885
+      },
+      {
+        "executionId": "25c10416-7809-4adb-b54b-fe6540b53a8f",
+        "chatSessionId": "sess_9f5369af-f909-4148-b622-9fee00bb1aa9",
+        "timestamp": 1786738295075
+      },
+      {
+        "executionId": "25c10416-7809-4adb-b54b-fe6540b53a8f",
+        "chatSessionId": "sess_9f5369af-f909-4148-b622-9fee00bb1aa9",
+        "timestamp": 1786738327559
+      }
+    ],
+    "4. Checkpoint - Ensure all tests pass": [
+      {
+        "executionId": "25c10416-7809-4adb-b54b-fe6540b53a8f",
+        "chatSessionId": "sess_9f5369af-f909-4148-b622-9fee00bb1aa9",
+        "timestamp": 1786737480956
+      },
+      {
+        "executionId": "25c10416-7809-4adb-b54b-fe6540b53a8f",
+        "chatSessionId": "sess_9f5369af-f909-4148-b622-9fee00bb1aa9",
+        "timestamp": 1786738332208
+      },
+      {
+        "executionId": "25c10416-7809-4adb-b54b-fe6540b53a8f",
+        "chatSessionId": "sess_9f5369af-f909-4148-b622-9fee00bb1aa9",
+        "timestamp": 1786738978853
+      }
+    ],
+    "3. Fix for hardcoded colors not adapting to dark mode": [
+      {
+        "executionId": "25c10416-7809-4adb-b54b-fe6540b53a8f",
+        "chatSessionId": "sess_9f5369af-f909-4148-b622-9fee00bb1aa9",
+        "timestamp": 1786738327615
+      }
+    ]
+  }
+}
