@@ -7,7 +7,7 @@ resource "aws_apigatewayv2_api" "shop_api" {
   protocol_type = "HTTP"
 
   cors_configuration {
-    allow_origins = ["*"]
+    allow_origins = var.allowed_origins
     allow_methods = ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
     allow_headers = ["Authorization", "Content-Type"]
     max_age       = 3600
@@ -499,4 +499,29 @@ resource "aws_apigatewayv2_route" "get_descriptions_apply_status" {
 
   authorization_type = "CUSTOM"
   authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+# -----------------------------------------------------------------------------
+# Custom Domain
+# -----------------------------------------------------------------------------
+
+resource "aws_apigatewayv2_domain_name" "api" {
+  domain_name = var.api_domain_name
+
+  domain_name_configuration {
+    certificate_arn = aws_acm_certificate_validation.api.certificate_arn
+    endpoint_type   = "REGIONAL"
+    security_policy = "TLS_1_2"
+  }
+
+  tags = {
+    Environment = var.environment
+    Project     = var.project_name
+  }
+}
+
+resource "aws_apigatewayv2_api_mapping" "api" {
+  api_id      = aws_apigatewayv2_api.shop_api.id
+  domain_name = aws_apigatewayv2_domain_name.api.id
+  stage       = aws_apigatewayv2_stage.default.id
 }

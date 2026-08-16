@@ -578,7 +578,7 @@ resource "aws_lambda_permission" "shop_api_apigw" {
   action        = "lambda:InvokeFunction"
   function_name = aws_lambda_function.shop_api.function_name
   principal     = "apigateway.amazonaws.com"
-  source_arn    = "${aws_apigatewayv2_api.shop_api.execution_arn}/*/*"
+  source_arn    = "arn:aws:execute-api:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:${aws_apigatewayv2_api.shop_api.id}/*/*"
 }
 
 resource "aws_lambda_permission" "shop_api_authorizer_apigw" {
@@ -586,5 +586,5 @@ resource "aws_lambda_permission" "shop_api_authorizer_apigw" {
   action        = "lambda:InvokeFunction"
   function_name = aws_lambda_function.shop_api_authorizer.function_name
   principal     = "apigateway.amazonaws.com"
-  source_arn    = "${aws_apigatewayv2_api.shop_api.execution_arn}/*/*"
+  source_arn    = "arn:aws:execute-api:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:${aws_apigatewayv2_api.shop_api.id}/*/*"
 }

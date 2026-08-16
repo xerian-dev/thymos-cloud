@@ -9,9 +9,22 @@ terraform {
   }
 }
 
-provider "aws" {}
+provider "aws" {
+  skip_credentials_validation = true
+  skip_metadata_api_check     = true
+  skip_requesting_account_id  = true
+}
+
+provider "aws" {
+  alias                       = "us_east_1"
+  region                      = "us-east-1"
+  skip_credentials_validation = true
+  skip_metadata_api_check     = true
+  skip_requesting_account_id  = true
+}
 
 data "aws_region" "current" {}
+data "aws_caller_identity" "current" {}
 
 resource "aws_cognito_user_pool" "main" {
   name = "${var.project_name}-${var.environment}-user-pool"

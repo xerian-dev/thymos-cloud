@@ -1,0 +1,3 @@
+bucket = "thymos-prod-tfstate"
+key    = "infrastructure/terraform.tfstate"
+region = "eu-central-1"
