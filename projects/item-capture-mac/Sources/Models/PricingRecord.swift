@@ -11,6 +11,7 @@ final class PricingRecord {
     var categoryName: String
     var itemDescription: String
     var color: String
+    var pattern: String
     var size: String
     var tagPrice: Double
     var soldPrice: Double?
@@ -26,6 +27,7 @@ final class PricingRecord {
         categoryName: String,
         itemDescription: String,
         color: String,
+        pattern: String = "",
         size: String,
         tagPrice: Double,
         soldPrice: Double? = nil,
@@ -40,6 +42,7 @@ final class PricingRecord {
         self.categoryName = categoryName
         self.itemDescription = itemDescription
         self.color = color
+        self.pattern = pattern
         self.size = size
         self.tagPrice = tagPrice
         self.soldPrice = soldPrice

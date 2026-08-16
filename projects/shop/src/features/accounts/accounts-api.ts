@@ -9,12 +9,12 @@ import type {
   CursorPaginationParams,
   CursorPaginatedResponse,
 } from "./accounts-types";
+import { API_BASE } from "@/config/api-config";
 
 export interface AccountsApiResponse {
   accounts: Account[];
 }
 
-const API_BASE = "/api";
 
 async function getAuthHeaders(): Promise<Record<string, string>> {
   try {
@@ -61,7 +61,7 @@ export async function fetchCursorPaginatedAccounts(
       url.searchParams.set("cursor", params.cursor);
     }
 
-    const response = await fetch(url.pathname + url.search, {
+    const response = await fetch(url.toString(), {
       headers: authHeaders,
       signal,
     });

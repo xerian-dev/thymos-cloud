@@ -89,6 +89,14 @@ final class SyncService {
         await updateProgress("Syncing descriptions...")
         let descriptions = try await apiClient.fetchCanonicalDescriptions()
         try upsertCanonicalValues(descriptions, kind: .description)
+
+        await updateProgress("Syncing patterns...")
+        do {
+            let patterns = try await apiClient.fetchCanonicalPatterns()
+            try upsertCanonicalValues(patterns, kind: .pattern)
+        } catch {
+            logger.error("Pattern sync failed: \(error.localizedDescription)")
+        }
     }
 
     private func upsertCanonicalValues(_ values: [String], kind: CanonicalKind) throws {
@@ -141,6 +149,7 @@ final class SyncService {
                     record.categoryName = dto.categoryName
                     record.itemDescription = dto.description
                     record.color = dto.color
+                    record.pattern = dto.pattern
                     record.size = dto.size
                     record.tagPrice = dto.tagPrice
                     record.soldPrice = dto.soldPrice
@@ -156,6 +165,7 @@ final class SyncService {
                         categoryName: dto.categoryName,
                         itemDescription: dto.description,
                         color: dto.color,
+                        pattern: dto.pattern,
                         size: dto.size,
                         tagPrice: dto.tagPrice,
                         soldPrice: dto.soldPrice,

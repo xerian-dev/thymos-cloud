@@ -4,8 +4,8 @@ import type {
   DescriptionMapping,
   ApplyStatus,
 } from "./descriptions-types";
+import { API_BASE } from "@/config/api-config";
 
-const API_BASE = "/api";
 
 async function getAuthHeaders(): Promise<Record<string, string>> {
   try {

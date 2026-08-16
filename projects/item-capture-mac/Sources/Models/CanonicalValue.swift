@@ -22,4 +22,5 @@ enum CanonicalKind: String, CaseIterable, Sendable {
     case brand
     case color
     case description
+    case pattern
 }

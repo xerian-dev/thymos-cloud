@@ -4,7 +4,6 @@ import {
   screen,
   fireEvent,
   act,
-  waitFor,
 } from "@testing-library/react";
 import { ItemCapturePage } from "./item-capture-page";
 

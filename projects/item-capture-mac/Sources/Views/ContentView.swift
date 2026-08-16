@@ -10,6 +10,7 @@ struct ContentView: View {
 
     @State private var pricingEngine: PricingEngine?
     @State private var syncService: SyncService?
+    @State private var apiClient: APIClient?
     @State private var currentSuggestion: PriceSuggestion?
     @State private var isCalculating = false
     @State private var suggestionTask: Task<Void, Never>?
@@ -17,15 +18,21 @@ struct ContentView: View {
     var body: some View {
         HStack(alignment: .top, spacing: 0) {
             // Left: Item capture form
-            ItemCaptureFormView { brand, categoryId, description, color, size in
-                computeSuggestion(
-                    brand: brand,
-                    categoryId: categoryId,
-                    description: description,
-                    color: color,
-                    size: size
-                )
-            }
+            ItemCaptureFormView(
+                onPriceFieldsChanged: { brand, categoryId, description, color, pattern, size in
+                    computeSuggestion(
+                        brand: brand,
+                        categoryId: categoryId,
+                        description: description,
+                        color: color,
+                        pattern: pattern,
+                        size: size
+                    )
+                },
+                onSave: { payload, printLabel in
+                    saveItemToAPI(payload: payload, printLabel: printLabel)
+                }
+            )
             .frame(minWidth: 500)
 
             Divider()
@@ -112,6 +119,7 @@ struct ContentView: View {
         let config = loadAPIConfiguration()
         let client = APIClient(configuration: config, authService: authService)
 
+        apiClient = client
         pricingEngine = PricingEngine(modelContainer: container)
         syncService = SyncService(apiClient: client, modelContainer: container)
 
@@ -131,6 +139,7 @@ struct ContentView: View {
         categoryId: String,
         description: String,
         color: String,
+        pattern: String,
         size: String
     ) {
         suggestionTask?.cancel()
@@ -152,6 +161,7 @@ struct ContentView: View {
                 categoryId: categoryId,
                 description: description,
                 color: color,
+                pattern: pattern,
                 size: size
             )
 
@@ -160,6 +170,19 @@ struct ContentView: View {
             await MainActor.run {
                 currentSuggestion = result
                 isCalculating = false
+            }
+        }
+    }
+
+    private func saveItemToAPI(payload: [String: Any], printLabel: Bool) {
+        guard let client = apiClient else { return }
+        Task {
+            do {
+                try await client.createItem(payload: payload)
+                // If printLabel is true, trigger label printing
+                // TODO: Implement label printing
+            } catch {
+                // TODO: Surface error to user
             }
         }
     }

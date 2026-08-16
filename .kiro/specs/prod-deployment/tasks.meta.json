@@ -1,0 +1,374 @@
+{
+  "pbtResults": {},
+  "executionHistory": {
+    "1.1 Create `environments/` directory with backend config files": [
+      {
+        "executionId": "09210021-4689-4144-9d0f-d9bb663c8b6a",
+        "chatSessionId": "sess_88056d42-7b9b-4cba-a5cd-55a3e17222eb",
+        "timestamp": 1786744441857
+      },
+      {
+        "executionId": "09210021-4689-4144-9d0f-d9bb663c8b6a",
+        "chatSessionId": "sess_88056d42-7b9b-4cba-a5cd-55a3e17222eb",
+        "timestamp": 1786744450881
+      },
+      {
+        "executionId": "09210021-4689-4144-9d0f-d9bb663c8b6a",
+        "chatSessionId": "sess_88056d42-7b9b-4cba-a5cd-55a3e17222eb",
+        "timestamp": 1786744501095
+      }
+    ],
+    "1.2 Create environment-specific tfvars files": [
+      {
+        "executionId": "09210021-4689-4144-9d0f-d9bb663c8b6a",
+        "chatSessionId": "sess_88056d42-7b9b-4cba-a5cd-55a3e17222eb",
+        "timestamp": 1786744441922
+      },
+      {
+        "executionId": "09210021-4689-4144-9d0f-d9bb663c8b6a",
+        "chatSessionId": "sess_88056d42-7b9b-4cba-a5cd-55a3e17222eb",
+        "timestamp": 1786744451608
+      },
+      {
+        "executionId": "09210021-4689-4144-9d0f-d9bb663c8b6a",
+        "chatSessionId": "sess_88056d42-7b9b-4cba-a5cd-55a3e17222eb",
+        "timestamp": 1786744501865
+      }
+    ],
+    "2.1 Change `backend.tf` to partial backend configuration": [
+      {
+        "executionId": "09210021-4689-4144-9d0f-d9bb663c8b6a",
+        "chatSessionId": "sess_88056d42-7b9b-4cba-a5cd-55a3e17222eb",
+        "timestamp": 1786744441981
+      },
+      {
+        "executionId": "09210021-4689-4144-9d0f-d9bb663c8b6a",
+        "chatSessionId": "sess_88056d42-7b9b-4cba-a5cd-55a3e17222eb",
+        "timestamp": 1786744510784
+      },
+      {
+        "executionId": "09210021-4689-4144-9d0f-d9bb663c8b6a",
+        "chatSessionId": "sess_88056d42-7b9b-4cba-a5cd-55a3e17222eb",
+        "timestamp": 1786744569787
+      }
+    ],
+    "2.2 Add new variables to `variables.tf`": [
+      {
+        "executionId": "09210021-4689-4144-9d0f-d9bb663c8b6a",
+        "chatSessionId": "sess_88056d42-7b9b-4cba-a5cd-55a3e17222eb",
+        "timestamp": 1786744442038
+      },
+      {
+        "executionId": "09210021-4689-4144-9d0f-d9bb663c8b6a",
+        "chatSessionId": "sess_88056d42-7b9b-4cba-a5cd-55a3e17222eb",
+        "timestamp": 1786744511574
+      },
+      {
+        "executionId": "09210021-4689-4144-9d0f-d9bb663c8b6a",
+        "chatSessionId": "sess_88056d42-7b9b-4cba-a5cd-55a3e17222eb",
+        "timestamp": 1786744570474
+      }
+    ],
+    "2.3 Add `us-east-1` provider alias to `main.tf`": [
+      {
+        "executionId": "09210021-4689-4144-9d0f-d9bb663c8b6a",
+        "chatSessionId": "sess_88056d42-7b9b-4cba-a5cd-55a3e17222eb",
+        "timestamp": 1786744442090
+      },
+      {
+        "executionId": "09210021-4689-4144-9d0f-d9bb663c8b6a",
+        "chatSessionId": "sess_88056d42-7b9b-4cba-a5cd-55a3e17222eb",
+        "timestamp": 1786744512460
+      },
+      {
+        "executionId": "09210021-4689-4144-9d0f-d9bb663c8b6a",
+        "chatSessionId": "sess_88056d42-7b9b-4cba-a5cd-55a3e17222eb",
+        "timestamp": 1786744571364
+      }
+    ],
+    "3.1 Remove tfstate bucket resources from `s3.tf`": [
+      {
+        "executionId": "09210021-4689-4144-9d0f-d9bb663c8b6a",
+        "chatSessionId": "sess_88056d42-7b9b-4cba-a5cd-55a3e17222eb",
+        "timestamp": 1786744442155
+      },
+      {
+        "executionId": "09210021-4689-4144-9d0f-d9bb663c8b6a",
+        "chatSessionId": "sess_88056d42-7b9b-4cba-a5cd-55a3e17222eb",
+        "timestamp": 1786744579448
+      },
+      {
+        "executionId": "09210021-4689-4144-9d0f-d9bb663c8b6a",
+        "chatSessionId": "sess_88056d42-7b9b-4cba-a5cd-55a3e17222eb",
+        "timestamp": 1786744627532
+      }
+    ],
+    "4.1 Create `modules/frontend/variables.tf`": [
+      {
+        "executionId": "09210021-4689-4144-9d0f-d9bb663c8b6a",
+        "chatSessionId": "sess_88056d42-7b9b-4cba-a5cd-55a3e17222eb",
+        "timestamp": 1786744442210
+      },
+      {
+        "executionId": "09210021-4689-4144-9d0f-d9bb663c8b6a",
+        "chatSessionId": "sess_88056d42-7b9b-4cba-a5cd-55a3e17222eb",
+        "timestamp": 1786744581322
+      },
+      {
+        "executionId": "09210021-4689-4144-9d0f-d9bb663c8b6a",
+        "chatSessionId": "sess_88056d42-7b9b-4cba-a5cd-55a3e17222eb",
+        "timestamp": 1786744628581
+      }
+    ],
+    "4.2 Create `modules/frontend/main.tf`": [
+      {
+        "executionId": "09210021-4689-4144-9d0f-d9bb663c8b6a",
+        "chatSessionId": "sess_88056d42-7b9b-4cba-a5cd-55a3e17222eb",
+        "timestamp": 1786744442264
+      },
+      {
+        "executionId": "09210021-4689-4144-9d0f-d9bb663c8b6a",
+        "chatSessionId": "sess_88056d42-7b9b-4cba-a5cd-55a3e17222eb",
+        "timestamp": 1786744633396
+      },
+      {
+        "executionId": "09210021-4689-4144-9d0f-d9bb663c8b6a",
+        "chatSessionId": "sess_88056d42-7b9b-4cba-a5cd-55a3e17222eb",
+        "timestamp": 1786744711343
+      }
+    ],
+    "4.3 Create `modules/frontend/outputs.tf`": [
+      {
+        "executionId": "09210021-4689-4144-9d0f-d9bb663c8b6a",
+        "chatSessionId": "sess_88056d42-7b9b-4cba-a5cd-55a3e17222eb",
+        "timestamp": 1786744442317
+      },
+      {
+        "executionId": "09210021-4689-4144-9d0f-d9bb663c8b6a",
+        "chatSessionId": "sess_88056d42-7b9b-4cba-a5cd-55a3e17222eb",
+        "timestamp": 1786744634090
+      },
+      {
+        "executionId": "09210021-4689-4144-9d0f-d9bb663c8b6a",
+        "chatSessionId": "sess_88056d42-7b9b-4cba-a5cd-55a3e17222eb",
+        "timestamp": 1786744711899
+      }
+    ],
+    "5. Checkpoint": [
+      {
+        "executionId": "09210021-4689-4144-9d0f-d9bb663c8b6a",
+        "chatSessionId": "sess_88056d42-7b9b-4cba-a5cd-55a3e17222eb",
+        "timestamp": 1786744442371
+      },
+      {
+        "executionId": "09210021-4689-4144-9d0f-d9bb663c8b6a",
+        "chatSessionId": "sess_88056d42-7b9b-4cba-a5cd-55a3e17222eb",
+        "timestamp": 1786744722342
+      },
+      {
+        "executionId": "09210021-4689-4144-9d0f-d9bb663c8b6a",
+        "chatSessionId": "sess_88056d42-7b9b-4cba-a5cd-55a3e17222eb",
+        "timestamp": 1786744731885
+      }
+    ],
+    "6.1 Create `dns.tf` with Route 53 hosted zone and DNS records": [
+      {
+        "executionId": "09210021-4689-4144-9d0f-d9bb663c8b6a",
+        "chatSessionId": "sess_88056d42-7b9b-4cba-a5cd-55a3e17222eb",
+        "timestamp": 1786744442441
+      },
+      {
+        "executionId": "09210021-4689-4144-9d0f-d9bb663c8b6a",
+        "chatSessionId": "sess_88056d42-7b9b-4cba-a5cd-55a3e17222eb",
+        "timestamp": 1786744736502
+      },
+      {
+        "executionId": "09210021-4689-4144-9d0f-d9bb663c8b6a",
+        "chatSessionId": "sess_88056d42-7b9b-4cba-a5cd-55a3e17222eb",
+        "timestamp": 1786744817610
+      }
+    ],
+    "6.2 Create `certificates.tf` with ACM certificates and DNS validation": [
+      {
+        "executionId": "09210021-4689-4144-9d0f-d9bb663c8b6a",
+        "chatSessionId": "sess_88056d42-7b9b-4cba-a5cd-55a3e17222eb",
+        "timestamp": 1786744442491
+      },
+      {
+        "executionId": "09210021-4689-4144-9d0f-d9bb663c8b6a",
+        "chatSessionId": "sess_88056d42-7b9b-4cba-a5cd-55a3e17222eb",
+        "timestamp": 1786744737303
+      },
+      {
+        "executionId": "09210021-4689-4144-9d0f-d9bb663c8b6a",
+        "chatSessionId": "sess_88056d42-7b9b-4cba-a5cd-55a3e17222eb",
+        "timestamp": 1786744818354
+      }
+    ],
+    "7.1 Create `frontend.tf` to invoke the frontend module": [
+      {
+        "executionId": "09210021-4689-4144-9d0f-d9bb663c8b6a",
+        "chatSessionId": "sess_88056d42-7b9b-4cba-a5cd-55a3e17222eb",
+        "timestamp": 1786744442547
+      },
+      {
+        "executionId": "09210021-4689-4144-9d0f-d9bb663c8b6a",
+        "chatSessionId": "sess_88056d42-7b9b-4cba-a5cd-55a3e17222eb",
+        "timestamp": 1786744829851
+      },
+      {
+        "executionId": "09210021-4689-4144-9d0f-d9bb663c8b6a",
+        "chatSessionId": "sess_88056d42-7b9b-4cba-a5cd-55a3e17222eb",
+        "timestamp": 1786744902202
+      }
+    ],
+    "7.2 Modify `api-gateway.tf` for custom domains and CORS variable": [
+      {
+        "executionId": "09210021-4689-4144-9d0f-d9bb663c8b6a",
+        "chatSessionId": "sess_88056d42-7b9b-4cba-a5cd-55a3e17222eb",
+        "timestamp": 1786744442602
+      },
+      {
+        "executionId": "09210021-4689-4144-9d0f-d9bb663c8b6a",
+        "chatSessionId": "sess_88056d42-7b9b-4cba-a5cd-55a3e17222eb",
+        "timestamp": 1786744830411
+      },
+      {
+        "executionId": "09210021-4689-4144-9d0f-d9bb663c8b6a",
+        "chatSessionId": "sess_88056d42-7b9b-4cba-a5cd-55a3e17222eb",
+        "timestamp": 1786744903014
+      }
+    ],
+    "8.1 Update `outputs.tf` with new outputs": [
+      {
+        "executionId": "09210021-4689-4144-9d0f-d9bb663c8b6a",
+        "chatSessionId": "sess_88056d42-7b9b-4cba-a5cd-55a3e17222eb",
+        "timestamp": 1786744442657
+      },
+      {
+        "executionId": "09210021-4689-4144-9d0f-d9bb663c8b6a",
+        "chatSessionId": "sess_88056d42-7b9b-4cba-a5cd-55a3e17222eb",
+        "timestamp": 1786744831211
+      },
+      {
+        "executionId": "09210021-4689-4144-9d0f-d9bb663c8b6a",
+        "chatSessionId": "sess_88056d42-7b9b-4cba-a5cd-55a3e17222eb",
+        "timestamp": 1786744903771
+      }
+    ],
+    "9.1 Run `terraform fmt` and `terraform validate`": [
+      {
+        "executionId": "09210021-4689-4144-9d0f-d9bb663c8b6a",
+        "chatSessionId": "sess_88056d42-7b9b-4cba-a5cd-55a3e17222eb",
+        "timestamp": 1786744442711
+      },
+      {
+        "executionId": "09210021-4689-4144-9d0f-d9bb663c8b6a",
+        "chatSessionId": "sess_88056d42-7b9b-4cba-a5cd-55a3e17222eb",
+        "timestamp": 1786744908196
+      },
+      {
+        "executionId": "8c61d116-cf99-435f-94c7-754c3eb1235f",
+        "chatSessionId": "sess_88056d42-7b9b-4cba-a5cd-55a3e17222eb",
+        "timestamp": 1786745345966
+      }
+    ],
+    "10.1 Create `DEPLOYMENT.md` in the infrastructure directory": [
+      {
+        "executionId": "09210021-4689-4144-9d0f-d9bb663c8b6a",
+        "chatSessionId": "sess_88056d42-7b9b-4cba-a5cd-55a3e17222eb",
+        "timestamp": 1786744442766
+      },
+      {
+        "executionId": "8c61d116-cf99-435f-94c7-754c3eb1235f",
+        "chatSessionId": "sess_88056d42-7b9b-4cba-a5cd-55a3e17222eb",
+        "timestamp": 1786745354214
+      },
+      {
+        "executionId": "8c61d116-cf99-435f-94c7-754c3eb1235f",
+        "chatSessionId": "sess_88056d42-7b9b-4cba-a5cd-55a3e17222eb",
+        "timestamp": 1786745446077
+      }
+    ],
+    "11. Final checkpoint": [
+      {
+        "executionId": "09210021-4689-4144-9d0f-d9bb663c8b6a",
+        "chatSessionId": "sess_88056d42-7b9b-4cba-a5cd-55a3e17222eb",
+        "timestamp": 1786744442821
+      },
+      {
+        "executionId": "8c61d116-cf99-435f-94c7-754c3eb1235f",
+        "chatSessionId": "sess_88056d42-7b9b-4cba-a5cd-55a3e17222eb",
+        "timestamp": 1786745460274
+      },
+      {
+        "executionId": "8c61d116-cf99-435f-94c7-754c3eb1235f",
+        "chatSessionId": "sess_88056d42-7b9b-4cba-a5cd-55a3e17222eb",
+        "timestamp": 1786745470283
+      }
+    ],
+    "1. Create environment configuration files": [
+      {
+        "executionId": "09210021-4689-4144-9d0f-d9bb663c8b6a",
+        "chatSessionId": "sess_88056d42-7b9b-4cba-a5cd-55a3e17222eb",
+        "timestamp": 1786744501926
+      }
+    ],
+    "2. Refactor backend and provider configuration": [
+      {
+        "executionId": "09210021-4689-4144-9d0f-d9bb663c8b6a",
+        "chatSessionId": "sess_88056d42-7b9b-4cba-a5cd-55a3e17222eb",
+        "timestamp": 1786744571420
+      }
+    ],
+    "3. Remove self-managed tfstate bucket from Terraform": [
+      {
+        "executionId": "09210021-4689-4144-9d0f-d9bb663c8b6a",
+        "chatSessionId": "sess_88056d42-7b9b-4cba-a5cd-55a3e17222eb",
+        "timestamp": 1786744627606
+      }
+    ],
+    "4. Create frontend hosting module": [
+      {
+        "executionId": "09210021-4689-4144-9d0f-d9bb663c8b6a",
+        "chatSessionId": "sess_88056d42-7b9b-4cba-a5cd-55a3e17222eb",
+        "timestamp": 1786744711977
+      }
+    ],
+    "6. Create DNS and certificate configuration": [
+      {
+        "executionId": "09210021-4689-4144-9d0f-d9bb663c8b6a",
+        "chatSessionId": "sess_88056d42-7b9b-4cba-a5cd-55a3e17222eb",
+        "timestamp": 1786744818433
+      }
+    ],
+    "7. Wire frontend module and API Gateway custom domains": [
+      {
+        "executionId": "09210021-4689-4144-9d0f-d9bb663c8b6a",
+        "chatSessionId": "sess_88056d42-7b9b-4cba-a5cd-55a3e17222eb",
+        "timestamp": 1786744903080
+      }
+    ],
+    "8. Update outputs": [
+      {
+        "executionId": "09210021-4689-4144-9d0f-d9bb663c8b6a",
+        "chatSessionId": "sess_88056d42-7b9b-4cba-a5cd-55a3e17222eb",
+        "timestamp": 1786744903844
+      }
+    ],
+    "9. Validation checkpoint": [
+      {
+        "executionId": "8c61d116-cf99-435f-94c7-754c3eb1235f",
+        "chatSessionId": "sess_88056d42-7b9b-4cba-a5cd-55a3e17222eb",
+        "timestamp": 1786745346071
+      }
+    ],
+    "10. Create deployment runbook": [
+      {
+        "executionId": "8c61d116-cf99-435f-94c7-754c3eb1235f",
+        "chatSessionId": "sess_88056d42-7b9b-4cba-a5cd-55a3e17222eb",
+        "timestamp": 1786745446141
+      }
+    ]
+  }
+}

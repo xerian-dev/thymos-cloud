@@ -4,8 +4,8 @@ import type {
   CursorPaginationParams,
   CursorPaginatedEmployeesResponse,
 } from "./employees-types";
+import { API_BASE } from "@/config/api-config";
 
-const API_BASE = "/api";
 
 async function getAuthHeaders(): Promise<Record<string, string>> {
   try {
@@ -40,7 +40,7 @@ export async function fetchPaginatedEmployees(
       url.searchParams.set("cursor", params.cursor);
     }
 
-    const response = await fetch(url.pathname + url.search, {
+    const response = await fetch(url.toString(), {
       headers: authHeaders,
       signal,
     });

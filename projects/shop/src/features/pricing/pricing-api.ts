@@ -8,8 +8,8 @@ import type {
   AdjustmentListResult,
   CanonicalListResult,
 } from "./pricing-types";
+import { API_BASE } from "@/config/api-config";
 
-const API_BASE = "/api";
 
 async function getAuthHeaders(): Promise<Record<string, string>> {
   try {
@@ -65,7 +65,7 @@ export async function fetchPriceSuggestion(
       url.searchParams.set("createdBy", params.createdBy);
     }
 
-    const response = await fetch(url.pathname + url.search, {
+    const response = await fetch(url.toString(), {
       headers: authHeaders,
       signal: combinedSignal,
     });
@@ -184,7 +184,7 @@ export async function fetchAdjustments(
       url.searchParams.set("toDate", params.filters.toDate);
     }
 
-    const response = await fetch(url.pathname + url.search, {
+    const response = await fetch(url.toString(), {
       headers: authHeaders,
       signal: combinedSignal,
     });

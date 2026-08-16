@@ -33,6 +33,7 @@ final class PricingEngine {
         categoryId: String,
         description: String,
         color: String,
+        pattern: String,
         size: String
     ) async -> PriceSuggestion? {
         let context = ModelContext(modelContainer)
@@ -48,6 +49,7 @@ final class PricingEngine {
             categoryId: categoryId,
             description: description,
             color: color,
+            pattern: pattern,
             size: size
         ) {
             return result
@@ -76,6 +78,7 @@ final class PricingEngine {
         categoryId: String,
         description: String,
         color: String,
+        pattern: String,
         size: String
     ) throws -> PriceSuggestion? {
         let descriptor = FetchDescriptor<PricingRecord>(
@@ -98,6 +101,12 @@ final class PricingEngine {
         if !colorMatches.isEmpty && colorMatches.count != records.count {
             let colorMedian = medianValue(colorMatches.map(\.tagPrice))
             adjustment += (colorMedian - median) * 0.3
+        }
+
+        let patternMatches = records.filter { $0.pattern == pattern }
+        if !patternMatches.isEmpty && patternMatches.count != records.count {
+            let patternMedian = medianValue(patternMatches.map(\.tagPrice))
+            adjustment += (patternMedian - median) * 0.3
         }
 
         let sizeMatches = records.filter { $0.size == size }

@@ -21,6 +21,11 @@ let package = Package(
                 .process("Resources/app-icon.png"),
                 .copy("Resources/AppIcon.icns"),
             ]
+        ),
+        .testTarget(
+            name: "ThymosTicketTests",
+            dependencies: ["ThymosTicket"],
+            path: "Tests"
         )
     ]
 )

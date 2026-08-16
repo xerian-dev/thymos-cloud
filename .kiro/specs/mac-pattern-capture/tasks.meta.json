@@ -1,0 +1,278 @@
+{
+  "pbtResults": {},
+  "executionHistory": {
+    "1.1 Add `pattern` case to the CanonicalKind enum": [
+      {
+        "executionId": "049da96c-3795-4452-a0de-6c292339106f",
+        "chatSessionId": "sess_b3652806-5ed9-4f6e-adb6-48122f5bc0ca",
+        "timestamp": 1786206181736
+      },
+      {
+        "executionId": "049da96c-3795-4452-a0de-6c292339106f",
+        "chatSessionId": "sess_b3652806-5ed9-4f6e-adb6-48122f5bc0ca",
+        "timestamp": 1786206217006
+      },
+      {
+        "executionId": "049da96c-3795-4452-a0de-6c292339106f",
+        "chatSessionId": "sess_b3652806-5ed9-4f6e-adb6-48122f5bc0ca",
+        "timestamp": 1786206342051
+      }
+    ],
+    "1.2 Add `pattern` field to PricingRecord SwiftData model": [
+      {
+        "executionId": "049da96c-3795-4452-a0de-6c292339106f",
+        "chatSessionId": "sess_b3652806-5ed9-4f6e-adb6-48122f5bc0ca",
+        "timestamp": 1786206181806
+      },
+      {
+        "executionId": "049da96c-3795-4452-a0de-6c292339106f",
+        "chatSessionId": "sess_b3652806-5ed9-4f6e-adb6-48122f5bc0ca",
+        "timestamp": 1786206217764
+      },
+      {
+        "executionId": "049da96c-3795-4452-a0de-6c292339106f",
+        "chatSessionId": "sess_b3652806-5ed9-4f6e-adb6-48122f5bc0ca",
+        "timestamp": 1786206342694
+      }
+    ],
+    "1.3 Add `pattern` field to PricingRecordDTO": [
+      {
+        "executionId": "049da96c-3795-4452-a0de-6c292339106f",
+        "chatSessionId": "sess_b3652806-5ed9-4f6e-adb6-48122f5bc0ca",
+        "timestamp": 1786206181870
+      },
+      {
+        "executionId": "049da96c-3795-4452-a0de-6c292339106f",
+        "chatSessionId": "sess_b3652806-5ed9-4f6e-adb6-48122f5bc0ca",
+        "timestamp": 1786206218697
+      },
+      {
+        "executionId": "049da96c-3795-4452-a0de-6c292339106f",
+        "chatSessionId": "sess_b3652806-5ed9-4f6e-adb6-48122f5bc0ca",
+        "timestamp": 1786206343466
+      }
+    ],
+    "2.1 Add `PatternsResponse` DTO and `fetchCanonicalPatterns()` to APIClient": [
+      {
+        "executionId": "049da96c-3795-4452-a0de-6c292339106f",
+        "chatSessionId": "sess_b3652806-5ed9-4f6e-adb6-48122f5bc0ca",
+        "timestamp": 1786206181938
+      },
+      {
+        "executionId": "049da96c-3795-4452-a0de-6c292339106f",
+        "chatSessionId": "sess_b3652806-5ed9-4f6e-adb6-48122f5bc0ca",
+        "timestamp": 1786206347474
+      },
+      {
+        "executionId": "049da96c-3795-4452-a0de-6c292339106f",
+        "chatSessionId": "sess_b3652806-5ed9-4f6e-adb6-48122f5bc0ca",
+        "timestamp": 1786206398637
+      }
+    ],
+    "2.2 Add pattern sync stage to SyncService": [
+      {
+        "executionId": "049da96c-3795-4452-a0de-6c292339106f",
+        "chatSessionId": "sess_b3652806-5ed9-4f6e-adb6-48122f5bc0ca",
+        "timestamp": 1786206182002
+      },
+      {
+        "executionId": "049da96c-3795-4452-a0de-6c292339106f",
+        "chatSessionId": "sess_b3652806-5ed9-4f6e-adb6-48122f5bc0ca",
+        "timestamp": 1786206401823
+      },
+      {
+        "executionId": "049da96c-3795-4452-a0de-6c292339106f",
+        "chatSessionId": "sess_b3652806-5ed9-4f6e-adb6-48122f5bc0ca",
+        "timestamp": 1786206455057
+      }
+    ],
+    "2.3 Update PricingRecord sync mapping to persist pattern": [
+      {
+        "executionId": "049da96c-3795-4452-a0de-6c292339106f",
+        "chatSessionId": "sess_b3652806-5ed9-4f6e-adb6-48122f5bc0ca",
+        "timestamp": 1786206182060
+      },
+      {
+        "executionId": "049da96c-3795-4452-a0de-6c292339106f",
+        "chatSessionId": "sess_b3652806-5ed9-4f6e-adb6-48122f5bc0ca",
+        "timestamp": 1786206402627
+      },
+      {
+        "executionId": "049da96c-3795-4452-a0de-6c292339106f",
+        "chatSessionId": "sess_b3652806-5ed9-4f6e-adb6-48122f5bc0ca",
+        "timestamp": 1786206455691
+      }
+    ],
+    "3. Checkpoint": [
+      {
+        "executionId": "049da96c-3795-4452-a0de-6c292339106f",
+        "chatSessionId": "sess_b3652806-5ed9-4f6e-adb6-48122f5bc0ca",
+        "timestamp": 1786206182113
+      },
+      {
+        "executionId": "049da96c-3795-4452-a0de-6c292339106f",
+        "chatSessionId": "sess_b3652806-5ed9-4f6e-adb6-48122f5bc0ca",
+        "timestamp": 1786206464448
+      },
+      {
+        "executionId": "049da96c-3795-4452-a0de-6c292339106f",
+        "chatSessionId": "sess_b3652806-5ed9-4f6e-adb6-48122f5bc0ca",
+        "timestamp": 1786206489369
+      }
+    ],
+    "4.1 Add `pattern` parameter to PricingEngine suggest method": [
+      {
+        "executionId": "049da96c-3795-4452-a0de-6c292339106f",
+        "chatSessionId": "sess_b3652806-5ed9-4f6e-adb6-48122f5bc0ca",
+        "timestamp": 1786206182169
+      },
+      {
+        "executionId": "049da96c-3795-4452-a0de-6c292339106f",
+        "chatSessionId": "sess_b3652806-5ed9-4f6e-adb6-48122f5bc0ca",
+        "timestamp": 1786206493778
+      },
+      {
+        "executionId": "049da96c-3795-4452-a0de-6c292339106f",
+        "chatSessionId": "sess_b3652806-5ed9-4f6e-adb6-48122f5bc0ca",
+        "timestamp": 1786206579512
+      }
+    ],
+    "4.2 Implement pattern-based adjustment in exactMatch": [
+      {
+        "executionId": "049da96c-3795-4452-a0de-6c292339106f",
+        "chatSessionId": "sess_b3652806-5ed9-4f6e-adb6-48122f5bc0ca",
+        "timestamp": 1786206182229
+      },
+      {
+        "executionId": "049da96c-3795-4452-a0de-6c292339106f",
+        "chatSessionId": "sess_b3652806-5ed9-4f6e-adb6-48122f5bc0ca",
+        "timestamp": 1786206584516
+      },
+      {
+        "executionId": "049da96c-3795-4452-a0de-6c292339106f",
+        "chatSessionId": "sess_b3652806-5ed9-4f6e-adb6-48122f5bc0ca",
+        "timestamp": 1786206733368
+      }
+    ],
+    "5.1 Add @Query for pattern canonical values and wire AutocompleteField": [
+      {
+        "executionId": "049da96c-3795-4452-a0de-6c292339106f",
+        "chatSessionId": "sess_b3652806-5ed9-4f6e-adb6-48122f5bc0ca",
+        "timestamp": 1786206182278
+      },
+      {
+        "executionId": "049da96c-3795-4452-a0de-6c292339106f",
+        "chatSessionId": "sess_b3652806-5ed9-4f6e-adb6-48122f5bc0ca",
+        "timestamp": 1786206494600
+      },
+      {
+        "executionId": "049da96c-3795-4452-a0de-6c292339106f",
+        "chatSessionId": "sess_b3652806-5ed9-4f6e-adb6-48122f5bc0ca",
+        "timestamp": 1786206580313
+      }
+    ],
+    "5.2 Implement pattern filtering and selection behavior": [
+      {
+        "executionId": "049da96c-3795-4452-a0de-6c292339106f",
+        "chatSessionId": "sess_b3652806-5ed9-4f6e-adb6-48122f5bc0ca",
+        "timestamp": 1786206182343
+      },
+      {
+        "executionId": "049da96c-3795-4452-a0de-6c292339106f",
+        "chatSessionId": "sess_b3652806-5ed9-4f6e-adb6-48122f5bc0ca",
+        "timestamp": 1786206585232
+      },
+      {
+        "executionId": "049da96c-3795-4452-a0de-6c292339106f",
+        "chatSessionId": "sess_b3652806-5ed9-4f6e-adb6-48122f5bc0ca",
+        "timestamp": 1786206734106
+      }
+    ],
+    "5.3 Wire pattern change to price recalculation": [
+      {
+        "executionId": "049da96c-3795-4452-a0de-6c292339106f",
+        "chatSessionId": "sess_b3652806-5ed9-4f6e-adb6-48122f5bc0ca",
+        "timestamp": 1786206182410
+      },
+      {
+        "executionId": "049da96c-3795-4452-a0de-6c292339106f",
+        "chatSessionId": "sess_b3652806-5ed9-4f6e-adb6-48122f5bc0ca",
+        "timestamp": 1786206742315
+      },
+      {
+        "executionId": "049da96c-3795-4452-a0de-6c292339106f",
+        "chatSessionId": "sess_b3652806-5ed9-4f6e-adb6-48122f5bc0ca",
+        "timestamp": 1786206805573
+      }
+    ],
+    "6.1 Update item creation request to include pattern": [
+      {
+        "executionId": "049da96c-3795-4452-a0de-6c292339106f",
+        "chatSessionId": "sess_b3652806-5ed9-4f6e-adb6-48122f5bc0ca",
+        "timestamp": 1786206182461
+      },
+      {
+        "executionId": "049da96c-3795-4452-a0de-6c292339106f",
+        "chatSessionId": "sess_b3652806-5ed9-4f6e-adb6-48122f5bc0ca",
+        "timestamp": 1786206585985
+      },
+      {
+        "executionId": "049da96c-3795-4452-a0de-6c292339106f",
+        "chatSessionId": "sess_b3652806-5ed9-4f6e-adb6-48122f5bc0ca",
+        "timestamp": 1786206734806
+      }
+    ],
+    "7. Final checkpoint": [
+      {
+        "executionId": "049da96c-3795-4452-a0de-6c292339106f",
+        "chatSessionId": "sess_b3652806-5ed9-4f6e-adb6-48122f5bc0ca",
+        "timestamp": 1786206182517
+      },
+      {
+        "executionId": "049da96c-3795-4452-a0de-6c292339106f",
+        "chatSessionId": "sess_b3652806-5ed9-4f6e-adb6-48122f5bc0ca",
+        "timestamp": 1786206827913
+      },
+      {
+        "executionId": "049da96c-3795-4452-a0de-6c292339106f",
+        "chatSessionId": "sess_b3652806-5ed9-4f6e-adb6-48122f5bc0ca",
+        "timestamp": 1786206894421
+      }
+    ],
+    "1. Extend data model and enum for pattern support": [
+      {
+        "executionId": "049da96c-3795-4452-a0de-6c292339106f",
+        "chatSessionId": "sess_b3652806-5ed9-4f6e-adb6-48122f5bc0ca",
+        "timestamp": 1786206343522
+      }
+    ],
+    "2. Implement API client and sync for patterns": [
+      {
+        "executionId": "049da96c-3795-4452-a0de-6c292339106f",
+        "chatSessionId": "sess_b3652806-5ed9-4f6e-adb6-48122f5bc0ca",
+        "timestamp": 1786206455747
+      }
+    ],
+    "4. Implement pricing engine pattern adjustment": [
+      {
+        "executionId": "049da96c-3795-4452-a0de-6c292339106f",
+        "chatSessionId": "sess_b3652806-5ed9-4f6e-adb6-48122f5bc0ca",
+        "timestamp": 1786206733445
+      }
+    ],
+    "6. Include pattern in item submission payload": [
+      {
+        "executionId": "049da96c-3795-4452-a0de-6c292339106f",
+        "chatSessionId": "sess_b3652806-5ed9-4f6e-adb6-48122f5bc0ca",
+        "timestamp": 1786206734874
+      }
+    ],
+    "5. Implement pattern field in item capture form": [
+      {
+        "executionId": "049da96c-3795-4452-a0de-6c292339106f",
+        "chatSessionId": "sess_b3652806-5ed9-4f6e-adb6-48122f5bc0ca",
+        "timestamp": 1786206805652
+      }
+    ]
+  }
+}

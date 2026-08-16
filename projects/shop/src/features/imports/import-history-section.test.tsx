@@ -7,7 +7,7 @@ import type { HistoryJobSummary } from "./imports-types";
 const mockUseImportHistory = vi.fn<() => UseImportHistoryResult>();
 
 vi.mock("./use-import-history", () => ({
-  useImportHistory: (...args: unknown[]) => mockUseImportHistory(...args),
+  useImportHistory: () => mockUseImportHistory(),
 }));
 
 vi.mock("./import-history-detail", () => ({

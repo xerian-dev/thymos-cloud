@@ -15,3 +15,31 @@ variable "pricing_aggregator_schedule" {
   type        = string
   default     = "cron(0 2 ? * SUN *)"
 }
+
+variable "base_domain" {
+  description = "Base domain for the hosted zone"
+  type        = string
+  default     = "thymos.cloud"
+}
+
+variable "domain_name" {
+  description = "Frontend CloudFront domain for this environment"
+  type        = string
+}
+
+variable "api_domain_name" {
+  description = "API Gateway custom domain for this environment"
+  type        = string
+}
+
+variable "allowed_origins" {
+  description = "CORS allowed origins for API Gateway"
+  type        = list(string)
+  default     = ["*"]
+}
+
+variable "hosted_zone_id" {
+  description = "Route 53 hosted zone ID (empty = create zone, non-empty = use existing)"
+  type        = string
+  default     = ""
+}

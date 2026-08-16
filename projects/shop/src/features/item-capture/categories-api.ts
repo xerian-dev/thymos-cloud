@@ -1,6 +1,6 @@
 import { fetchAuthSession } from "aws-amplify/auth";
+import { API_BASE } from "@/config/api-config";
 
-const API_BASE = "/api";
 
 export interface CategoryOption {
   id: string;

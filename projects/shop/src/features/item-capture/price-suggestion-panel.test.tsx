@@ -43,6 +43,7 @@ describe("PriceSuggestionPanel", () => {
       <PriceSuggestionPanel
         brand="Zara"
         categoryId=""
+        description=""
         color="Black"
         size="M"
         onUseSuggestion={vi.fn()}
@@ -59,6 +60,7 @@ describe("PriceSuggestionPanel", () => {
       <PriceSuggestionPanel
         brand="Zara"
         categoryId="cat-1"
+        description=""
         color="Black"
         size="M"
         onUseSuggestion={vi.fn()}
@@ -78,6 +80,7 @@ describe("PriceSuggestionPanel", () => {
       <PriceSuggestionPanel
         brand="Zara"
         categoryId="cat-1"
+        description=""
         color="Black"
         size="M"
         onUseSuggestion={vi.fn()}
@@ -103,6 +106,7 @@ describe("PriceSuggestionPanel", () => {
       <PriceSuggestionPanel
         brand="Zara"
         categoryId="cat-1"
+        description=""
         color="Black"
         size="M"
         onUseSuggestion={onUseSuggestion}
@@ -135,6 +139,7 @@ describe("PriceSuggestionPanel", () => {
       <PriceSuggestionPanel
         brand="Unknown"
         categoryId="cat-2"
+        description=""
         color=""
         size=""
         onUseSuggestion={vi.fn()}
@@ -157,6 +162,7 @@ describe("PriceSuggestionPanel", () => {
       <PriceSuggestionPanel
         brand="Zara"
         categoryId="cat-1"
+        description=""
         color="Black"
         size="M"
         onUseSuggestion={vi.fn()}
@@ -175,6 +181,7 @@ describe("PriceSuggestionPanel", () => {
       <PriceSuggestionPanel
         brand="Nike"
         categoryId="cat-5"
+        description=""
         color="Red"
         size="L"
         createdBy="emp-001"
@@ -189,6 +196,7 @@ describe("PriceSuggestionPanel", () => {
     expect(mockFetchPriceSuggestion).toHaveBeenCalledWith(
       {
         brand: "Nike",
+        description: undefined,
         categoryId: "cat-5",
         color: "Red",
         size: "L",
@@ -227,6 +235,7 @@ describe("PriceSuggestionPanel", () => {
       <PriceSuggestionPanel
         brand="H&M"
         categoryId="cat-1"
+        description=""
         color="Black"
         size="M"
         onUseSuggestion={vi.fn()}
@@ -270,6 +279,7 @@ describe("PriceSuggestionPanel", () => {
       <PriceSuggestionPanel
         brand="Zara"
         categoryId="cat-1"
+        description=""
         color="Black"
         size="M"
         onUseSuggestion={vi.fn()}
@@ -291,6 +301,7 @@ describe("PriceSuggestionPanel", () => {
       <PriceSuggestionPanel
         brand=""
         categoryId="cat-1"
+        description=""
         color=""
         size=""
         onUseSuggestion={vi.fn()}
@@ -307,6 +318,7 @@ describe("PriceSuggestionPanel", () => {
         brand: undefined,
         categoryId: "cat-1",
         color: undefined,
+        description: undefined,
         size: undefined,
         createdBy: undefined,
       },
