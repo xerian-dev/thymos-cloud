@@ -26,6 +26,7 @@ import {
   listCanonicalBrands,
   listCanonicalColors,
   listCanonicalDescriptions,
+  listCanonicalPatterns,
 } from "./routes/canonical-lists.js";
 import { suggestPrice } from "./routes/suggest-price.js";
 import { listAdjustments } from "./routes/list-adjustments.js";
@@ -83,6 +84,7 @@ const routes: Record<string, RouteHandler> = {
   "GET /api/pricing/canonical/brands": listCanonicalBrands,
   "GET /api/pricing/canonical/colors": listCanonicalColors,
   "GET /api/pricing/canonical/descriptions": listCanonicalDescriptions,
+  "GET /api/pricing/canonical/patterns": listCanonicalPatterns,
   "GET /api/categories": listCategories,
   "POST /api/brands/scan-cluster": scanClusterBrands,
   "GET /api/brands/mappings": getMappings,

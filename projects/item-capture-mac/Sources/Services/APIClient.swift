@@ -33,7 +33,7 @@ struct APIConfiguration: Sendable {
     var authToken: String
 
     static let `default` = APIConfiguration(
-        baseURL: "https://7ne4yil3k7.execute-api.eu-central-1.amazonaws.com",
+        baseURL: "https://api.thymos.cloud/api",
         authToken: ""
     )
 }

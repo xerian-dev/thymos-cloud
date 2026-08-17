@@ -4,8 +4,8 @@ import SwiftUI
 /// Configures Cognito connection, printer, and Image AI.
 struct SettingsView: View {
     // Cognito
-    @AppStorage("cognitoUserPoolId") private var userPoolId = ""
-    @AppStorage("cognitoClientId") private var clientId = ""
+    @AppStorage("cognitoUserPoolId") private var userPoolId = "eu-central-1_GjRTDO3K2"
+    @AppStorage("cognitoClientId") private var clientId = "n4eb0ed0m1p2fkp814l3mes12"
     @AppStorage("cognitoRegion") private var region = "eu-central-1"
 
     // API
