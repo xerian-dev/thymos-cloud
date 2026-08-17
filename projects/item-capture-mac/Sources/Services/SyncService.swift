@@ -73,6 +73,14 @@ final class SyncService {
             }
         }
 
+
+        // Delete categories no longer returned by the API
+        let remoteIds = Set(categories.map(\.id))
+        let allDescriptor = FetchDescriptor<Category>()
+        let allLocal = try context.fetch(allDescriptor)
+        for local in allLocal where !remoteIds.contains(local.id) {
+            context.delete(local)
+        }
         try context.save()
         logger.info("Synced \(categories.count) categories")
     }
@@ -176,7 +184,7 @@ final class SyncService {
                     context.insert(record)
                 }
             }
-            try context.save()
+
 
             totalSynced += page.records.count
             await updateProgress("Synced \(totalSynced) pricing records...")
