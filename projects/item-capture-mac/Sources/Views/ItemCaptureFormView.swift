@@ -31,9 +31,11 @@ struct ItemCaptureFormView: View {
     @State private var pattern = ""
     @State private var size = ""
     @State private var title = ""
+    @State private var titleManuallyEdited = false
     @State private var tagPrice = ""
     @State private var printOnSave = true
     @State private var comment = ""
+    @FocusState private var titleFieldFocused: Bool
 
     let onPriceFieldsChanged: (_ brand: String, _ categoryId: String, _ description: String, _ color: String, _ pattern: String, _ size: String) -> Void
     let onSave: (_ payload: [String: Any], _ printLabel: Bool) -> Void
@@ -105,6 +107,10 @@ struct ItemCaptureFormView: View {
                         .textFieldStyle(.roundedBorder)
                         .frame(maxWidth: 300)
                         .accessibilityLabel("Title")
+                        .focused($titleFieldFocused)
+                        .onChange(of: title) { _, _ in
+                            if titleFieldFocused { titleManuallyEdited = true }
+                        }
                 }
             }
 
@@ -120,7 +126,6 @@ struct ItemCaptureFormView: View {
                             .frame(maxWidth: 120)
                             .accessibilityLabel("Tag price in CHF")
                             .onChange(of: tagPrice) { _, newValue in
-                                // Allow only valid decimal input
                                 let filtered = newValue.filter { $0.isNumber || $0 == "." }
                                 if filtered != newValue {
                                     tagPrice = filtered
@@ -151,7 +156,7 @@ struct ItemCaptureFormView: View {
         }
         .formStyle(.grouped)
 
-        // Comment field — spans full form width (both label + value columns)
+        // Comment field — spans full form width
         TextField("", text: $comment, prompt: Text("Comment").foregroundStyle(.tertiary), axis: .vertical)
             .textFieldStyle(.roundedBorder)
             .lineLimit(4...8)
@@ -194,7 +199,13 @@ struct ItemCaptureFormView: View {
         onSave(payload, printOnSave)
     }
 
+    private func updateTitleIfNeeded() {
+        guard !titleManuallyEdited else { return }
+        title = Self.constructTitle(brand: brand, description: description, color: color, pattern: pattern, size: size)
+    }
+
     private func notifyPriceFields() {
+        updateTitleIfNeeded()
         onPriceFieldsChanged(brand, categoryId, description, color, pattern, size)
     }
 }
