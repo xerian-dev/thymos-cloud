@@ -525,3 +525,12 @@ resource "aws_apigatewayv2_api_mapping" "api" {
   domain_name = aws_apigatewayv2_domain_name.api.id
   stage       = aws_apigatewayv2_stage.default.id
 }
+
+resource "aws_apigatewayv2_route" "get_pricing_canonical_patterns" {
+  api_id    = aws_apigatewayv2_api.shop_api.id
+  route_key = "GET /api/pricing/canonical/patterns"
+  target    = "integrations/${aws_apigatewayv2_integration.monolambda.id}"
+
+  authorization_type = "CUSTOM"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}

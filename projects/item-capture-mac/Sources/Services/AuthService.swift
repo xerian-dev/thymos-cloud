@@ -194,8 +194,8 @@ final class AuthService {
     private func loadCognitoConfig() -> CognitoConfig {
         let defaults = UserDefaults.standard
         return CognitoConfig(
-            userPoolId: defaults.string(forKey: "cognitoUserPoolId") ?? "",
-            clientId: defaults.string(forKey: "cognitoClientId") ?? "",
+            userPoolId: defaults.string(forKey: "cognitoUserPoolId") ?? "eu-central-1_GjRTDO3K2",
+            clientId: defaults.string(forKey: "cognitoClientId") ?? "n4eb0ed0m1p2fkp814l3mes12",
             region: defaults.string(forKey: "cognitoRegion") ?? "eu-central-1"
         )
     }

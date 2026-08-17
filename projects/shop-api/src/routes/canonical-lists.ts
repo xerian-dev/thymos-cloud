@@ -20,6 +20,7 @@ let descriptionsCache: CacheEntry | null = null;
 
 /** Reset caches — exposed for testing only. */
 export function _resetCaches(): void {
+  patternsCache = null;
   brandsCache = null;
   colorsCache = null;
   descriptionsCache = null;
@@ -116,6 +117,29 @@ export async function listCanonicalDescriptions(
     return jsonResponse(200, { descriptions });
   } catch (error: unknown) {
     console.error("listCanonicalDescriptions error", {
+      message: error instanceof Error ? error.message : "Unknown error",
+      name: error instanceof Error ? error.name : undefined,
+    });
+    return errorResponse();
+  }
+}
+
+let patternsCache: CacheEntry | null = null;
+
+export async function listCanonicalPatterns(
+  _event: APIGatewayProxyEventV2,
+): Promise<APIGatewayProxyResultV2> {
+  try {
+    if (isFresh(patternsCache)) {
+      return jsonResponse(200, { patterns: patternsCache.data });
+    }
+
+    const patterns = await queryCanonicalNames("CANONICAL#PATTERNS");
+    patternsCache = { data: patterns, fetchedAt: Date.now() };
+
+    return jsonResponse(200, { patterns });
+  } catch (error: unknown) {
+    console.error("listCanonicalPatterns error", {
       message: error instanceof Error ? error.message : "Unknown error",
       name: error instanceof Error ? error.name : undefined,
     });
