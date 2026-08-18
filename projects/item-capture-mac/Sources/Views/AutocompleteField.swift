@@ -167,7 +167,8 @@ private struct SuggestionsPopover: View {
                 .accessibilityLabel("Suggestion: \(suggestion)")
             }
         }
-        .frame(width: 280)
+        .frame(width: 280, alignment: .topLeading)
+        .fixedSize(horizontal: false, vertical: true)
         .padding(.vertical, 4)
     }
 }
