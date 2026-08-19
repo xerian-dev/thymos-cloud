@@ -1,19 +1,12 @@
-export interface BrandMapping {
-  raw: string;
+export interface BrandEntry {
   canonical: string;
+  aliases: string[];
 }
 
-export interface MappingsResponse {
-  mappings: BrandMapping[];
-  lastModified: string | null;
-}
-
-export interface ApplyResponse {
-  message: string;
-  delta: number;
-  itemsUpdated: number;
-  errors: number;
-  canonicalBrandsSeeded: number;
+export interface BrandCategory {
+  categoryId: string | null;
+  categoryName: string;
+  brands: BrandEntry[];
 }
 
 export interface ApplyStatus {
