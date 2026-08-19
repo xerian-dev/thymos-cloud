@@ -15,6 +15,18 @@ struct ContentView: View {
     @State private var isCalculating = false
     @State private var suggestionTask: Task<Void, Never>?
 
+    private var isSyncing: Bool {
+        guard let service = syncService else { return false }
+        if case .syncing = service.state { return true }
+        return false
+    }
+
+    private var syncProgress: String {
+        guard let service = syncService else { return "" }
+        if case .syncing(let progress) = service.state { return progress }
+        return ""
+    }
+
     var body: some View {
         HStack(alignment: .top, spacing: 0) {
             // Left: Item capture form
@@ -34,6 +46,23 @@ struct ContentView: View {
                 }
             )
             .frame(minWidth: 500)
+            .disabled(isSyncing)
+            .overlay {
+                if isSyncing {
+                    ZStack {
+                        Color.black.opacity(0.4)
+                        VStack(spacing: 12) {
+                            ProgressView()
+                                .controlSize(.large)
+                            Text(syncProgress)
+                                .font(.callout)
+                                .foregroundStyle(.white)
+                        }
+                        .padding(24)
+                        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 12))
+                    }
+                }
+            }
 
             Divider()
 

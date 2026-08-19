@@ -135,6 +135,13 @@ final class SyncService {
     }
 
     private func syncPricingRecords() async throws {
+        // Skip if synced within last 24 hours
+        let defaults = UserDefaults.standard
+        let lastPricingSync = defaults.object(forKey: "lastPricingSyncDate") as? Date
+        if let last = lastPricingSync, Date.now.timeIntervalSince(last) < 86400 {
+            logger.info("Pricing records synced recently, skipping")
+            return
+        }
         await updateProgress("Syncing pricing records...")
 
         var cursor: String? = nil
@@ -166,7 +173,7 @@ final class SyncService {
                     record.createdAt = dto.createdAt
                     record.syncedAt = .now
                 } else {
-                    let record = PricingRecord(
+                let record = PricingRecord(
                         id: dto.id,
                         brand: dto.brand,
                         categoryId: dto.categoryId,

@@ -2,8 +2,7 @@ import Foundation
 import SwiftData
 import os
 
-/// Local pricing engine that computes price suggestions from the local SwiftData store.
-/// Mirrors the logic of the server-side pricing/suggest endpoint.
+/// Represents a computed price suggestion with confidence level.
 struct PriceSuggestion: Equatable {
     let suggestedPrice: Double
     let confidence: Confidence
@@ -17,6 +16,8 @@ struct PriceSuggestion: Equatable {
     }
 }
 
+/// Local pricing engine that computes price suggestions from the local SwiftData store.
+/// Mirrors the logic of the server-side pricing/suggest endpoint.
 @Observable
 final class PricingEngine {
     private let modelContainer: ModelContainer
@@ -42,7 +43,6 @@ final class PricingEngine {
         // 1. Exact match: brand + category + description
         // 2. Brand + category
         // 3. Category only
-
         if let result = try? exactMatch(
             context: context,
             brand: brand,
@@ -81,29 +81,37 @@ final class PricingEngine {
         pattern: String,
         size: String
     ) throws -> PriceSuggestion? {
+        // Fetch by category, then filter brand + description in memory (case-insensitive)
         let descriptor = FetchDescriptor<PricingRecord>(
-            predicate: #Predicate {
-                $0.brand == brand &&
-                $0.categoryId == categoryId &&
-                $0.itemDescription == description
-            }
+            predicate: #Predicate { $0.categoryId == categoryId }
         )
-        let records = try context.fetch(descriptor)
+        let allInCategory = try context.fetch(descriptor)
 
+        let brandLower = brand.lowercased()
+        let descLower = description.lowercased()
+        let records = allInCategory.filter {
+            $0.brand.lowercased() == brandLower &&
+            $0.itemDescription.lowercased() == descLower
+        }
+
+        logger.info("exactMatch: category=\(categoryId) brand=\(brand) desc=\(description) → \(allInCategory.count) in category, \(records.count) exact matches")
         guard records.count >= 3 else { return nil }
 
         let prices = records.map(\.tagPrice).sorted()
         let median = medianValue(prices)
 
-        // Apply color/size adjustments from the matching subset
+        // Apply color/size/pattern adjustments from the matching subset
         var adjustment: Double = 0
-        let colorMatches = records.filter { $0.color == color }
+
+        let colorLower = color.lowercased()
+        let colorMatches = records.filter { $0.color.lowercased() == colorLower }
         if !colorMatches.isEmpty && colorMatches.count != records.count {
             let colorMedian = medianValue(colorMatches.map(\.tagPrice))
             adjustment += (colorMedian - median) * 0.3
         }
 
-        let patternMatches = records.filter { $0.pattern == pattern }
+        let patternLower = pattern.lowercased()
+        let patternMatches = records.filter { $0.pattern.lowercased() == patternLower }
         if !patternMatches.isEmpty && patternMatches.count != records.count {
             let patternMedian = medianValue(patternMatches.map(\.tagPrice))
             adjustment += (patternMedian - median) * 0.3
@@ -131,11 +139,12 @@ final class PricingEngine {
         categoryId: String
     ) throws -> PriceSuggestion? {
         let descriptor = FetchDescriptor<PricingRecord>(
-            predicate: #Predicate {
-                $0.brand == brand && $0.categoryId == categoryId
-            }
+            predicate: #Predicate { $0.categoryId == categoryId }
         )
-        let records = try context.fetch(descriptor)
+        let allInCategory = try context.fetch(descriptor)
+
+        let brandLower = brand.lowercased()
+        let records = allInCategory.filter { $0.brand.lowercased() == brandLower }
 
         guard records.count >= 5 else { return nil }
 
@@ -159,7 +168,6 @@ final class PricingEngine {
             predicate: #Predicate { $0.categoryId == categoryId }
         )
         let records = try context.fetch(descriptor)
-
         guard records.count >= 10 else { return nil }
 
         let prices = records.map(\.tagPrice).sorted()

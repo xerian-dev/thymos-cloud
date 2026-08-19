@@ -13,7 +13,8 @@ An ER diagram is more appropriate than a UML class diagram for this system becau
 erDiagram
     ACCOUNT {
         string uuid PK "v4 UUID (synthetic key)"
-        number accountNumber "Sequential account number"
+        number accountNumber "Sequential account number, zero-padded to 7 digits"
+        string name "Computed: firstName + lastName"
         string firstName "Optional"
         string lastName "Optional"
         string company "Optional"
@@ -77,10 +78,13 @@ erDiagram
         string status "Required, Item Status enum"
         boolean taxExempt "Default false"
         string description "Optional, max 2000 chars"
+        string sourceDescription "Optional, original value before canonical mapping"
         string category "Optional, category name for display"
         string brand "Optional"
-        string color "Optional"
-        string pattern "Optional, canonical pattern name"
+        string sourceBrand "Optional, original value before canonical mapping"
+        string color "Optional, canonical German color name"
+        string sourceColor "Optional, original value before canonical mapping"
+        string pattern "Optional, canonical German pattern name"
         string sourcePattern "Optional, original value that triggered pattern extraction"
         string size "Optional"
         string shelf "Optional"
@@ -110,6 +114,7 @@ erDiagram
         number number "Sale number (from CC import or sequence counter)"
         string status "open | finalized | voided"
         string cashierId FK "UUID of Employee who made the sale"
+        string cashierName "Denormalized cashier name snapshot"
         number subtotal "CHF cents"
         number total "CHF cents"
         number storePortion "CHF cents"
@@ -124,6 +129,7 @@ erDiagram
         string parkedAt "Optional, ISO 8601 UTC"
         string sourceId "ConsignCloud sale UUID"
         string createdAt "ISO 8601 UTC"
+        string updatedAt "ISO 8601 UTC, only set on updates"
     }
 
     SALE_LINE_ITEM {
@@ -157,30 +163,111 @@ erDiagram
     SEQUENCE_COUNTER ||--|| SALE : "generates number"
 ```
 
+## Pricing Table Entity-Relationship Diagram
+
+The pricing table (`thymos-{environment}-pricing`) stores batch-computed pricing references, adjustment history, and employee accuracy scores in a separate DynamoDB table.
+
+```mermaid
+erDiagram
+    PRICING_REF_CATEGORY {
+        string brand "Brand name or _NONE_"
+        string categoryId FK "Category UUID"
+        string categoryName "Category display name"
+        number referencePrice "CHF, adjusted/capped median sale price"
+        number previousReferencePrice "Previous cycle reference price"
+        number originalBaseline "First-ever reference price for drift cap"
+        number medianTagPrice "CHF, median tag price of all items in group"
+        number medianSalePrice "CHF, median actual sale price"
+        number sellThroughRate "0-1, ratio of sold to total"
+        number medianDaysOnShelf "Median days before sale"
+        number discountFrequency "0-1, proportion sold at a discount"
+        number sampleSize "Count of sold items in group"
+        number totalItems "Count of all items (sold + unsold)"
+        number unsoldCount "Count of unsold items"
+        number velocityMultiplier "0.90-1.10, demand-based adjustment"
+        boolean lowConfidence "True if sampleSize < 5"
+        object colorAdjustments "Per-color price ratios"
+        object sizeAdjustments "Per-size price ratios"
+        string computedAt "ISO 8601 UTC"
+        string updatedAt "ISO 8601 UTC"
+    }
+
+    PRICING_REF_DESCRIPTION {
+        string brand "Brand name or _NONE_"
+        string description "Normalized item description keyword"
+        number referencePrice "CHF, = medianSalePrice (no caps applied)"
+        number medianTagPrice "CHF, median tag price of all items in group"
+        number medianSalePrice "CHF, median actual sale price"
+        number sellThroughRate "0-1, ratio of sold to total"
+        number medianDaysOnShelf "Median days before sale"
+        number discountFrequency "0-1, proportion sold at a discount"
+        number sampleSize "Count of sold items in group"
+        number totalItems "Count of all items (sold + unsold)"
+        number unsoldCount "Count of unsold items"
+        number velocityMultiplier "0.90-1.10, demand-based adjustment"
+        boolean lowConfidence "True if sampleSize < 5"
+        object colorAdjustments "Per-color price ratios"
+        object sizeAdjustments "Per-size price ratios"
+        string computedAt "ISO 8601 UTC"
+        string updatedAt "ISO 8601 UTC"
+    }
+
+    ADJUSTMENT_EVENT {
+        string id PK "v4 UUID"
+        string brand "Brand name for affected group"
+        string category "Category display name"
+        string categoryId FK "Category UUID"
+        number previousPrice "CHF, old reference price"
+        number newPrice "CHF, new capped reference price"
+        string direction "increase | decrease"
+        number percentageChange "Percent change from previous"
+        string reason "Human-readable explanation"
+        object metrics "Snapshot of group metrics at detection time"
+        string timestamp "ISO 8601 UTC"
+    }
+
+    EMPLOYEE_PRICING {
+        string employeeId FK "Employee UUID"
+        string employeeName "Employee display name"
+        number pricingAccuracy "Median salePrice/tagPrice ratio (time-weighted)"
+        number sampleSize "Sold items by employee in 6-month window"
+        number creatorAdjustment "= pricingAccuracy, used as price multiplier"
+        string computedAt "ISO 8601 UTC"
+    }
+
+    CATEGORY ||--o{ PRICING_REF_CATEGORY : "grouped by"
+    EMPLOYEE ||--o{ EMPLOYEE_PRICING : "scored"
+    PRICING_REF_CATEGORY ||--o{ ADJUSTMENT_EVENT : "triggers"
+```
+
 ## DynamoDB Single-Table Mapping (Shop Table)
 
 Operational entities live in the DynamoDB table (`thymos-{environment}-shop`). The ER diagram above shows the logical domain model; below is how it maps to physical key patterns:
 
-| Entity           | PK                    | SK                    | GSI1PK     | GSI1SK                  | GSI2PK                      | GSI2SK                  | GSI3PK                        | GSI3SK                  |
-|------------------|-----------------------|-----------------------|------------|-------------------------|-----------------------------|-------------------------|-------------------------------|-------------------------|
-| Account          | `ACCOUNT#<uuid>`      | `METADATA`            | `ACCOUNTS` | `ACCOUNT#<accountNumber>`| —                           | —                       | —                             | —                       |
-| Employee         | `EMPLOYEE#<uuid>`     | `METADATA`            | —          | —                       | `EMPLOYEES`                 | `EMPLOYEE#<uuid>`       | —                             | —                       |
-| Category         | `CATEGORY#<uuid>`     | `METADATA`            | —          | —                       | —                           | —                       | —                             | —                       |
-| Item             | `ITEM#<uuid>`         | `METADATA`            | `ITEMS`    | `ITEM#<sku>`            | `ACCOUNT#<accountId>`       | `ITEM#<createdAt>`      | `CATEGORY#<categoryId>`       | `ITEM#<createdAt>`      |
-| Sale             | `SALE#<uuid>`         | `METADATA`            | `SALES`    | `SALE#<saleNumber>`     | —                           | —                       | —                             | —                       |
-| Sale Line Item   | `SALE#<uuid>`         | `LINE_ITEM#<index>`   | —          | —                       | —                           | —                       | —                             | —                       |
-| Account Counter  | `SEQUENCE#ACCOUNT`    | `COUNTER`             | —          | —                       | —                           | —                       | —                             | —                       |
-| Item Counter     | `SEQUENCE#ITEM`       | `COUNTER`             | —          | —                       | —                           | —                       | —                             | —                       |
-| Sale Counter     | `SEQUENCE#SALE`       | `COUNTER`             | —          | —                       | —                           | —                       | —                             | —                       |
-| Canonical Color  | `CANONICAL#COLORS`    | `COLOR#<name>`        | —          | —                       | —                           | —                       | —                             | —                       |
-| Canonical Pattern| `CANONICAL#PATTERNS`  | `PATTERN#<name>`      | —          | —                       | —                           | —                       | —                             | —                       |
+| Entity           | PK                    | SK                    | GSI1PK     | GSI1SK                           | GSI2PK                      | GSI2SK                  | GSI3PK                        | GSI3SK                  |
+|------------------|-----------------------|-----------------------|------------|----------------------------------|-----------------------------|-------------------------|-------------------------------|-------------------------|
+| Account          | `ACCOUNT#<uuid>`      | `METADATA`            | `ACCOUNT`  | `ACCOUNT#<accountNumber(7)>`     | —                           | —                       | —                             | —                       |
+| Employee         | `EMPLOYEE#<uuid>`     | `METADATA`            | —          | —                                | `EMPLOYEES`                 | `EMPLOYEE#<uuid>`       | —                             | —                       |
+| Category         | `CATEGORY#<uuid>`     | `METADATA`            | —          | —                                | —                           | —                       | —                             | —                       |
+| Item             | `ITEM#<uuid>`         | `METADATA`            | `ITEMS`    | `ITEM#<sku(7)>`                  | `ACCOUNT#<accountId>`       | `ITEM#<createdAt>`      | `CATEGORY#<categoryId>`       | `ITEM#<createdAt>`      |
+| Sale             | `SALE#<uuid>`         | `METADATA`            | `SALES`    | `SALE#<number(7)>`               | —                           | —                       | —                             | —                       |
+| Sale Line Item   | `SALE#<uuid>`         | `LINE_ITEM#<index(4)>`| —          | —                                | —                           | —                       | —                             | —                       |
+| Account Counter  | `SEQUENCE#ACCOUNT`    | `COUNTER`             | —          | —                                | —                           | —                       | —                             | —                       |
+| Item Counter     | `SEQUENCE#ITEM`       | `COUNTER`             | —          | —                                | —                           | —                       | —                             | —                       |
+| Sale Counter     | `SEQUENCE#SALE`       | `COUNTER`             | —          | —                                | —                           | —                       | —                             | —                       |
+| Canonical Color  | `CANONICAL#COLORS`    | `COLOR#<name>`        | —          | —                                | —                           | —                       | —                             | —                       |
+| Canonical Pattern| `CANONICAL#PATTERNS`  | `PATTERN#<name>`      | —          | —                                | —                           | —                       | —                             | —                       |
+
+> **Notation**: `(7)` and `(4)` indicate zero-padded width. e.g., `ITEM#0000042`, `LINE_ITEM#0003`.
 
 ### Key Design Principles
 
 - **Synthetic keys only**: UUIDs for identity, never business values (accountNumber, SKU) as partition keys
 - **Business identifiers as attributes**: accountNumber and SKU are queryable via GSI1 but never used as primary keys
+- **Zero-padded sort keys**: GSI1SK values are zero-padded to 7 digits for correct lexicographic ordering (`ITEM#0000042`, `ACCOUNT#0000001`). Line item SK indices are zero-padded to 4 digits (`LINE_ITEM#0003`).
 - **SKU is the item's sequential number**: The SKU is a sequential number (e.g., `42`) — the operator-facing identifier for items, labelled "SKU" in the UI and printed on labels. For imported items, the SKU comes directly from ConsignCloud (not generated). The sequence counter is seeded to max(imported SKU) after the first full import to prevent collisions with future locally-created items.
 - **Relationship via attribute**: Items reference their owning Account by storing `accountId` (the Account's UUID), and their creator by storing `createdBy` (the Employee's UUID)
+- **Account GSI1**: `GSI1PK: "ACCOUNT"` (singular), `GSI1SK: "ACCOUNT#<accountNumber>"`. Enables listing all accounts sorted by account number.
 - **Items by account (GSI2)**: Items are queryable by owning account via GSI2 (`GSI2PK: ACCOUNT#<accountId>`, `GSI2SK: ITEM#<createdAt>`). Querying with `ScanIndexForward: false` returns items newest-first. GSI2 is overloaded — employees also use it (`GSI2PK: EMPLOYEES`, `GSI2SK: EMPLOYEE#<uuid>`).
 - **Items by category (GSI3)**: Items are queryable by category via GSI3 (`GSI3PK: CATEGORY#<categoryId>`, `GSI3SK: ITEM#<createdAt>`). Querying with `ScanIndexForward: false` returns items newest-first.
 - **Employee lookup**: Employees are looked up by `sourceId` via the `sourceId-index` GSI (same as accounts). No sequential numbering — they're referenced, not browsed.
@@ -188,6 +275,24 @@ Operational entities live in the DynamoDB table (`thymos-{environment}-shop`). T
 - **Sale number**: The operator-facing identifier for sales. For imported sales, the number comes directly from ConsignCloud (not generated). The sequence counter is seeded to max(imported number) after the first full import to prevent collisions with future locally-created sales. Queryable via GSI1 (`GSI1PK: SALES`, `GSI1SK: SALE#<number>`).
 - **Sequence counters**: Separate counter records for each entity type, atomically incremented via DynamoDB conditional expressions
 - **Canonical lists**: `CANONICAL#COLORS` and `CANONICAL#PATTERNS` store the master list of canonical color and pattern names with their known aliases. Seeded by the color-apply Lambda after applying mappings. Used by the `GET /api/pricing/canonical/colors` and `GET /api/pricing/canonical/patterns` routes.
+
+### Source Field Convention
+
+Items store the **original raw value** from ConsignCloud alongside the canonical (mapped) value for three fields: brand, color, and description. This enables auditing what the original import data was and re-running mappings without data loss.
+
+| Canonical Field | Source Field        | Written By                            | Semantics                                                 |
+|-----------------|---------------------|---------------------------------------|-----------------------------------------------------------|
+| `brand`         | `sourceBrand`       | Stream item-mapper OR brand-apply Lambda | Original CC brand before canonical mapping             |
+| `color`         | `sourceColor`       | Stream item-mapper OR color-apply Lambda | Original CC color before canonical mapping             |
+| `description`   | `sourceDescription` | Description-apply Lambda only         | Original CC description before normalization              |
+| `pattern`       | `sourcePattern`     | Color-apply Lambda only               | Original value that triggered pattern extraction          |
+
+**Rules:**
+
+- Source fields use `if_not_exists` semantics — once set, they are never overwritten by subsequent mapping runs
+- `sourceBrand` and `sourceColor` are only set when the raw value differs from the canonical value (i.e., a mapping was applied)
+- `sourcePattern` captures the raw color value that was identified as a pattern rather than a color
+- `sourceSku` (on item creation only) preserves the raw CC SKU string when it differs from the parsed numeric SKU
 
 ## Pricing Table (`thymos-{environment}-pricing`)
 
@@ -208,18 +313,18 @@ Pricing data lives in a separate DynamoDB table from the operational shop data. 
 - **Single GSI**: GSI1 supports listing all pricing refs (`GSI1PK: PRICING_REFS`) and querying adjustments by date (`GSI1PK: ADJUSTMENTS`, `GSI1SK: ADJUSTMENT#<timestamp>`).
 - **Brand `_NONE_`**: Items without a brand are grouped under the synthetic brand `_NONE_`, enabling category-only or description-only fallback lookups.
 - **`DESC#` infix**: Description-based keys use the `DESC#` infix (e.g., `PRICING_REF#<brand>#DESC#<description>`) to prevent collisions with category-based keys. Category IDs are UUIDs and never contain "DESC#", so the two key spaces are guaranteed disjoint.
-- **Description-based refs**: Use the item's normalized description keyword as the key suffix. These refs capture pricing statistics for items sharing the same description, independent of category assignment.
+- **Description-based refs**: Use the item's normalized description keyword as the key suffix. These refs capture pricing statistics for items sharing the same description, independent of category assignment. Unlike category-based refs, description-based refs do NOT go through adjustment detection — the reference price is simply the median sale price.
 - **Employee pricing by direct key**: Looked up by `PK: EMPLOYEE_PRICING#<employeeId>` — no GSI needed since access is always by known employee ID.
+- **Adjustment events**: Only created for category-based pricing ref changes exceeding 2%. Description-based refs do not trigger adjustments.
 
-### Pricing Ref Attributes
+### Pricing Ref Attributes (Category-based)
 
 | Attribute              | Type              | Description                                           |
 |------------------------|-------------------|-------------------------------------------------------|
 | `brand`                | string            | Canonical brand name (or `_NONE_`)                    |
-| `categoryId`           | string (UUID) \| undefined | Category UUID (present on category-based refs only) |
-| `categoryName`         | string \| undefined | Category display name (present on category-based refs only) |
-| `description`          | string \| undefined | Item description keyword (present on description-based refs only) |
-| `referencePrice`       | number (CHF)      | Computed reference price (median sale price)          |
+| `categoryId`           | string (UUID)     | Category UUID                                         |
+| `categoryName`         | string            | Category display name                                 |
+| `referencePrice`       | number (CHF)      | Computed reference price (adjusted/capped median sale price) |
 | `previousReferencePrice` | number \| null  | Previous aggregation's reference price                |
 | `originalBaseline`     | number (CHF)      | First-ever reference price for drift cap             |
 | `medianTagPrice`       | number (CHF)      | Median tag price of ALL items in group (sold and unsold) |
@@ -236,6 +341,50 @@ Pricing data lives in a separate DynamoDB table from the operational shop data. 
 | `sizeAdjustments`      | Record<string, number> | Per-size price ratio                            |
 | `computedAt`           | string (ISO 8601) | When this ref was last computed                      |
 | `updatedAt`            | string (ISO 8601) | Last write timestamp                                 |
+
+### Pricing Ref Attributes (Description-based)
+
+Description-based refs share most attributes with category-based refs but differ in key ways:
+
+| Difference from Category-based | Detail |
+| ------------------------------- | -------- |
+| Has `description` attribute | Normalized item description keyword |
+| No `categoryId` / `categoryName` | Grouped by description, not category |
+| No `previousReferencePrice` | No adjustment detection = no history tracking |
+| No `originalBaseline` | No drift cap applied |
+| `referencePrice` = `medianSalePrice` | No adjustment/cap logic applied |
+
+### Adjustment Event Attributes
+
+| Attribute          | Type              | Description                                           |
+|--------------------|-------------------|-------------------------------------------------------|
+| `id`               | string (UUID)     | Unique identifier                                     |
+| `brand`            | string            | Brand name for the affected group                     |
+| `category`         | string            | Category display name                                 |
+| `categoryId`       | string (UUID)     | Category UUID                                         |
+| `previousPrice`    | number (CHF)      | Old reference price                                   |
+| `newPrice`         | number (CHF)      | New capped reference price                            |
+| `direction`        | "increase" \| "decrease" | Direction of change                            |
+| `percentageChange` | number            | Percentage change from previous                       |
+| `reason`           | string            | Human-readable explanation                            |
+| `metrics`          | object            | Snapshot of group metrics at detection time           |
+| `metrics.sellThroughRate` | number     | Current sell-through rate                            |
+| `metrics.medianDaysOnShelf` | number   | Current median days on shelf                         |
+| `metrics.sampleSize` | number          | Current sample size                                  |
+| `metrics.discountFrequency` | number   | Discount frequency for the group                     |
+| `metrics.priceRatio` | number          | `medianSalePrice / medianTagPrice`                   |
+| `timestamp`        | string (ISO 8601) | When the adjustment was detected                     |
+
+### Employee Pricing Attributes
+
+| Attribute          | Type              | Description                                           |
+|--------------------|-------------------|-------------------------------------------------------|
+| `employeeId`       | string (UUID)     | Employee UUID                                         |
+| `employeeName`     | string            | Employee display name                                 |
+| `pricingAccuracy`  | number            | Median salePrice/tagPrice ratio (time-weighted: 3× weight for last 3 months, 1× for 3–6 months) |
+| `sampleSize`       | number            | Count of sold items by this employee in 6-month window |
+| `creatorAdjustment`| number            | = `pricingAccuracy`, used as price multiplier in suggest-price |
+| `computedAt`       | string (ISO 8601) | When this record was last computed                   |
 
 ### Suggest-Price Fallback Chain
 

@@ -534,3 +534,12 @@ resource "aws_apigatewayv2_route" "get_pricing_canonical_patterns" {
   authorization_type = "CUSTOM"
   authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
 }
+
+resource "aws_apigatewayv2_route" "get_pricing_records" {
+  api_id    = aws_apigatewayv2_api.shop_api.id
+  route_key = "GET /api/pricing/records"
+  target    = "integrations/${aws_apigatewayv2_integration.monolambda.id}"
+
+  authorization_type = "CUSTOM"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}

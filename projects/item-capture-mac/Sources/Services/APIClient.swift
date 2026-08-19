@@ -56,7 +56,16 @@ actor APIClient {
         self.session = URLSession(configuration: sessionConfig)
 
         self.decoder = JSONDecoder()
-        self.decoder.dateDecodingStrategy = .iso8601
+        self.decoder.dateDecodingStrategy = .custom { decoder in
+            let container = try decoder.singleValueContainer()
+            let str = try container.decode(String.self)
+            let formatter = ISO8601DateFormatter()
+            formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+            if let date = formatter.date(from: str) { return date }
+            formatter.formatOptions = [.withInternetDateTime]
+            if let date = formatter.date(from: str) { return date }
+            throw DecodingError.dataCorruptedError(in: container, debugDescription: "Invalid date: \(str)")
+        }
     }
 
     // MARK: - Categories
@@ -103,7 +112,7 @@ actor APIClient {
 
     // MARK: - Pricing Data
 
-    func fetchPricingData(cursor: String? = nil, limit: Int = 100) async throws -> PricingPageResponse {
+    func fetchPricingData(cursor: String? = nil, limit: Int = 500) async throws -> PricingPageResponse {
         var queryItems: [URLQueryItem] = [
             URLQueryItem(name: "limit", value: String(limit))
         ]
@@ -215,6 +224,7 @@ actor APIClient {
         do {
             return try decoder.decode(type, from: data)
         } catch {
+            print("DECODE ERROR: \(error)")
             throw APIError.decodingError(underlying: error)
         }
     }
