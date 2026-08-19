@@ -31,11 +31,6 @@ const s3Client = new S3Client({});
 const DRAFT_KEY = "brand-mappings/draft.json";
 const STATUS_KEY = "brand-mappings/apply-status.json";
 
-interface MappingEntry {
-  raw: string;
-  canonical: string;
-}
-
 // --- POST /api/brands/scan-cluster ---
 
 export async function scanClusterBrands(
@@ -79,7 +74,7 @@ export async function getMappings(
       return jsonResponse(200, { mappings: [], lastModified: null });
     }
 
-    const mappings: MappingEntry[] = JSON.parse(body);
+    const mappings = JSON.parse(body);
     const lastModified = result.LastModified?.toISOString() ?? null;
 
     return jsonResponse(200, { mappings, lastModified });
@@ -106,21 +101,10 @@ export async function saveMappings(
     }
 
     const parsed = JSON.parse(body);
-    const mappings: MappingEntry[] = parsed.mappings;
+    const mappings = parsed.mappings;
 
     if (!Array.isArray(mappings)) {
       return jsonResponse(400, { error: "mappings must be an array" });
-    }
-
-    for (const entry of mappings) {
-      if (
-        typeof entry.raw !== "string" ||
-        typeof entry.canonical !== "string"
-      ) {
-        return jsonResponse(400, {
-          error: "Each mapping must have string 'raw' and 'canonical' fields",
-        });
-      }
     }
 
     const content = JSON.stringify(mappings, null, 2);
