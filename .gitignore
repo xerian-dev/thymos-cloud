@@ -7,3 +7,4 @@ infrastructure/.terraform.lock.hcl
 *.tfvars
 !*.tfvars.example
 color-mappings-draft.json
+.DS_Store
