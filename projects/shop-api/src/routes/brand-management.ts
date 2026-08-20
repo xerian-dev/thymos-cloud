@@ -1,18 +1,14 @@
 /**
  * Brand management API routes.
  *
- * POST /api/brands/scan-cluster  — triggers async scan & cluster Lambda
- * GET  /api/brands/mappings      — loads draft.json from S3
- * PUT  /api/brands/mappings      — saves edited draft.json to S3
- * POST /api/brands/apply         — triggers async apply Lambda
- * GET  /api/brands/apply-status  — polls apply status from S3
+ * GET  /api/brands/mappings — loads draft.json from S3
+ * PUT  /api/brands/mappings — saves edited draft.json to S3
  */
 
 import type {
   APIGatewayProxyEventV2,
   APIGatewayProxyResultV2,
 } from "aws-lambda";
-import { LambdaClient, InvokeCommand } from "@aws-sdk/client-lambda";
 import {
   S3Client,
   GetObjectCommand,
@@ -21,40 +17,10 @@ import {
 import { jsonResponse, errorResponse } from "../response.js";
 
 const BUCKET_NAME = process.env.BUCKET_NAME ?? "";
-const BRAND_CLUSTER_FUNCTION_NAME =
-  process.env.BRAND_CLUSTER_FUNCTION_NAME ?? "";
-const BRAND_APPLY_FUNCTION_NAME = process.env.BRAND_APPLY_FUNCTION_NAME ?? "";
 
-const lambdaClient = new LambdaClient({});
 const s3Client = new S3Client({});
 
 const DRAFT_KEY = "brand-mappings/draft.json";
-const STATUS_KEY = "brand-mappings/apply-status.json";
-
-// --- POST /api/brands/scan-cluster ---
-
-export async function scanClusterBrands(
-  _event: APIGatewayProxyEventV2,
-): Promise<APIGatewayProxyResultV2> {
-  try {
-    await lambdaClient.send(
-      new InvokeCommand({
-        FunctionName: BRAND_CLUSTER_FUNCTION_NAME,
-        InvocationType: "Event",
-      }),
-    );
-
-    return jsonResponse(202, {
-      message:
-        "Scan & cluster started. Poll GET /api/brands/mappings for results.",
-    });
-  } catch (error: unknown) {
-    console.error("scanClusterBrands error", {
-      message: error instanceof Error ? error.message : "Unknown error",
-    });
-    return errorResponse();
-  }
-}
 
 // --- GET /api/brands/mappings ---
 
@@ -123,60 +89,6 @@ export async function saveMappings(
     });
   } catch (error: unknown) {
     console.error("saveMappings error", {
-      message: error instanceof Error ? error.message : "Unknown error",
-    });
-    return errorResponse();
-  }
-}
-
-// --- POST /api/brands/apply ---
-
-export async function applyMappings(
-  _event: APIGatewayProxyEventV2,
-): Promise<APIGatewayProxyResultV2> {
-  try {
-    await lambdaClient.send(
-      new InvokeCommand({
-        FunctionName: BRAND_APPLY_FUNCTION_NAME,
-        InvocationType: "Event",
-      }),
-    );
-
-    return jsonResponse(202, {
-      message: "Apply started. Poll GET /api/brands/apply-status for progress.",
-    });
-  } catch (error: unknown) {
-    console.error("applyMappings error", {
-      message: error instanceof Error ? error.message : "Unknown error",
-    });
-    return errorResponse();
-  }
-}
-
-// --- GET /api/brands/apply-status ---
-
-export async function getApplyStatus(
-  _event: APIGatewayProxyEventV2,
-): Promise<APIGatewayProxyResultV2> {
-  try {
-    const result = await s3Client.send(
-      new GetObjectCommand({
-        Bucket: BUCKET_NAME,
-        Key: STATUS_KEY,
-      }),
-    );
-
-    const body = await result.Body?.transformToString();
-    if (!body) {
-      return jsonResponse(200, { status: "idle" });
-    }
-
-    return jsonResponse(200, JSON.parse(body));
-  } catch (error: unknown) {
-    if (error instanceof Error && error.name === "NoSuchKey") {
-      return jsonResponse(200, { status: "idle" });
-    }
-    console.error("getApplyStatus error", {
       message: error instanceof Error ? error.message : "Unknown error",
     });
     return errorResponse();
