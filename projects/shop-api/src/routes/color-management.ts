@@ -1,18 +1,14 @@
 /**
  * Color management API routes.
  *
- * POST /api/colors/scan-cluster  — triggers async scan & cluster Lambda
- * GET  /api/colors/mappings      — loads draft.json from S3
- * PUT  /api/colors/mappings      — saves edited draft.json to S3
- * POST /api/colors/apply         — triggers async apply Lambda
- * GET  /api/colors/apply-status  — polls apply status from S3
+ * GET  /api/colors/mappings — loads draft.json from S3
+ * PUT  /api/colors/mappings — saves edited draft.json to S3
  */
 
 import type {
   APIGatewayProxyEventV2,
   APIGatewayProxyResultV2,
 } from "aws-lambda";
-import { LambdaClient, InvokeCommand } from "@aws-sdk/client-lambda";
 import {
   S3Client,
   GetObjectCommand,
@@ -21,45 +17,15 @@ import {
 import { jsonResponse, errorResponse } from "../response.js";
 
 const BUCKET_NAME = process.env.BUCKET_NAME ?? "";
-const COLOR_CLUSTER_FUNCTION_NAME =
-  process.env.COLOR_CLUSTER_FUNCTION_NAME ?? "";
-const COLOR_APPLY_FUNCTION_NAME = process.env.COLOR_APPLY_FUNCTION_NAME ?? "";
 
-const lambdaClient = new LambdaClient({});
 const s3Client = new S3Client({});
 
 const DRAFT_KEY = "color-mappings/draft.json";
-const STATUS_KEY = "color-mappings/apply-status.json";
 
 interface MappingEntry {
   raw: string;
   canonical: string | null;
   pattern: string | null;
-}
-
-// --- POST /api/colors/scan-cluster ---
-
-export async function scanClusterColors(
-  _event: APIGatewayProxyEventV2,
-): Promise<APIGatewayProxyResultV2> {
-  try {
-    await lambdaClient.send(
-      new InvokeCommand({
-        FunctionName: COLOR_CLUSTER_FUNCTION_NAME,
-        InvocationType: "Event",
-      }),
-    );
-
-    return jsonResponse(202, {
-      message:
-        "Scan & cluster started. Poll GET /api/colors/mappings for results.",
-    });
-  } catch (error: unknown) {
-    console.error("scanClusterColors error", {
-      message: error instanceof Error ? error.message : "Unknown error",
-    });
-    return errorResponse();
-  }
 }
 
 // --- GET /api/colors/mappings ---
@@ -147,60 +113,6 @@ export async function saveColorMappings(
     });
   } catch (error: unknown) {
     console.error("saveColorMappings error", {
-      message: error instanceof Error ? error.message : "Unknown error",
-    });
-    return errorResponse();
-  }
-}
-
-// --- POST /api/colors/apply ---
-
-export async function applyColorMappings(
-  _event: APIGatewayProxyEventV2,
-): Promise<APIGatewayProxyResultV2> {
-  try {
-    await lambdaClient.send(
-      new InvokeCommand({
-        FunctionName: COLOR_APPLY_FUNCTION_NAME,
-        InvocationType: "Event",
-      }),
-    );
-
-    return jsonResponse(202, {
-      message: "Apply started. Poll GET /api/colors/apply-status for progress.",
-    });
-  } catch (error: unknown) {
-    console.error("applyColorMappings error", {
-      message: error instanceof Error ? error.message : "Unknown error",
-    });
-    return errorResponse();
-  }
-}
-
-// --- GET /api/colors/apply-status ---
-
-export async function getColorApplyStatus(
-  _event: APIGatewayProxyEventV2,
-): Promise<APIGatewayProxyResultV2> {
-  try {
-    const result = await s3Client.send(
-      new GetObjectCommand({
-        Bucket: BUCKET_NAME,
-        Key: STATUS_KEY,
-      }),
-    );
-
-    const body = await result.Body?.transformToString();
-    if (!body) {
-      return jsonResponse(200, { status: "idle" });
-    }
-
-    return jsonResponse(200, JSON.parse(body));
-  } catch (error: unknown) {
-    if (error instanceof Error && error.name === "NoSuchKey") {
-      return jsonResponse(200, { status: "idle" });
-    }
-    console.error("getColorApplyStatus error", {
       message: error instanceof Error ? error.message : "Unknown error",
     });
     return errorResponse();

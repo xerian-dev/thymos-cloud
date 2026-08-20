@@ -1,8 +1,8 @@
 /**
- * Brand management API routes.
+ * Size management API routes.
  *
- * GET  /api/brands/mappings — loads draft.json from S3
- * PUT  /api/brands/mappings — saves edited draft.json to S3
+ * GET  /api/sizes/mappings — loads draft.json from S3
+ * PUT  /api/sizes/mappings — saves edited draft.json to S3
  */
 
 import type {
@@ -20,11 +20,11 @@ const BUCKET_NAME = process.env.BUCKET_NAME ?? "";
 
 const s3Client = new S3Client({});
 
-const DRAFT_KEY = "brand-mappings/draft.json";
+const DRAFT_KEY = "size-mappings/draft.json";
 
-// --- GET /api/brands/mappings ---
+// --- GET /api/sizes/mappings ---
 
-export async function getMappings(
+export async function getSizeMappings(
   _event: APIGatewayProxyEventV2,
 ): Promise<APIGatewayProxyResultV2> {
   try {
@@ -48,16 +48,16 @@ export async function getMappings(
     if (error instanceof Error && error.name === "NoSuchKey") {
       return jsonResponse(200, { mappings: [], lastModified: null });
     }
-    console.error("getMappings error", {
+    console.error("getSizeMappings error", {
       message: error instanceof Error ? error.message : "Unknown error",
     });
     return errorResponse();
   }
 }
 
-// --- PUT /api/brands/mappings ---
+// --- PUT /api/sizes/mappings ---
 
-export async function saveMappings(
+export async function saveSizeMappings(
   event: APIGatewayProxyEventV2,
 ): Promise<APIGatewayProxyResultV2> {
   try {
@@ -88,7 +88,7 @@ export async function saveMappings(
       count: mappings.length,
     });
   } catch (error: unknown) {
-    console.error("saveMappings error", {
+    console.error("saveSizeMappings error", {
       message: error instanceof Error ? error.message : "Unknown error",
     });
     return errorResponse();

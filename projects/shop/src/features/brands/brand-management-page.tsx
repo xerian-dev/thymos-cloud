@@ -1,14 +1,9 @@
 import * as React from "react";
 import { Button } from "@/components/ui/button";
-import { Loader2, Download, Upload, Play } from "lucide-react";
+import { Loader2, Download, Upload } from "lucide-react";
 import { toast } from "sonner";
 import type { BrandCategory } from "./brands-types";
-import {
-  downloadMappings,
-  uploadMappings,
-  applyMappings,
-  fetchApplyStatus,
-} from "./brands-api";
+import { downloadMappings, uploadMappings } from "./brands-api";
 
 export function BrandManagementPage(): React.ReactNode {
   const [lastModified, setLastModified] = React.useState<string | null>(null);
@@ -16,10 +11,7 @@ export function BrandManagementPage(): React.ReactNode {
   const [categoryCount, setCategoryCount] = React.useState<number>(0);
   const [isDownloading, setIsDownloading] = React.useState(false);
   const [isUploading, setIsUploading] = React.useState(false);
-  const [isApplying, setIsApplying] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
-  const [statusMessage, setStatusMessage] = React.useState<string | null>(null);
-  const [hasUnappliedChanges, setHasUnappliedChanges] = React.useState(false);
 
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
@@ -32,22 +24,12 @@ export function BrandManagementPage(): React.ReactNode {
     if (result.success) {
       setLastModified(result.lastModified);
       if (Array.isArray(result.data) && result.data.length > 0) {
-        const first = result.data[0] as Record<string, unknown>;
-        if ("categoryName" in first && "brands" in first) {
-          // New grouped format
-          const totalBrands = result.data.reduce(
-            (sum, cat) => sum + cat.brands.length,
-            0,
-          );
-          setBrandCount(totalBrands);
-          setCategoryCount(
-            result.data.filter((c) => c.brands.length > 0).length,
-          );
-        } else {
-          // Old flat format — just show count
-          setBrandCount(result.data.length);
-          setCategoryCount(0);
-        }
+        const totalBrands = result.data.reduce(
+          (sum, cat) => sum + cat.brands.length,
+          0,
+        );
+        setBrandCount(totalBrands);
+        setCategoryCount(result.data.filter((c) => c.brands.length > 0).length);
       }
     }
   }
@@ -63,22 +45,7 @@ export function BrandManagementPage(): React.ReactNode {
       return;
     }
 
-    // Handle both old flat format and new grouped format
-    let categories: BrandCategory[];
-    if (
-      Array.isArray(result.data) &&
-      result.data.length > 0 &&
-      "categoryName" in (result.data[0] as Record<string, unknown>)
-    ) {
-      categories = result.data;
-    } else {
-      // Old flat format — convert to grouped for download
-      categories = flatToGrouped(
-        result.data as unknown as { raw: string; canonical: string | null }[],
-      );
-    }
-
-    const formatted = formatBrandFile(categories);
+    const formatted = formatBrandFile(result.data);
     const blob = new Blob([formatted], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
@@ -102,7 +69,6 @@ export function BrandManagementPage(): React.ReactNode {
 
     setIsUploading(true);
     setError(null);
-    setStatusMessage(null);
 
     try {
       const text = await file.text();
@@ -130,8 +96,6 @@ export function BrandManagementPage(): React.ReactNode {
         setBrandCount(totalBrands);
         setCategoryCount(parsed.filter((c) => c.brands.length > 0).length);
         setLastModified(new Date().toISOString());
-        setHasUnappliedChanges(true);
-        setStatusMessage(null);
         toast.success(
           `Uploaded ${totalBrands} brands across ${parsed.length} categories`,
         );
@@ -148,46 +112,6 @@ export function BrandManagementPage(): React.ReactNode {
     }
   }
 
-  async function handleApply(): Promise<void> {
-    setIsApplying(true);
-    setError(null);
-    setStatusMessage("Applying mappings to items...");
-
-    const result = await applyMappings();
-    if (!result.success) {
-      setError(result.error ?? "Failed to start apply");
-      setStatusMessage(null);
-      setIsApplying(false);
-      return;
-    }
-
-    pollApplyStatus();
-  }
-
-  function pollApplyStatus(): void {
-    const interval = setInterval(async () => {
-      const result = await fetchApplyStatus();
-      if (!result.success) return;
-
-      const { data } = result;
-
-      if (data.status === "complete") {
-        clearInterval(interval);
-        setIsApplying(false);
-        setHasUnappliedChanges(false);
-        setStatusMessage(null);
-        toast.success(
-          `Apply complete: ${data.itemsUpdated ?? 0} items updated, ${data.errors ?? 0} errors`,
-        );
-      } else if (data.status === "error") {
-        clearInterval(interval);
-        setIsApplying(false);
-        setError(data.message ?? "Apply failed");
-        setStatusMessage(null);
-      }
-    }, 5000);
-  }
-
   return (
     <div className="flex h-full flex-col gap-6">
       {/* Header */}
@@ -197,7 +121,6 @@ export function BrandManagementPage(): React.ReactNode {
           {brandCount > 0 &&
             categoryCount > 0 &&
             `${brandCount} brands in ${categoryCount} categories`}
-          {brandCount > 0 && categoryCount === 0 && `${brandCount} mappings`}
           {lastModified &&
             ` · Last updated ${new Date(lastModified).toLocaleString()}`}
         </p>
@@ -210,13 +133,6 @@ export function BrandManagementPage(): React.ReactNode {
           role="alert"
         >
           <p className="text-sm text-destructive">{error}</p>
-        </div>
-      )}
-
-      {/* Status */}
-      {statusMessage && !error && (
-        <div className="rounded-lg border border-border bg-muted/50 px-4 py-3">
-          <p className="text-sm text-muted-foreground">{statusMessage}</p>
         </div>
       )}
 
@@ -247,6 +163,7 @@ export function BrandManagementPage(): React.ReactNode {
           <h2 className="text-sm font-medium">Upload</h2>
           <p className="text-sm text-muted-foreground">
             Upload an edited brand mappings file to replace the current draft.
+            Changes take effect on the next pricing aggregation run.
           </p>
           <input
             ref={fileInputRef}
@@ -271,31 +188,6 @@ export function BrandManagementPage(): React.ReactNode {
             Upload JSON
           </Button>
         </div>
-
-        <div className="flex flex-col gap-2 rounded-lg border p-4 sm:flex-1">
-          <h2 className="text-sm font-medium">Apply</h2>
-          <p className="text-sm text-muted-foreground">
-            Apply the uploaded draft to all items in the database.
-          </p>
-          <Button
-            size="sm"
-            className="mt-2 w-fit"
-            onClick={handleApply}
-            disabled={isApplying}
-          >
-            {isApplying ? (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            ) : (
-              <Play className="mr-2 h-4 w-4" />
-            )}
-            Apply
-          </Button>
-          {hasUnappliedChanges && (
-            <p className="text-xs text-amber-600">
-              Draft has unapplied changes
-            </p>
-          )}
-        </div>
       </div>
 
       {/* Instructions */}
@@ -303,8 +195,9 @@ export function BrandManagementPage(): React.ReactNode {
         <h2 className="text-sm font-medium">File Format</h2>
         <p className="mt-1 text-sm text-muted-foreground">
           The JSON file is organized by category. Each brand has a canonical
-          name and a list of aliases (variant spellings that map to it). The
-          first alias should always be the canonical name itself.
+          name and a list of aliases (variant spellings that map to it). These
+          mappings are used by the pricing aggregator to normalize brands when
+          computing pricing groups.
         </p>
         <pre className="mt-3 overflow-x-auto rounded bg-muted p-3 text-xs">
           {`[
@@ -321,43 +214,6 @@ export function BrandManagementPage(): React.ReactNode {
       </div>
     </div>
   );
-}
-
-/**
- * Convert old flat format [{raw, canonical}] to grouped format for download.
- */
-function flatToGrouped(
-  flat: { raw: string; canonical: string | null }[],
-): BrandCategory[] {
-  const canonicalMap = new Map<string, string[]>();
-
-  for (const entry of flat) {
-    const canonical = entry.canonical ?? entry.raw;
-    if (!canonicalMap.has(canonical)) {
-      canonicalMap.set(canonical, []);
-    }
-    canonicalMap.get(canonical)!.push(entry.raw);
-  }
-
-  const brands = [...canonicalMap.entries()]
-    .sort(([a], [b]) => a.toLowerCase().localeCompare(b.toLowerCase()))
-    .map(([canonical, aliases]) => ({
-      canonical,
-      aliases: [
-        canonical,
-        ...aliases
-          .filter((a) => a !== canonical)
-          .sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase())),
-      ],
-    }));
-
-  return [
-    {
-      categoryId: null,
-      categoryName: "All Brands",
-      brands,
-    },
-  ];
 }
 
 function validateBrandFile(data: unknown[]): string | null {

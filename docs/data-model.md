@@ -165,7 +165,7 @@ erDiagram
 
 ## Pricing Table Entity-Relationship Diagram
 
-The pricing table (`thymos-{environment}-pricing`) stores batch-computed pricing references, adjustment history, and employee accuracy scores in a separate DynamoDB table.
+The pricing table (`thymos-{environment}-pricing`) stores batch-computed pricing references and adjustment history in a separate DynamoDB table.
 
 ```mermaid
 erDiagram
@@ -226,17 +226,7 @@ erDiagram
         string timestamp "ISO 8601 UTC"
     }
 
-    EMPLOYEE_PRICING {
-        string employeeId FK "Employee UUID"
-        string employeeName "Employee display name"
-        number pricingAccuracy "Median salePrice/tagPrice ratio (time-weighted)"
-        number sampleSize "Sold items by employee in 6-month window"
-        number creatorAdjustment "= pricingAccuracy, used as price multiplier"
-        string computedAt "ISO 8601 UTC"
-    }
-
     CATEGORY ||--o{ PRICING_REF_CATEGORY : "grouped by"
-    EMPLOYEE ||--o{ EMPLOYEE_PRICING : "scored"
     PRICING_REF_CATEGORY ||--o{ ADJUSTMENT_EVENT : "triggers"
 ```
 
@@ -296,7 +286,7 @@ Items store the **original raw value** from ConsignCloud alongside the canonical
 
 ## Pricing Table (`thymos-{environment}-pricing`)
 
-Pricing data lives in a separate DynamoDB table from the operational shop data. This isolates the batch-computed pricing references, adjustment audit trail, and employee accuracy scores from the operational CRUD workload.
+Pricing data lives in a separate DynamoDB table from the operational shop data. This isolates the batch-computed pricing references and adjustment audit trail from the operational CRUD workload.
 
 ### Entities
 
@@ -305,7 +295,6 @@ Pricing data lives in a separate DynamoDB table from the operational shop data. 
 | Pricing Ref (category)     | `PRICING_REF#<brand>#<categoryId>`               | `METADATA` | `PRICING_REFS`      | `PRICING_REF#<brand>#<categoryId>`               |
 | Pricing Ref (description)  | `PRICING_REF#<brand>#DESC#<description>`         | `METADATA` | `PRICING_REFS`      | `PRICING_REF#<brand>#DESC#<description>`         |
 | Adjustment Event           | `ADJUSTMENT#<uuid>`                              | `METADATA` | `ADJUSTMENTS`       | `ADJUSTMENT#<timestamp>`                         |
-| Employee Pricing           | `EMPLOYEE_PRICING#<employeeId>`                  | `METADATA` | —                   | —                                                |
 
 ### Key Design Principles
 
@@ -314,7 +303,6 @@ Pricing data lives in a separate DynamoDB table from the operational shop data. 
 - **Brand `_NONE_`**: Items without a brand are grouped under the synthetic brand `_NONE_`, enabling category-only or description-only fallback lookups.
 - **`DESC#` infix**: Description-based keys use the `DESC#` infix (e.g., `PRICING_REF#<brand>#DESC#<description>`) to prevent collisions with category-based keys. Category IDs are UUIDs and never contain "DESC#", so the two key spaces are guaranteed disjoint.
 - **Description-based refs**: Use the item's normalized description keyword as the key suffix. These refs capture pricing statistics for items sharing the same description, independent of category assignment. Unlike category-based refs, description-based refs do NOT go through adjustment detection — the reference price is simply the median sale price.
-- **Employee pricing by direct key**: Looked up by `PK: EMPLOYEE_PRICING#<employeeId>` — no GSI needed since access is always by known employee ID.
 - **Adjustment events**: Only created for category-based pricing ref changes exceeding 2%. Description-based refs do not trigger adjustments.
 
 ### Pricing Ref Attributes (Category-based)
@@ -374,17 +362,6 @@ Description-based refs share most attributes with category-based refs but differ
 | `metrics.discountFrequency` | number   | Discount frequency for the group                     |
 | `metrics.priceRatio` | number          | `medianSalePrice / medianTagPrice`                   |
 | `timestamp`        | string (ISO 8601) | When the adjustment was detected                     |
-
-### Employee Pricing Attributes
-
-| Attribute          | Type              | Description                                           |
-|--------------------|-------------------|-------------------------------------------------------|
-| `employeeId`       | string (UUID)     | Employee UUID                                         |
-| `employeeName`     | string            | Employee display name                                 |
-| `pricingAccuracy`  | number            | Median salePrice/tagPrice ratio (time-weighted: 3× weight for last 3 months, 1× for 3–6 months) |
-| `sampleSize`       | number            | Count of sold items by this employee in 6-month window |
-| `creatorAdjustment`| number            | = `pricingAccuracy`, used as price multiplier in suggest-price |
-| `computedAt`       | string (ISO 8601) | When this record was last computed                   |
 
 ### Suggest-Price Fallback Chain
 
