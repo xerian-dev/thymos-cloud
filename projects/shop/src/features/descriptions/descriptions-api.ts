@@ -1,11 +1,6 @@
 import { fetchAuthSession } from "aws-amplify/auth";
-import type {
-  MappingsResponse,
-  DescriptionMapping,
-  ApplyStatus,
-} from "./descriptions-types";
+import type { DescriptionCategory, ApplyStatus } from "./descriptions-types";
 import { API_BASE } from "@/config/api-config";
-
 
 async function getAuthHeaders(): Promise<Record<string, string>> {
   try {
@@ -20,32 +15,9 @@ async function getAuthHeaders(): Promise<Record<string, string>> {
   return {};
 }
 
-export async function triggerScanCluster(): Promise<{
-  success: boolean;
-  error?: string;
-}> {
-  try {
-    const headers = await getAuthHeaders();
-    const response = await fetch(`${API_BASE}/descriptions/scan-cluster`, {
-      method: "POST",
-      headers,
-    });
-
-    if (!response.ok) {
-      return { success: false, error: `HTTP ${response.status}` };
-    }
-
-    return { success: true };
-  } catch (error: unknown) {
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : "Unknown error",
-    };
-  }
-}
-
-export async function fetchMappings(): Promise<
-  { success: true; data: MappingsResponse } | { success: false; error: string }
+export async function downloadMappings(): Promise<
+  | { success: true; data: DescriptionCategory[]; lastModified: string | null }
+  | { success: false; error: string }
 > {
   try {
     const headers = await getAuthHeaders();
@@ -58,8 +30,12 @@ export async function fetchMappings(): Promise<
       return { success: false, error: `HTTP ${response.status}` };
     }
 
-    const data: MappingsResponse = await response.json();
-    return { success: true, data };
+    const data = await response.json();
+    return {
+      success: true,
+      data: data.mappings as DescriptionCategory[],
+      lastModified: data.lastModified ?? null,
+    };
   } catch (error: unknown) {
     return {
       success: false,
@@ -68,15 +44,15 @@ export async function fetchMappings(): Promise<
   }
 }
 
-export async function saveMappings(
-  mappings: DescriptionMapping[],
+export async function uploadMappings(
+  categories: DescriptionCategory[],
 ): Promise<{ success: boolean; error?: string }> {
   try {
     const headers = await getAuthHeaders();
     const response = await fetch(`${API_BASE}/descriptions/mappings`, {
       method: "PUT",
       headers: { ...headers, "Content-Type": "application/json" },
-      body: JSON.stringify({ mappings }),
+      body: JSON.stringify({ mappings: categories }),
     });
 
     if (!response.ok) {

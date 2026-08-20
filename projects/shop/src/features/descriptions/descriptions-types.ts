@@ -1,11 +1,12 @@
-export interface DescriptionMapping {
-  raw: string;
+export interface DescriptionEntry {
   canonical: string;
+  aliases: string[];
 }
 
-export interface MappingsResponse {
-  mappings: DescriptionMapping[];
-  lastModified: string | null;
+export interface DescriptionCategory {
+  categoryId: string | null;
+  categoryName: string;
+  descriptions: DescriptionEntry[];
 }
 
 export interface ApplyStatus {

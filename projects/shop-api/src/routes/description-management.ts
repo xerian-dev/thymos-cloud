@@ -1,5 +1,10 @@
 /**
  * Description management API routes.
+ *
+ * GET  /api/descriptions/mappings      — loads draft.json from S3
+ * PUT  /api/descriptions/mappings      — saves edited draft.json to S3
+ * POST /api/descriptions/apply         — triggers async apply Lambda
+ * GET  /api/descriptions/apply-status  — polls apply status from S3
  */
 
 import type {
@@ -15,10 +20,7 @@ import {
 import { jsonResponse, errorResponse } from "../response.js";
 
 const BUCKET_NAME = process.env.BUCKET_NAME ?? "";
-const DESC_CLUSTER_FUNCTION_NAME =
-  process.env.DESC_CLUSTER_FUNCTION_NAME ?? "";
-const DESC_APPLY_FUNCTION_NAME =
-  process.env.DESC_APPLY_FUNCTION_NAME ?? "";
+const DESC_APPLY_FUNCTION_NAME = process.env.DESC_APPLY_FUNCTION_NAME ?? "";
 
 const lambdaClient = new LambdaClient({});
 const s3Client = new S3Client({});
@@ -26,32 +28,7 @@ const s3Client = new S3Client({});
 const DRAFT_KEY = "description-mappings/draft.json";
 const STATUS_KEY = "description-mappings/apply-status.json";
 
-interface MappingEntry {
-  raw: string;
-  canonical: string;
-}
-
-export async function scanClusterDescriptions(
-  _event: APIGatewayProxyEventV2,
-): Promise<APIGatewayProxyResultV2> {
-  try {
-    await lambdaClient.send(
-      new InvokeCommand({
-        FunctionName: DESC_CLUSTER_FUNCTION_NAME,
-        InvocationType: "Event",
-      }),
-    );
-
-    return jsonResponse(202, {
-      message: "Scan & cluster started. Poll GET /api/descriptions/mappings for results.",
-    });
-  } catch (error: unknown) {
-    console.error("scanClusterDescriptions error", {
-      message: error instanceof Error ? error.message : "Unknown error",
-    });
-    return errorResponse();
-  }
-}
+// --- GET /api/descriptions/mappings ---
 
 export async function getDescriptionMappings(
   _event: APIGatewayProxyEventV2,
@@ -69,7 +46,7 @@ export async function getDescriptionMappings(
       return jsonResponse(200, { mappings: [], lastModified: null });
     }
 
-    const mappings: MappingEntry[] = JSON.parse(body);
+    const mappings = JSON.parse(body);
     const lastModified = result.LastModified?.toISOString() ?? null;
 
     return jsonResponse(200, { mappings, lastModified });
@@ -84,6 +61,8 @@ export async function getDescriptionMappings(
   }
 }
 
+// --- PUT /api/descriptions/mappings ---
+
 export async function saveDescriptionMappings(
   event: APIGatewayProxyEventV2,
 ): Promise<APIGatewayProxyResultV2> {
@@ -94,18 +73,10 @@ export async function saveDescriptionMappings(
     }
 
     const parsed = JSON.parse(body);
-    const mappings: MappingEntry[] = parsed.mappings;
+    const mappings = parsed.mappings;
 
     if (!Array.isArray(mappings)) {
       return jsonResponse(400, { error: "mappings must be an array" });
-    }
-
-    for (const entry of mappings) {
-      if (typeof entry.raw !== "string" || typeof entry.canonical !== "string") {
-        return jsonResponse(400, {
-          error: "Each mapping must have string 'raw' and 'canonical' fields",
-        });
-      }
     }
 
     const content = JSON.stringify(mappings, null, 2);
@@ -130,6 +101,8 @@ export async function saveDescriptionMappings(
   }
 }
 
+// --- POST /api/descriptions/apply ---
+
 export async function applyDescriptionMappings(
   _event: APIGatewayProxyEventV2,
 ): Promise<APIGatewayProxyResultV2> {
@@ -142,7 +115,8 @@ export async function applyDescriptionMappings(
     );
 
     return jsonResponse(202, {
-      message: "Apply started. Poll GET /api/descriptions/apply-status for progress.",
+      message:
+        "Apply started. Poll GET /api/descriptions/apply-status for progress.",
     });
   } catch (error: unknown) {
     console.error("applyDescriptionMappings error", {
@@ -151,6 +125,8 @@ export async function applyDescriptionMappings(
     return errorResponse();
   }
 }
+
+// --- GET /api/descriptions/apply-status ---
 
 export async function getDescriptionApplyStatus(
   _event: APIGatewayProxyEventV2,
