@@ -130,7 +130,7 @@ The aggregator reads from three sources:
 | Shop Table | All items | Full scan: `PK begins_with "ITEM#" AND SK = "METADATA"` |
 | Shop Table | Sale line items (6-month window) | Full scan: `PK begins_with "SALE#" AND SK begins_with "LINE_ITEM#" AND createdAt >= sixMonthsAgo` |
 | Pricing Table | Existing pricing refs | GSI1 query: `GSI1PK = "PRICING_REFS"` |
-| S3 Bucket | Mapping files | `brand-mappings/draft.json`, `color-mappings/draft.json`, `description-mappings/draft.json` |
+| S3 Bucket | Mapping files | `brand-mappings/draft.json`, `color-mappings/draft.json`, `size-mappings/draft.json`, `description-mappings/draft.json` |
 
 ### Processing Pipeline
 
@@ -144,7 +144,7 @@ Retrieves all sale line items created within the last 6 months. Builds a lookup 
 
 #### Step 3: Load Canonical Mappings from S3
 
-Loads the three mapping files from S3. Each file is an array of `{ raw, canonical }` entries (colors also include a `pattern` field). Builds in-memory lookup maps: `rawValue → canonicalValue`.
+Loads the four mapping files from S3. Each file is an array of entries defining raw → canonical mappings. Builds in-memory lookup maps: `rawValue → canonicalValue` for brand, description, color, and size.
 
 #### Step 4: Filter Items to Window
 
@@ -157,7 +157,9 @@ For each item, applies mappings in-memory and determines eligibility:
 
 - `brand` → looked up in brand mapping; falls through to raw value if no mapping exists; if still empty/null, becomes `_NONE_`
 - `description` → looked up in description mapping; **if empty/null after mapping, item is excluded entirely**
-- `color` → looked up in color mapping (for adjustment calculations)
+- `color` → looked up in color mapping (for color adjustment calculations)
+- `pattern` → extracted from color mapping (for pattern adjustment calculations)
+- `size` → looked up in size mapping (for size adjustment calculations)
 - `salePrice` = line item's `salePrice / 100` (cents → CHF), only if item status is `"sold"`
 - `discounted` = true if the line item has `discount > 0`
 
@@ -178,6 +180,7 @@ Items are grouped by `canonicalBrand#canonicalDescription`. For each group, the 
 | `totalItems` | Count of all items |
 | `unsoldCount` | `totalItems - sampleSize` |
 | `colorAdjustments` | Per-color median sale price ÷ group median sale price |
+| `patternAdjustments` | Per-pattern median sale price ÷ group median sale price |
 | `sizeAdjustments` | Per-size median sale price ÷ group median sale price |
 
 **Brand canonicalization**: Items with `null` or empty brand (after mapping) are grouped under the synthetic brand `_NONE_`.
@@ -185,6 +188,8 @@ Items are grouped by `canonicalBrand#canonicalDescription`. For each group, the 
 **Description requirement**: Items with `null` or empty description (after mapping) are excluded from grouping entirely. They do not contribute to any statistics.
 
 **Median computation**: Standard median — sort values, take middle value (or average of two middle values for even-length arrays). Returns 0 for empty arrays.
+
+**Adjustment ratio computation**: For color, pattern, and size, the adjustment ratio is computed as `median sale price of items with that attribute value ÷ group median sale price`. Only sold items contribute to these ratios.
 
 #### Step 7: Read Existing Pricing References
 
@@ -283,6 +288,7 @@ Each group produces one `PRICING_REF` record with key `PK: PRICING_REF#<brand>#<
 | `velocityMultiplier` | Computed velocity multiplier |
 | `lowConfidence` | `true` if `sampleSize < 5` |
 | `colorAdjustments` | Per-color price ratios |
+| `patternAdjustments` | Per-pattern price ratios |
 | `sizeAdjustments` | Per-size price ratios |
 | `computedAt` | ISO 8601 timestamp |
 | `updatedAt` | ISO 8601 timestamp |
@@ -327,6 +333,7 @@ All parameters are query string values:
 | `description` | Yes | Item description (canonical value) |
 | `brand` | No | Item brand; if omitted, looks up `_NONE_` brand group |
 | `color` | No | Item color (for color adjustment) |
+| `pattern` | No | Item pattern (for pattern adjustment) |
 | `size` | No | Item size (for size adjustment) |
 
 If `description` is missing, the endpoint returns a 400 validation error.
@@ -361,7 +368,7 @@ Note: The `brand` and `description` values passed to this endpoint should be the
 
 ### Adjustment Multipliers
 
-Three multipliers are composed on the reference price:
+Four multipliers are composed on the reference price:
 
 #### 1. Velocity Multiplier (pre-computed, stored on the pricing ref)
 
@@ -371,7 +378,11 @@ Range: 0.90–1.10. Reflects how quickly items in this group sell relative to th
 
 From `pricingRef.colorAdjustments[color]`. Represents how items of this color sell relative to the group median. For example, if black jackets in "Patagonia × Jacke" sell at 1.12× the group median, the color adjustment is 1.12.
 
-#### 3. Size Adjustment
+#### 3. Pattern Adjustment
+
+From `pricingRef.patternAdjustments[pattern]`. Represents how items with this pattern sell relative to the group median. For example, if striped items sell at 0.95× the group median, the pattern adjustment is 0.95.
+
+#### 4. Size Adjustment
 
 From `pricingRef.sizeAdjustments[size]`. Same concept as color — represents how items of this size sell relative to the group median.
 
@@ -380,7 +391,7 @@ If any multiplier is unavailable, it defaults to 1.0 (no effect).
 ### Price Calculation Formula
 
 ```
-rawPrice = referencePrice × velocityMultiplier × colorAdjustment × sizeAdjustment
+rawPrice = referencePrice × velocityMultiplier × colorAdjustment × patternAdjustment × sizeAdjustment
 suggestedPrice = roundToSwiss5(rawPrice)
 ```
 
@@ -408,6 +419,7 @@ suggestedPrice = roundToSwiss5(rawPrice)
     "referencePrice": 26.30,
     "velocityMultiplier": 0.95,
     "colorAdjustment": 1.0,
+    "patternAdjustment": 1.0,
     "sizeAdjustment": 1.0
   },
   "groupInfo": {
@@ -456,6 +468,7 @@ Additional sentences are appended for non-1.0 adjustments:
 
 - Velocity: "Reduced 5% due to poor sell-through in this group" / "Increased 8% due to strong sell-through"
 - Color: "Color adjustment applied"
+- Pattern: "Pattern adjustment applied"
 - Size: "Size adjustment applied"
 
 ---
@@ -470,7 +483,7 @@ Additional sentences are appended for non-1.0 adjustments:
 
 4. **Description is mandatory for pricing**: Items without a description are noise — they cannot be meaningfully grouped or compared. They are excluded from aggregation and receive no price suggestion.
 
-5. **Color and size are refinements, not grouping dimensions**: Using them as grouping dimensions would fragment data into groups too small for statistical significance. Instead, they're computed as adjustment ratios within a brand×description group.
+5. **Color, pattern, and size are refinements, not grouping dimensions**: Using them as grouping dimensions would fragment data into groups too small for statistical significance. Instead, they're computed as adjustment ratios within a brand×description group.
 
 6. **Separate pricing table**: Isolates batch-write bursts from operational shop traffic. The aggregator does a full table scan + hundreds of writes — this should not contend with item CRUD.
 

@@ -165,14 +165,13 @@ erDiagram
 
 ## Pricing Table Entity-Relationship Diagram
 
-The pricing table (`thymos-{environment}-pricing`) stores batch-computed pricing references and adjustment history in a separate DynamoDB table.
+The pricing table (`thymos-{environment}-pricing`) stores batch-computed pricing references and adjustment history in a separate DynamoDB table. Grouping is by canonical brand × canonical description. Color, pattern, and size are stored as refinement adjustment ratios within each group.
 
 ```mermaid
 erDiagram
-    PRICING_REF_CATEGORY {
-        string brand "Brand name or _NONE_"
-        string categoryId FK "Category UUID"
-        string categoryName "Category display name"
+    PRICING_REF {
+        string brand "Canonical brand name or _NONE_"
+        string description "Canonical description (grouping keyword)"
         number referencePrice "CHF, adjusted/capped median sale price"
         number previousReferencePrice "Previous cycle reference price"
         number originalBaseline "First-ever reference price for drift cap"
@@ -186,37 +185,17 @@ erDiagram
         number unsoldCount "Count of unsold items"
         number velocityMultiplier "0.90-1.10, demand-based adjustment"
         boolean lowConfidence "True if sampleSize < 5"
-        object colorAdjustments "Per-color price ratios"
-        object sizeAdjustments "Per-size price ratios"
-        string computedAt "ISO 8601 UTC"
-        string updatedAt "ISO 8601 UTC"
-    }
-
-    PRICING_REF_DESCRIPTION {
-        string brand "Brand name or _NONE_"
-        string description "Normalized item description keyword"
-        number referencePrice "CHF, = medianSalePrice (no caps applied)"
-        number medianTagPrice "CHF, median tag price of all items in group"
-        number medianSalePrice "CHF, median actual sale price"
-        number sellThroughRate "0-1, ratio of sold to total"
-        number medianDaysOnShelf "Median days before sale"
-        number discountFrequency "0-1, proportion sold at a discount"
-        number sampleSize "Count of sold items in group"
-        number totalItems "Count of all items (sold + unsold)"
-        number unsoldCount "Count of unsold items"
-        number velocityMultiplier "0.90-1.10, demand-based adjustment"
-        boolean lowConfidence "True if sampleSize < 5"
-        object colorAdjustments "Per-color price ratios"
-        object sizeAdjustments "Per-size price ratios"
+        object colorAdjustments "Per-canonical-color price ratios"
+        object patternAdjustments "Per-canonical-pattern price ratios"
+        object sizeAdjustments "Per-canonical-size price ratios"
         string computedAt "ISO 8601 UTC"
         string updatedAt "ISO 8601 UTC"
     }
 
     ADJUSTMENT_EVENT {
         string id PK "v4 UUID"
-        string brand "Brand name for affected group"
-        string category "Category display name"
-        string categoryId FK "Category UUID"
+        string brand "Canonical brand for affected group"
+        string description "Canonical description for affected group"
         number previousPrice "CHF, old reference price"
         number newPrice "CHF, new capped reference price"
         string direction "increase | decrease"
@@ -226,8 +205,7 @@ erDiagram
         string timestamp "ISO 8601 UTC"
     }
 
-    CATEGORY ||--o{ PRICING_REF_CATEGORY : "grouped by"
-    PRICING_REF_CATEGORY ||--o{ ADJUSTMENT_EVENT : "triggers"
+    PRICING_REF ||--o{ ADJUSTMENT_EVENT : "triggers"
 ```
 
 ## DynamoDB Single-Table Mapping (Shop Table)
@@ -290,66 +268,68 @@ Pricing data lives in a separate DynamoDB table from the operational shop data. 
 
 ### Entities
 
-| Entity                     | PK                                               | SK         | GSI1PK              | GSI1SK                                           |
-|----------------------------|--------------------------------------------------|------------|---------------------|--------------------------------------------------|
-| Pricing Ref (category)     | `PRICING_REF#<brand>#<categoryId>`               | `METADATA` | `PRICING_REFS`      | `PRICING_REF#<brand>#<categoryId>`               |
-| Pricing Ref (description)  | `PRICING_REF#<brand>#DESC#<description>`         | `METADATA` | `PRICING_REFS`      | `PRICING_REF#<brand>#DESC#<description>`         |
-| Adjustment Event           | `ADJUSTMENT#<uuid>`                              | `METADATA` | `ADJUSTMENTS`       | `ADJUSTMENT#<timestamp>`                         |
+| Entity           | PK                                       | SK         | GSI1PK         | GSI1SK                                   |
+|------------------|------------------------------------------|------------|----------------|------------------------------------------|
+| Pricing Ref      | `PRICING_REF#<brand>#<description>`      | `METADATA` | `PRICING_REFS` | `PRICING_REF#<brand>#<description>`      |
+| Adjustment Event | `ADJUSTMENT#<uuid>`                      | `METADATA` | `ADJUSTMENTS`  | `ADJUSTMENT#<timestamp>`                 |
 
 ### Key Design Principles
 
 - **Separate table for pricing**: Pricing data has a different lifecycle (batch-computed by the aggregator) and access pattern (read at item-creation time, queried for reports) than operational data. Isolation prevents aggregator write bursts from contending with shop traffic.
+- **Single grouping key — brand × description**: The sole grouping dimension is canonical brand × canonical description. Category is not used for pricing. Description identifies what an item actually is (comparable goods), while category is an organizational convenience for the operator.
+- **Description is mandatory**: Items without a description (after mapping) are excluded from aggregation entirely. They cannot receive a price suggestion.
+- **Brand `_NONE_`**: Items without a brand are grouped under the synthetic brand `_NONE_`. This handles unbranded goods (toys, generic items) that still have a meaningful description.
+- **Color, pattern, and size are refinements**: These attributes are NOT grouping dimensions. Using them as grouping dimensions would fragment data into groups too small for statistical significance. Instead, they are computed as adjustment ratios within a brand × description group.
 - **Single GSI**: GSI1 supports listing all pricing refs (`GSI1PK: PRICING_REFS`) and querying adjustments by date (`GSI1PK: ADJUSTMENTS`, `GSI1SK: ADJUSTMENT#<timestamp>`).
-- **Brand `_NONE_`**: Items without a brand are grouped under the synthetic brand `_NONE_`, enabling category-only or description-only fallback lookups.
-- **`DESC#` infix**: Description-based keys use the `DESC#` infix (e.g., `PRICING_REF#<brand>#DESC#<description>`) to prevent collisions with category-based keys. Category IDs are UUIDs and never contain "DESC#", so the two key spaces are guaranteed disjoint.
-- **Description-based refs**: Use the item's normalized description keyword as the key suffix. These refs capture pricing statistics for items sharing the same description, independent of category assignment. Unlike category-based refs, description-based refs do NOT go through adjustment detection — the reference price is simply the median sale price.
-- **Adjustment events**: Only created for category-based pricing ref changes exceeding 2%. Description-based refs do not trigger adjustments.
+- **Mappings applied at aggregation time**: The aggregator loads canonical mapping files (brand, description, color, size) from S3 and applies them in-memory when building groups. The shop table is never mutated — raw values are preserved as entered.
+- **Adjustment events**: Created when the reference price changes by more than 2% between aggregation cycles.
 
-### Pricing Ref Attributes (Category-based)
+### Pricing Ref Attributes
 
-| Attribute              | Type              | Description                                           |
-|------------------------|-------------------|-------------------------------------------------------|
-| `brand`                | string            | Canonical brand name (or `_NONE_`)                    |
-| `categoryId`           | string (UUID)     | Category UUID                                         |
-| `categoryName`         | string            | Category display name                                 |
-| `referencePrice`       | number (CHF)      | Computed reference price (adjusted/capped median sale price) |
-| `previousReferencePrice` | number \| null  | Previous aggregation's reference price                |
-| `originalBaseline`     | number (CHF)      | First-ever reference price for drift cap             |
-| `medianTagPrice`       | number (CHF)      | Median tag price of ALL items in group (sold and unsold) |
-| `medianSalePrice`      | number (CHF)      | Median actual sale price                             |
-| `sellThroughRate`      | number (0–1)      | Ratio of sold to total items                         |
-| `medianDaysOnShelf`    | number            | Median days before sale                              |
-| `discountFrequency`    | number (0–1)      | Proportion of items sold at a discount               |
-| `sampleSize`           | number            | Count of sold items in group                         |
-| `totalItems`           | number            | Count of all items in group (sold + unsold)          |
-| `unsoldCount`          | number            | Count of unsold items (totalItems - sampleSize)      |
-| `velocityMultiplier`   | number (0.90–1.10)| Demand-based adjustment                              |
-| `lowConfidence`        | boolean           | True if sampleSize < 5                               |
-| `colorAdjustments`     | Record<string, number> | Per-color price ratio                           |
-| `sizeAdjustments`      | Record<string, number> | Per-size price ratio                            |
-| `computedAt`           | string (ISO 8601) | When this ref was last computed                      |
-| `updatedAt`            | string (ISO 8601) | Last write timestamp                                 |
+| Attribute              | Type                     | Description                                           |
+|------------------------|--------------------------|-------------------------------------------------------|
+| `brand`                | string                   | Canonical brand name (or `_NONE_`)                    |
+| `description`          | string                   | Canonical description (the grouping keyword)          |
+| `referencePrice`       | number (CHF)             | Computed reference price (adjusted/capped median sale price) |
+| `previousReferencePrice` | number \| null         | Previous aggregation's reference price                |
+| `originalBaseline`     | number (CHF)             | First-ever reference price for drift cap             |
+| `medianTagPrice`       | number (CHF)             | Median tag price of ALL items in group (sold and unsold) |
+| `medianSalePrice`      | number (CHF)             | Median actual sale price of sold items                |
+| `sellThroughRate`      | number (0–1)             | Ratio of sold to total items                         |
+| `medianDaysOnShelf`    | number                   | Median days before sale                              |
+| `discountFrequency`    | number (0–1)             | Proportion of items sold at a discount               |
+| `sampleSize`           | number                   | Count of sold items in group                         |
+| `totalItems`           | number                   | Count of all items in group (sold + unsold)          |
+| `unsoldCount`          | number                   | Count of unsold items (totalItems - sampleSize)      |
+| `velocityMultiplier`   | number (0.90–1.10)       | Demand-based adjustment                              |
+| `lowConfidence`        | boolean                  | True if sampleSize < 5                               |
+| `colorAdjustments`     | Record<string, number>   | Per-canonical-color price ratio relative to group median |
+| `patternAdjustments`   | Record<string, number>   | Per-canonical-pattern price ratio relative to group median |
+| `sizeAdjustments`      | Record<string, number>   | Per-canonical-size price ratio relative to group median |
+| `computedAt`           | string (ISO 8601)        | When this ref was last computed                      |
+| `updatedAt`            | string (ISO 8601)        | Last write timestamp                                 |
 
-### Pricing Ref Attributes (Description-based)
+#### Refinement Adjustments
 
-Description-based refs share most attributes with category-based refs but differ in key ways:
+Color, pattern, and size adjustments are stored as maps of `canonicalValue → ratio`:
 
-| Difference from Category-based | Detail |
-| ------------------------------- | -------- |
-| Has `description` attribute | Normalized item description keyword |
-| No `categoryId` / `categoryName` | Grouped by description, not category |
-| No `previousReferencePrice` | No adjustment detection = no history tracking |
-| No `originalBaseline` | No drift cap applied |
-| `referencePrice` = `medianSalePrice` | No adjustment/cap logic applied |
+```json
+{
+  "colorAdjustments": { "Schwarz": 1.12, "Rot": 0.88, "Blau": 1.03 },
+  "patternAdjustments": { "Gestreift": 0.95, "Uni": 1.02 },
+  "sizeAdjustments": { "104": 1.0, "110": 1.05, "116": 0.97 }
+}
+```
+
+Each ratio represents how items with that attribute sell relative to the group median sale price. A ratio of 1.12 means items of that color sell 12% above the group average. These are applied as multipliers when computing a suggested price.
 
 ### Adjustment Event Attributes
 
 | Attribute          | Type              | Description                                           |
 |--------------------|-------------------|-------------------------------------------------------|
 | `id`               | string (UUID)     | Unique identifier                                     |
-| `brand`            | string            | Brand name for the affected group                     |
-| `category`         | string            | Category display name                                 |
-| `categoryId`       | string (UUID)     | Category UUID                                         |
+| `brand`            | string            | Canonical brand for the affected group                |
+| `description`      | string            | Canonical description for the affected group          |
 | `previousPrice`    | number (CHF)      | Old reference price                                   |
 | `newPrice`         | number (CHF)      | New capped reference price                            |
 | `direction`        | "increase" \| "decrease" | Direction of change                            |
@@ -365,20 +345,32 @@ Description-based refs share most attributes with category-based refs but differ
 
 ### Suggest-Price Fallback Chain
 
-The `suggest-price` route resolves a PRICING_REF using a 6-level fallback chain that combines both key patterns:
+The `suggest-price` route resolves a PRICING_REF using a 4-level fallback chain:
 
-| Level | Tier          | Key Pattern                                  | Source   |
-|-------|---------------|----------------------------------------------|----------|
-| 1     | Tier 1 (sold) | `PRICING_REF#<brand>#DESC#<description>`     | sold     |
-| 2     | Tier 1 (sold) | `PRICING_REF#_NONE_#DESC#<description>`      | sold     |
-| 3     | Tier 1 (sold) | `PRICING_REF#<brand>#<categoryId>`           | sold     |
-| 4     | Tier 1 (sold) | `PRICING_REF#_NONE_#<categoryId>`            | sold     |
-| 5     | Tier 2 (unsold) | `PRICING_REF#<brand>#DESC#<description>`   | unsold   |
-| 6     | Tier 2 (unsold) | `PRICING_REF#_NONE_#DESC#<description>`    | unsold   |
+| Level | Tier            | Key Pattern                             | Qualification    |
+|-------|-----------------|-----------------------------------------|------------------|
+| 1     | Tier 1 (sold)   | `PRICING_REF#<brand>#<description>`     | `sampleSize > 0` |
+| 2     | Tier 1 (sold)   | `PRICING_REF#_NONE_#<description>`      | `sampleSize > 0` |
+| 3     | Tier 2 (unsold) | `PRICING_REF#<brand>#<description>`     | `unsoldCount > 0` |
+| 4     | Tier 2 (unsold) | `PRICING_REF#_NONE_#<description>`      | `unsoldCount > 0` |
 
-- **Tier 1** uses `medianSalePrice` from sold items as the reference price
-- **Tier 2** uses `medianTagPrice` × 0.90 (10% discount) from unsold items when no sold data exists
-- Each level requires the ref to exist AND have relevant items (`sampleSize > 0` for Tier 1, `unsoldCount > 0` for Tier 2)
+- **Tier 1** uses the `referencePrice` (adjusted/capped median sale price) from sold items
+- **Tier 2** uses `medianTagPrice × 0.90` (10% discount) from unsold items when no sold data exists
+- Level 1 tries the brand-specific group; level 2 falls back to the description group across all brands
+- Levels 3–4 repeat the same pattern for unsold items (weak signal)
+- `description` is required — if missing, no suggestion is returned
+- If no level matches, the response returns `suggestedPrice: null`
+
+### Price Calculation
+
+Once a pricing ref is resolved, the suggested price is computed by composing multipliers:
+
+```
+rawPrice = referencePrice × velocityMultiplier × colorAdjustment × patternAdjustment × sizeAdjustment
+suggestedPrice = roundToSwiss5(rawPrice)
+```
+
+Each adjustment defaults to 1.0 if the item's color/pattern/size is not present in the ref's adjustment map.
 
 ## Enumerations
 
