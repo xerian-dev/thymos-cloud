@@ -89,6 +89,10 @@ export function PricingDataPage(): React.ReactNode {
     lastModified: null,
     count: 0,
   });
+  const [sizes, setSizes] = React.useState<MappingFileState>({
+    lastModified: null,
+    count: 0,
+  });
   const [descriptions, setDescriptions] = React.useState<MappingFileState>({
     lastModified: null,
     count: 0,
@@ -99,6 +103,7 @@ export function PricingDataPage(): React.ReactNode {
 
   const brandFileRef = React.useRef<HTMLInputElement>(null);
   const colorFileRef = React.useRef<HTMLInputElement>(null);
+  const sizeFileRef = React.useRef<HTMLInputElement>(null);
   const descFileRef = React.useRef<HTMLInputElement>(null);
 
   React.useEffect(() => {
@@ -106,11 +111,13 @@ export function PricingDataPage(): React.ReactNode {
   }, []);
 
   async function loadAllMetadata(): Promise<void> {
-    const [brandResult, colorResult, descResult] = await Promise.all([
-      fetchMappingFile("brands"),
-      fetchMappingFile("colors"),
-      fetchMappingFile("descriptions"),
-    ]);
+    const [brandResult, colorResult, sizeResult, descResult] =
+      await Promise.all([
+        fetchMappingFile("brands"),
+        fetchMappingFile("colors"),
+        fetchMappingFile("sizes"),
+        fetchMappingFile("descriptions"),
+      ]);
 
     if (brandResult.success) {
       setBrands({
@@ -122,6 +129,12 @@ export function PricingDataPage(): React.ReactNode {
       setColors({
         lastModified: colorResult.lastModified,
         count: colorResult.data.length,
+      });
+    }
+    if (sizeResult.success) {
+      setSizes({
+        lastModified: sizeResult.lastModified,
+        count: sizeResult.data.length,
       });
     }
     if (descResult.success) {
@@ -294,6 +307,24 @@ export function PricingDataPage(): React.ReactNode {
           onChange={handleFileChange("colors", "Color mappings", colorFileRef)}
           aria-label="Upload color mappings file"
         />
+
+        <MappingCard
+          title="Size Mappings"
+          description="Maps raw size values to canonical sizes, grouped by category."
+          count={sizes.count}
+          countLabel="categories"
+          lastModified={sizes.lastModified}
+          onDownload={() => handleDownload("sizes", "size-mappings.json")}
+          onUploadClick={() => sizeFileRef.current?.click()}
+        />
+        <input
+          ref={sizeFileRef}
+          type="file"
+          accept=".json"
+          className="hidden"
+          onChange={handleFileChange("sizes", "Size mappings", sizeFileRef)}
+          aria-label="Upload size mappings file"
+        />
       </div>
 
       {/* Aggregate */}
@@ -302,16 +333,12 @@ export function PricingDataPage(): React.ReactNode {
           <div>
             <h2 className="text-sm font-medium">Run Pricing Aggregation</h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              Triggers the pricing aggregator to recompute all pricing references
-              using the current mapping files. Runs automatically every Sunday at
-              02:00 UTC.
+              Triggers the pricing aggregator to recompute all pricing
+              references using the current mapping files. Runs automatically
+              every Sunday at 02:00 UTC.
             </p>
           </div>
-          <Button
-            size="sm"
-            onClick={handleAggregate}
-            disabled={isAggregating}
-          >
+          <Button size="sm" onClick={handleAggregate} disabled={isAggregating}>
             {isAggregating ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             ) : (

@@ -32,27 +32,16 @@ import { suggestPrice } from "./routes/suggest-price.js";
 import { listPricingRecords } from "./routes/pricing-records.js";
 import { listAdjustments } from "./routes/list-adjustments.js";
 import { listCategories } from "./routes/list-categories.js";
+import { getMappings, saveMappings } from "./routes/brand-management.js";
 import {
-  scanClusterBrands,
-  getMappings,
-  saveMappings,
-  applyMappings,
-  getApplyStatus,
-} from "./routes/brand-management.js";
-import {
-  scanClusterColors,
   getColorMappings,
   saveColorMappings,
-  applyColorMappings,
-  getColorApplyStatus,
 } from "./routes/color-management.js";
 import {
-  scanClusterDescriptions,
   getDescriptionMappings,
   saveDescriptionMappings,
-  applyDescriptionMappings,
-  getDescriptionApplyStatus,
 } from "./routes/description-management.js";
+import { getSizeMappings, saveSizeMappings } from "./routes/size-management.js";
 import { jsonResponse } from "./response.js";
 
 type RouteHandler = (
@@ -88,21 +77,14 @@ const routes: Record<string, RouteHandler> = {
   "GET /api/pricing/canonical/patterns": listCanonicalPatterns,
   "GET /api/pricing/records": listPricingRecords,
   "GET /api/categories": listCategories,
-  "POST /api/brands/scan-cluster": scanClusterBrands,
   "GET /api/brands/mappings": getMappings,
   "PUT /api/brands/mappings": saveMappings,
-  "POST /api/brands/apply": applyMappings,
-  "GET /api/brands/apply-status": getApplyStatus,
-  "POST /api/colors/scan-cluster": scanClusterColors,
   "GET /api/colors/mappings": getColorMappings,
   "PUT /api/colors/mappings": saveColorMappings,
-  "POST /api/colors/apply": applyColorMappings,
-  "GET /api/colors/apply-status": getColorApplyStatus,
-  "POST /api/descriptions/scan-cluster": scanClusterDescriptions,
+  "GET /api/sizes/mappings": getSizeMappings,
+  "PUT /api/sizes/mappings": saveSizeMappings,
   "GET /api/descriptions/mappings": getDescriptionMappings,
   "PUT /api/descriptions/mappings": saveDescriptionMappings,
-  "POST /api/descriptions/apply": applyDescriptionMappings,
-  "GET /api/descriptions/apply-status": getDescriptionApplyStatus,
 };
 
 export function routeRequest(
