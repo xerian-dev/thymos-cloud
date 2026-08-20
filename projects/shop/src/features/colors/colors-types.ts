@@ -4,11 +4,6 @@ export interface ColorMapping {
   pattern: string | null;
 }
 
-export interface MappingsResponse {
-  mappings: ColorMapping[];
-  lastModified: string | null;
-}
-
 export interface ApplyStatus {
   status: "idle" | "running" | "complete" | "error";
   startedAt?: string;
