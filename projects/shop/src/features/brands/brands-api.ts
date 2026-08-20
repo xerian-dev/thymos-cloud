@@ -1,5 +1,5 @@
 import { fetchAuthSession } from "aws-amplify/auth";
-import type { BrandCategory, ApplyStatus } from "./brands-types";
+import type { BrandCategory } from "./brands-types";
 import { API_BASE } from "@/config/api-config";
 
 async function getAuthHeaders(): Promise<Record<string, string>> {
@@ -60,54 +60,6 @@ export async function uploadMappings(
     }
 
     return { success: true };
-  } catch (error: unknown) {
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : "Unknown error",
-    };
-  }
-}
-
-export async function applyMappings(): Promise<{
-  success: boolean;
-  error?: string;
-}> {
-  try {
-    const headers = await getAuthHeaders();
-    const response = await fetch(`${API_BASE}/brands/apply`, {
-      method: "POST",
-      headers,
-    });
-
-    if (!response.ok) {
-      return { success: false, error: `HTTP ${response.status}` };
-    }
-
-    return { success: true };
-  } catch (error: unknown) {
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : "Unknown error",
-    };
-  }
-}
-
-export async function fetchApplyStatus(): Promise<
-  { success: true; data: ApplyStatus } | { success: false; error: string }
-> {
-  try {
-    const headers = await getAuthHeaders();
-    const response = await fetch(`${API_BASE}/brands/apply-status`, {
-      method: "GET",
-      headers,
-    });
-
-    if (!response.ok) {
-      return { success: false, error: `HTTP ${response.status}` };
-    }
-
-    const data: ApplyStatus = await response.json();
-    return { success: true, data };
   } catch (error: unknown) {
     return {
       success: false,

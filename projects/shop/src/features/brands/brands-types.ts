@@ -8,14 +8,3 @@ export interface BrandCategory {
   categoryName: string;
   brands: BrandEntry[];
 }
-
-export interface ApplyStatus {
-  status: "idle" | "running" | "complete" | "error";
-  startedAt?: string;
-  completedAt?: string;
-  delta?: number;
-  itemsUpdated?: number;
-  errors?: number;
-  canonicalBrandsSeeded?: number;
-  message?: string;
-}

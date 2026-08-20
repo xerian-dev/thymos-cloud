@@ -1,24 +1,16 @@
 import * as React from "react";
 import { Button } from "@/components/ui/button";
-import { Loader2, Download, Upload, Play } from "lucide-react";
+import { Loader2, Download, Upload } from "lucide-react";
 import { toast } from "sonner";
 import type { ColorMapping } from "./colors-types";
-import {
-  downloadMappings,
-  uploadMappings,
-  applyMappings,
-  fetchApplyStatus,
-} from "./colors-api";
+import { downloadMappings, uploadMappings } from "./colors-api";
 
 export function ColorManagementPage(): React.ReactNode {
   const [lastModified, setLastModified] = React.useState<string | null>(null);
   const [mappingCount, setMappingCount] = React.useState<number>(0);
   const [isDownloading, setIsDownloading] = React.useState(false);
   const [isUploading, setIsUploading] = React.useState(false);
-  const [isApplying, setIsApplying] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
-  const [statusMessage, setStatusMessage] = React.useState<string | null>(null);
-  const [hasUnappliedChanges, setHasUnappliedChanges] = React.useState(false);
 
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
@@ -69,7 +61,6 @@ export function ColorManagementPage(): React.ReactNode {
 
     setIsUploading(true);
     setError(null);
-    setStatusMessage(null);
 
     try {
       const text = await file.text();
@@ -92,8 +83,6 @@ export function ColorManagementPage(): React.ReactNode {
       if (result.success) {
         setMappingCount(parsed.length);
         setLastModified(new Date().toISOString());
-        setHasUnappliedChanges(true);
-        setStatusMessage(null);
         toast.success(`Uploaded ${parsed.length} color mappings`);
       } else {
         setError(result.error ?? "Upload failed");
@@ -106,46 +95,6 @@ export function ColorManagementPage(): React.ReactNode {
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
-  }
-
-  async function handleApply(): Promise<void> {
-    setIsApplying(true);
-    setError(null);
-    setStatusMessage("Applying mappings to items...");
-
-    const result = await applyMappings();
-    if (!result.success) {
-      setError(result.error ?? "Failed to start apply");
-      setStatusMessage(null);
-      setIsApplying(false);
-      return;
-    }
-
-    pollApplyStatus();
-  }
-
-  function pollApplyStatus(): void {
-    const interval = setInterval(async () => {
-      const result = await fetchApplyStatus();
-      if (!result.success) return;
-
-      const { data } = result;
-
-      if (data.status === "complete") {
-        clearInterval(interval);
-        setIsApplying(false);
-        setHasUnappliedChanges(false);
-        setStatusMessage(null);
-        toast.success(
-          `Apply complete: ${data.itemsUpdated ?? 0} items updated, ${data.errors ?? 0} errors`,
-        );
-      } else if (data.status === "error") {
-        clearInterval(interval);
-        setIsApplying(false);
-        setError(data.message ?? "Apply failed");
-        setStatusMessage(null);
-      }
-    }, 5000);
   }
 
   return (
@@ -167,13 +116,6 @@ export function ColorManagementPage(): React.ReactNode {
           role="alert"
         >
           <p className="text-sm text-destructive">{error}</p>
-        </div>
-      )}
-
-      {/* Status */}
-      {statusMessage && !error && (
-        <div className="rounded-lg border border-border bg-muted/50 px-4 py-3">
-          <p className="text-sm text-muted-foreground">{statusMessage}</p>
         </div>
       )}
 
@@ -204,6 +146,7 @@ export function ColorManagementPage(): React.ReactNode {
           <h2 className="text-sm font-medium">Upload</h2>
           <p className="text-sm text-muted-foreground">
             Upload an edited color mappings file to replace the current draft.
+            Changes take effect on the next pricing aggregation run.
           </p>
           <input
             ref={fileInputRef}
@@ -228,31 +171,6 @@ export function ColorManagementPage(): React.ReactNode {
             Upload JSON
           </Button>
         </div>
-
-        <div className="flex flex-col gap-2 rounded-lg border p-4 sm:flex-1">
-          <h2 className="text-sm font-medium">Apply</h2>
-          <p className="text-sm text-muted-foreground">
-            Apply the uploaded draft to all items in the database.
-          </p>
-          <Button
-            size="sm"
-            className="mt-2 w-fit"
-            onClick={handleApply}
-            disabled={isApplying}
-          >
-            {isApplying ? (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            ) : (
-              <Play className="mr-2 h-4 w-4" />
-            )}
-            Apply
-          </Button>
-          {hasUnappliedChanges && (
-            <p className="text-xs text-amber-600">
-              Draft has unapplied changes
-            </p>
-          )}
-        </div>
       </div>
 
       {/* Instructions */}
@@ -260,7 +178,9 @@ export function ColorManagementPage(): React.ReactNode {
         <h2 className="text-sm font-medium">File Format</h2>
         <p className="mt-1 text-sm text-muted-foreground">
           The JSON file is a flat array of color mappings. Each entry maps a raw
-          value to a canonical color name and optionally a pattern name.
+          value to a canonical color name and optionally a pattern name. These
+          mappings are used by the pricing aggregator to normalize colors when
+          computing price adjustments.
         </p>
         <pre className="mt-3 overflow-x-auto rounded bg-muted p-3 text-xs">
           {`[
