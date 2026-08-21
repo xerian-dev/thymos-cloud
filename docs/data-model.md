@@ -275,14 +275,14 @@ Pricing data lives in a separate DynamoDB table from the operational shop data. 
 
 ### Key Design Principles
 
-- **Separate table for pricing**: Pricing data has a different lifecycle (batch-computed by the aggregator) and access pattern (read at item-creation time, queried for reports) than operational data. Isolation prevents aggregator write bursts from contending with shop traffic.
+- **Separate table for pricing**: Pricing data has a different lifecycle (batch-computed by the price computation Lambda) and access pattern (read at item-creation time, queried for reports) than operational data. Isolation prevents compute bursts from contending with shop traffic.
 - **Single grouping key — brand × description**: The sole grouping dimension is canonical brand × canonical description. Category is not used for pricing. Description identifies what an item actually is (comparable goods), while category is an organizational convenience for the operator.
-- **Description is mandatory**: Items without a description (after mapping) are excluded from aggregation entirely. They cannot receive a price suggestion.
+- **Description is mandatory**: Items without a description (after mapping) are excluded from price computation entirely. They cannot receive a price suggestion.
 - **Brand `_NONE_`**: Items without a brand are grouped under the synthetic brand `_NONE_`. This handles unbranded goods (toys, generic items) that still have a meaningful description.
 - **Color, pattern, and size are refinements**: These attributes are NOT grouping dimensions. Using them as grouping dimensions would fragment data into groups too small for statistical significance. Instead, they are computed as adjustment ratios within a brand × description group.
 - **Single GSI**: GSI1 supports listing all pricing refs (`GSI1PK: PRICING_REFS`) and querying adjustments by date (`GSI1PK: ADJUSTMENTS`, `GSI1SK: ADJUSTMENT#<timestamp>`).
-- **Mappings applied at aggregation time**: The aggregator loads canonical mapping files (brand, description, color, size) from S3 and applies them in-memory when building groups. The shop table is never mutated — raw values are preserved as entered.
-- **Adjustment events**: Created when the reference price changes by more than 2% between aggregation cycles.
+- **Mappings applied at computation time**: The compute-prices Lambda loads canonical mapping files (brand, description, color, size) from S3 and applies them in-memory when building groups. The shop table is never mutated — raw values are preserved as entered.
+- **Adjustment events**: Created when the reference price changes by more than 2% between computation cycles.
 
 ### Pricing Ref Attributes
 
@@ -291,7 +291,7 @@ Pricing data lives in a separate DynamoDB table from the operational shop data. 
 | `brand`                | string                   | Canonical brand name (or `_NONE_`)                    |
 | `description`          | string                   | Canonical description (the grouping keyword)          |
 | `referencePrice`       | number (CHF)             | Computed reference price (adjusted/capped median sale price) |
-| `previousReferencePrice` | number \| null         | Previous aggregation's reference price                |
+| `previousReferencePrice` | number \| null         | Previous computation's reference price                |
 | `originalBaseline`     | number (CHF)             | First-ever reference price for drift cap             |
 | `medianTagPrice`       | number (CHF)             | Median tag price of ALL items in group (sold and unsold) |
 | `medianSalePrice`      | number (CHF)             | Median actual sale price of sold items                |

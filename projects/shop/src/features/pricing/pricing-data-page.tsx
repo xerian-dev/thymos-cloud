@@ -216,10 +216,10 @@ export function PricingDataPage(): React.ReactNode {
     const result = await triggerAggregation();
     if (result.success) {
       toast.success(
-        "Pricing aggregation triggered. This runs in the background and may take several minutes.",
+        "Price computation triggered. This runs in the background and may take several minutes.",
       );
     } else {
-      setError("Failed to trigger aggregation");
+      setError("Failed to trigger price computation");
     }
 
     setIsAggregating(false);
@@ -331,11 +331,10 @@ export function PricingDataPage(): React.ReactNode {
       <div className="rounded-lg border p-4">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-sm font-medium">Run Pricing Aggregation</h2>
+            <h2 className="text-sm font-medium">Compute Prices</h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              Triggers the pricing aggregator to recompute all pricing
-              references using the current mapping files. Runs automatically
-              every Sunday at 02:00 UTC.
+              Recomputes all pricing references using the current mapping files.
+              Runs automatically every Sunday at 02:00 UTC.
             </p>
           </div>
           <Button size="sm" onClick={handleAggregate} disabled={isAggregating}>
@@ -344,7 +343,7 @@ export function PricingDataPage(): React.ReactNode {
             ) : (
               <Play className="mr-2 h-4 w-4" />
             )}
-            Aggregate Now
+            Compute Prices
           </Button>
         </div>
       </div>

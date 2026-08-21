@@ -6,12 +6,12 @@ This document describes how the automated pricing system works: how pricing data
 
 The pricing system has two main components:
 
-1. **Pricing Aggregator** — a Lambda that runs on a weekly schedule, scans all items and sales data, applies canonical mappings to raw values, computes statistical pricing references grouped by brand × description, and writes the results to a dedicated pricing DynamoDB table.
+1. **Compute Prices** — a Lambda that runs on a weekly schedule, scans all items and sales data, applies canonical mappings to raw values, computes statistical pricing references grouped by brand × description, and writes the results to a dedicated pricing DynamoDB table.
 2. **Suggest-Price API** — an endpoint that accepts item attributes (brand, description, color, size) and returns a suggested tag price by looking up the relevant pricing reference and applying multiplier adjustments.
 
 ### Data Immutability Principle
 
-The shop table stores raw, immutable item data — exactly what was entered at capture or imported from ConsignCloud. The pricing system never mutates shop table records. Instead, canonical mappings (brand normalization, color normalization, description normalization) are applied at aggregation time within the pricing pipeline. This means:
+The shop table stores raw, immutable item data — exactly what was entered at capture or imported from ConsignCloud. The pricing system never mutates shop table records. Instead, canonical mappings (brand normalization, color normalization, description normalization) are applied at computation time within the pricing pipeline. This means:
 
 - Item records reflect what was actually entered/imported (matches printed labels)
 - Historical data is never retroactively altered
@@ -22,7 +22,7 @@ The shop table stores raw, immutable item data — exactly what was entered at c
 
 The sole grouping dimension for pricing is **brand × description**. Category is not used for pricing grouping — it serves the operator's organizational needs but does not define comparable items for pricing purposes. Items sharing a description are genuinely comparable (e.g., "Jacke", "T-Shirt", "Handtasche"), while category is too broad to be meaningful.
 
-- **Description is mandatory**: Items without a description are excluded from aggregation entirely and cannot receive a price suggestion.
+- **Description is mandatory**: Items without a description are excluded from price computation entirely and cannot receive a price suggestion.
 - **Brand may be `_NONE_`**: Items without a brand are grouped under the synthetic brand `_NONE_`. This handles unbranded goods (toys, generic items) that still have a meaningful description.
 - Color, size, and pattern are refinement multipliers within a group — not grouping dimensions.
 
@@ -30,11 +30,11 @@ The sole grouping dimension for pricing is **brand × description**. Category is
 ┌─────────────────────────────────────────────────────────────────────┐
 │                     PRICING TABLE POPULATION                         │
 │                                                                      │
-│  EventBridge (weekly)         POST /api/pricing/aggregate            │
+│  EventBridge (weekly)         POST /api/pricing/compute             │
 │        │                               │                             │
 │        ▼                               ▼                             │
 │  ┌────────────────────────────────────────────┐                      │
-│  │          Pricing Aggregator Lambda          │                     │
+│  │          Compute Prices Lambda               │                     │
 │  │          (2GB RAM, 15 min timeout)          │                     │
 │  └──────────────┬─────────────────────────────┘                      │
 │                 │                                                     │
@@ -82,7 +82,7 @@ The sole grouping dimension for pricing is **brand × description**. Category is
 
 ## Canonical Mappings
 
-Mapping files live in S3 and define how raw imported values map to canonical grouping values. They are consumed by the aggregator at aggregation time — they do not modify item records in the shop table.
+Mapping files live in S3 and define how raw imported values map to canonical grouping values. They are consumed by the compute-prices Lambda at computation time — they do not modify item records in the shop table.
 
 | Mapping Type | S3 Key | Purpose |
 | -------------- | -------- | --------- |
@@ -95,7 +95,7 @@ Mapping files live in S3 and define how raw imported values map to canonical gro
 1. **Scan & Cluster** — A Lambda scans item values from the shop table, clusters similar raw values, and writes a proposed mapping draft to S3.
 2. **Operator Review** — The frontend loads the draft for review/editing via API.
 3. **Save** — Operator approves or modifies the mappings, saves back to S3.
-4. **Consumed at Aggregation** — The pricing aggregator loads these mappings and applies them in-memory when building groups. Raw shop table data is unchanged.
+4. **Consumed at Computation** — The compute-prices Lambda loads these mappings and applies them in-memory when building groups. Raw shop table data is unchanged.
 
 ### Why Mappings Don't Mutate the Shop Table
 
@@ -106,24 +106,24 @@ Mapping files live in S3 and define how raw imported values map to canonical gro
 
 ---
 
-## Part 1: Table Population (Pricing Aggregator)
+## Part 1: Table Population (Compute Prices)
 
 ### Trigger Mechanism
 
-The aggregator runs via two paths:
+The compute-prices Lambda runs via two paths:
 
 | Trigger | Mechanism | Frequency |
 |---------|-----------|-----------|
 | Scheduled | EventBridge rule `cron(0 2 ? * SUN *)` | Every Sunday at 02:00 UTC |
-| Manual | `POST /api/pricing/aggregate` API route | On-demand (async invocation) |
+| Manual | `POST /api/pricing/compute` API route | On-demand (async invocation) |
 
-Both invoke the same Lambda (`thymos-{env}-pricing-aggregator`) with `InvocationType: "Event"` (fire-and-forget). The Lambda has 2048 MB memory and a 900-second (15 min) timeout.
+Both invoke the same Lambda (`thymos-{env}-compute-prices`) with `InvocationType: "Event"` (fire-and-forget). The Lambda has 2048 MB memory and a 900-second (15 min) timeout.
 
-A dead-letter queue (`thymos-{env}-pricing-aggregator-dlq`) captures failed EventBridge invocations with 14-day retention.
+A dead-letter queue (`thymos-{env}-compute-prices-dlq`) captures failed EventBridge invocations with 14-day retention.
 
 ### Data Sources
 
-The aggregator reads from three sources:
+The compute-prices Lambda reads from three sources:
 
 | Source | Data | Method |
 | -------- | ------ | -------- |
@@ -151,7 +151,7 @@ Loads the four mapping files from S3. Each file is an array of entries defining 
 - **Sold items**: Only included if `lastSold >= sixMonthsAgo`
 - **Non-sold items**: Always included (they contribute to total count for sell-through calculation)
 
-#### Step 5: Build Aggregator Items (Apply Mappings)
+#### Step 5: Build Items for Computation (Apply Mappings)
 
 For each item, applies mappings in-memory and determines eligibility:
 
@@ -163,7 +163,7 @@ For each item, applies mappings in-memory and determines eligibility:
 - `salePrice` = line item's `salePrice / 100` (cents → CHF), only if item status is `"sold"`
 - `discounted` = true if the line item has `discount > 0`
 
-The shop table records are never modified. The canonical values exist only within the aggregator's working memory.
+The shop table records are never modified. The canonical values exist only within the Lambda's working memory.
 
 #### Step 6: Group by Brand × Description
 
@@ -363,7 +363,7 @@ Note: The `brand` and `description` values passed to this endpoint should be the
 
 | Source | Reference Price |
 |--------|-----------------|
-| Tier 1 (sold) | `pricingRef.referencePrice` (the adjusted/capped median sale price from the aggregator) |
+| Tier 1 (sold) | `pricingRef.referencePrice` (the adjusted/capped median sale price from compute-prices) |
 | Tier 2 (unsold) | `pricingRef.medianTagPrice × 0.90` (10% discount applied to median tag price of unsold items) |
 
 ### Adjustment Multipliers
@@ -475,17 +475,17 @@ Additional sentences are appended for non-1.0 adjustments:
 
 ## Key Design Decisions
 
-1. **Shop table is immutable**: Item records are never modified after creation. Raw values are preserved exactly as entered or imported. Canonical mappings are applied only within the pricing pipeline at aggregation time.
+1. **Shop table is immutable**: Item records are never modified after creation. Raw values are preserved exactly as entered or imported. Canonical mappings are applied only within the pricing pipeline at computation time.
 
-2. **Mappings are a pricing input, not a data mutation**: The mapping files (brand, color, description) exist to help the aggregator group messy historical import data into coherent pricing cohorts. They don't alter the source of truth. Once the ticket capture app validates data at entry, mappings become unnecessary for new items.
+2. **Mappings are a pricing input, not a data mutation**: The mapping files (brand, color, description) exist to help the compute-prices Lambda group messy historical import data into coherent pricing cohorts. They don't alter the source of truth. Once the ticket capture app validates data at entry, mappings become unnecessary for new items.
 
 3. **Brand × description is the sole grouping key**: Category is not used for pricing. Description identifies what an item actually is (comparable goods), while category is an organizational convenience. Descriptions are maintained to be unique and not duplicated across categories.
 
-4. **Description is mandatory for pricing**: Items without a description are noise — they cannot be meaningfully grouped or compared. They are excluded from aggregation and receive no price suggestion.
+4. **Description is mandatory for pricing**: Items without a description are noise — they cannot be meaningfully grouped or compared. They are excluded from computation and receive no price suggestion.
 
 5. **Color, pattern, and size are refinements, not grouping dimensions**: Using them as grouping dimensions would fragment data into groups too small for statistical significance. Instead, they're computed as adjustment ratios within a brand×description group.
 
-6. **Separate pricing table**: Isolates batch-write bursts from operational shop traffic. The aggregator does a full table scan + hundreds of writes — this should not contend with item CRUD.
+6. **Separate pricing table**: Isolates batch-write bursts from operational shop traffic. The compute-prices Lambda does a full table scan + hundreds of writes — this should not contend with item CRUD.
 
 7. **6-month rolling window**: Balances having enough data for statistical significance with reflecting current market conditions. Sales older than 6 months are excluded.
 
