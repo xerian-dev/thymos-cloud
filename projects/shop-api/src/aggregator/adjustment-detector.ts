@@ -31,8 +31,7 @@ export interface ComputedStats {
 
 export interface AdjustmentEvent {
   brand: string;
-  category: string;
-  categoryId: string;
+  description: string;
   previousPrice: number;
   newPrice: number;
   direction: "increase" | "decrease";
@@ -59,9 +58,8 @@ export interface AdjustmentEvent {
  *
  * @param previous - The existing pricing reference (null if this is a new group)
  * @param current - The newly computed statistics
- * @param brand - The brand name for this group
- * @param category - The category display name
- * @param categoryId - The category UUID
+ * @param brand - The canonical brand name for this group
+ * @param description - The canonical description for this group
  * @param discountFrequency - The discount frequency for the group
  * @returns An adjustment event if |change| > 2%, or null if no significant change
  */
@@ -69,8 +67,7 @@ export function detectAdjustment(
   previous: PricingRef | null,
   current: ComputedStats,
   brand: string,
-  category: string,
-  categoryId: string,
+  description: string,
   discountFrequency: number,
 ): { event: AdjustmentEvent | null; adjustedPrice: number } {
   // No previous reference — this is a new group, no adjustment to detect
@@ -108,8 +105,7 @@ export function detectAdjustment(
 
     const event: AdjustmentEvent = {
       brand,
-      category,
-      categoryId,
+      description,
       previousPrice,
       newPrice: cappedPrice,
       direction: "decrease",
@@ -148,8 +144,7 @@ export function detectAdjustment(
 
     const event: AdjustmentEvent = {
       brand,
-      category,
-      categoryId,
+      description,
       previousPrice,
       newPrice: cappedPrice,
       direction: "increase",

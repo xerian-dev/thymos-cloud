@@ -1,3 +1,14 @@
+/**
+ * Compute Prices handler.
+ *
+ * Scans all items and sale line items from the shop table, applies canonical
+ * mappings from S3, groups by brand × description, computes pricing statistics
+ * and adjustment detection, then writes PRICING_REF and ADJUSTMENT_EVENT records
+ * to the pricing table.
+ *
+ * Triggered weekly by EventBridge or on-demand via POST /api/pricing/compute.
+ */
+
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import {
   DynamoDBDocumentClient,
@@ -6,18 +17,16 @@ import {
   PutCommand,
 } from "@aws-sdk/lib-dynamodb";
 import { computeVelocityMultiplier } from "../pricing/velocity-multiplier.js";
-import {
-  groupItemsByBrandCategory,
-  groupItemsByBrandDescription,
-} from "./grouping.js";
-import type { AggregatorItem } from "./grouping.js";
-import { computeEmployeeAccuracy } from "./employee-accuracy.js";
-import type { EmployeeSaleRecord } from "./employee-accuracy.js";
+import { groupItems, canonicalizeBrand } from "./grouping.js";
+import type { ComputeItem } from "./grouping.js";
+import { loadCanonicalMappings } from "./mappings-loader.js";
+import type { CanonicalMappings } from "./mappings-loader.js";
 import { detectAdjustment } from "./adjustment-detector.js";
 import type { PricingRef, ComputedStats } from "./adjustment-detector.js";
 
 const TABLE_NAME = process.env.TABLE_NAME ?? "";
 const PRICING_TABLE_NAME = process.env.PRICING_TABLE_NAME ?? "";
+const BUCKET_NAME = process.env.BUCKET_NAME ?? "";
 
 const client = new DynamoDBClient({});
 const docClient = DynamoDBDocumentClient.from(client, {
@@ -28,17 +37,13 @@ interface ItemRecord {
   PK: string;
   uuid: string;
   brand?: string;
-  categoryId?: string;
-  categoryName?: string;
   description?: string;
   tagPrice?: number;
   status?: string;
   color?: string;
   size?: string;
-  createdBy?: string;
   lastSold?: string;
   daysOnShelf?: number;
-  inventoryType?: string;
 }
 
 interface LineItemRecord {
@@ -54,9 +59,7 @@ interface ExistingPricingRef {
   PK: string;
   SK: string;
   brand: string;
-  categoryId: string;
-  categoryName: string;
-  description?: string;
+  description: string;
   referencePrice: number;
   previousReferencePrice?: number;
   originalBaseline?: number;
@@ -71,6 +74,7 @@ interface ExistingPricingRef {
   velocityMultiplier: number;
   lowConfidence: boolean;
   colorAdjustments?: Record<string, number>;
+  patternAdjustments?: Record<string, number>;
   sizeAdjustments?: Record<string, number>;
   computedAt: string;
 }
@@ -159,7 +163,7 @@ async function readExistingPricingRefs(): Promise<
     if (result.Items) {
       for (const item of result.Items) {
         const ref = item as unknown as ExistingPricingRef;
-        const key = `${ref.brand}#${ref.categoryId}`;
+        const key = `${ref.brand}#${ref.description}`;
         refs.set(key, ref);
       }
     }
@@ -172,17 +176,46 @@ async function readExistingPricingRefs(): Promise<
   return refs;
 }
 
-function buildAggregatorItems(
+function buildComputeItems(
   items: ItemRecord[],
   lineItemsByItemId: Map<string, LineItemRecord>,
-): AggregatorItem[] {
-  const aggregatorItems: AggregatorItem[] = [];
+  mappings: CanonicalMappings,
+): ComputeItem[] {
+  const computeItems: ComputeItem[] = [];
 
   for (const item of items) {
-    if (!item.categoryId) {
-      continue;
+    // Apply description mapping — description is mandatory
+    const rawDescription = item.description ?? "";
+    const canonicalDescription =
+      mappings.description.get(rawDescription) ?? rawDescription;
+
+    if (!canonicalDescription || canonicalDescription.trim() === "") {
+      continue; // Exclude items without a description
     }
 
+    // Apply brand mapping
+    const rawBrand = item.brand ?? "";
+    const mappedBrand = mappings.brand.get(rawBrand) ?? rawBrand;
+    const brand = canonicalizeBrand(mappedBrand);
+
+    // Apply color mapping
+    const rawColor = item.color ?? "";
+    const canonicalColor = rawColor
+      ? (mappings.color.get(rawColor) ?? null)
+      : null;
+
+    // Extract pattern from color mapping
+    const canonicalPattern = rawColor
+      ? (mappings.pattern.get(rawColor) ?? null)
+      : null;
+
+    // Apply size mapping
+    const rawSize = item.size ?? "";
+    const canonicalSize = rawSize
+      ? (mappings.size.get(rawSize) ?? rawSize)
+      : null;
+
+    // Resolve sale data
     const lineItem = lineItemsByItemId.get(item.uuid);
     const salePrice =
       item.status === "sold" && lineItem?.salePrice != null
@@ -194,65 +227,21 @@ function buildAggregatorItems(
       lineItem?.discount != null &&
       lineItem.discount > 0;
 
-    aggregatorItems.push({
-      brand: item.brand ?? null,
-      categoryId: item.categoryId,
-      categoryName: item.categoryName ?? item.categoryId,
-      description: item.description ?? null,
+    computeItems.push({
+      brand,
+      description: canonicalDescription,
       tagPrice: item.tagPrice ?? 0,
       salePrice,
       status: item.status ?? "active",
       daysOnShelf: item.daysOnShelf ?? null,
-      color: item.color ?? null,
-      size: item.size ?? null,
-      createdBy: item.createdBy ?? null,
-      soldAt: item.lastSold ?? null,
+      color: canonicalColor,
+      pattern: canonicalPattern,
+      size: canonicalSize,
       discounted,
     });
   }
 
-  return aggregatorItems;
-}
-
-function buildEmployeeSaleRecords(
-  items: ItemRecord[],
-  lineItemsByItemId: Map<string, LineItemRecord>,
-  sixMonthsAgo: Date,
-): Map<string, EmployeeSaleRecord[]> {
-  const employeeMap = new Map<string, EmployeeSaleRecord[]>();
-
-  for (const item of items) {
-    if (item.status !== "sold" || !item.createdBy || !item.lastSold) {
-      continue;
-    }
-
-    const soldDate = new Date(item.lastSold);
-    if (soldDate < sixMonthsAgo) {
-      continue;
-    }
-
-    const lineItem = lineItemsByItemId.get(item.uuid);
-    if (!lineItem?.salePrice) {
-      continue;
-    }
-
-    const record: EmployeeSaleRecord = {
-      employeeId: item.createdBy,
-      employeeName: item.createdBy,
-      tagPrice: item.tagPrice ?? 0,
-      salePrice: lineItem.salePrice / 100,
-      soldAt: item.lastSold,
-    };
-
-    const existing = employeeMap.get(item.createdBy);
-    if (existing) {
-      existing.push(record);
-    } else {
-      employeeMap.set(item.createdBy, [record]);
-    }
-  }
-
-  return employeeMap;
+  return computeItems;
 }
 
 export async function handler(): Promise<void> {
@@ -263,17 +252,23 @@ export async function handler(): Promise<void> {
   const sixMonthsAgoIso = sixMonthsAgo.toISOString();
 
   console.log(
-    `[Aggregator] Starting pricing aggregation. Window: ${sixMonthsAgoIso} to ${now.toISOString()}`,
+    `[ComputePrices] Starting. Window: ${sixMonthsAgoIso} to ${now.toISOString()}`,
   );
 
   // Step 1: Scan all items
   const allItems = await scanAllItems();
-  console.log(`[Aggregator] Scanned ${allItems.length} items`);
+  console.log(`[ComputePrices] Scanned ${allItems.length} items`);
 
   // Step 2: Scan sale line items from last 6 months
   const saleLineItems = await scanAllSaleLineItems(sixMonthsAgoIso);
   console.log(
-    `[Aggregator] Scanned ${saleLineItems.length} sale line items in window`,
+    `[ComputePrices] Scanned ${saleLineItems.length} sale line items in window`,
+  );
+
+  // Step 3: Load canonical mappings from S3
+  const mappings = await loadCanonicalMappings(BUCKET_NAME);
+  console.log(
+    `[ComputePrices] Loaded mappings — brand: ${mappings.brand.size}, description: ${mappings.description.size}, color: ${mappings.color.size}, pattern: ${mappings.pattern.size}, size: ${mappings.size.size}`,
   );
 
   // Build lookup: itemId → most recent line item (for salePrice)
@@ -291,60 +286,52 @@ export async function handler(): Promise<void> {
     }
   }
 
-  // Filter items to 6-month window for sold items (all items needed for sell-through)
+  // Step 4: Filter items to 6-month window for sold items
   const windowItems = allItems.filter((item) => {
     if (item.status === "sold") {
       return item.lastSold != null && item.lastSold >= sixMonthsAgoIso;
     }
-    // Non-sold items contribute to total count for sell-through calculation
     return true;
   });
 
-  // Step 3: Build AggregatorItem array and group by brand×category
-  const aggregatorItems = buildAggregatorItems(windowItems, lineItemsByItemId);
-  const groupStats = groupItemsByBrandCategory(aggregatorItems);
-  console.log(
-    `[Aggregator] Computed statistics for ${groupStats.size} category groups`,
-  );
-
-  // Step 3b: Group by brand×description
-  const descGroupStats = groupItemsByBrandDescription(aggregatorItems);
-  console.log(
-    `[Aggregator] Computed statistics for ${descGroupStats.size} description groups`,
-  );
-
-  // Step 4: Compute employee accuracy
-  const employeeSaleRecords = buildEmployeeSaleRecords(
-    allItems,
+  // Step 5: Build compute items (apply mappings in-memory)
+  const computeItems = buildComputeItems(
+    windowItems,
     lineItemsByItemId,
-    sixMonthsAgo,
+    mappings,
   );
   console.log(
-    `[Aggregator] Computing accuracy for ${employeeSaleRecords.size} employees`,
+    `[ComputePrices] ${computeItems.length} items eligible (have description)`,
   );
 
-  // Step 5: Read existing pricing reference records
+  // Step 6: Group by brand × description
+  const groupStats = groupItems(computeItems);
+  console.log(
+    `[ComputePrices] Computed statistics for ${groupStats.size} groups`,
+  );
+
+  // Step 7: Read existing pricing references
   const existingRefs = await readExistingPricingRefs();
   console.log(
-    `[Aggregator] Read ${existingRefs.size} existing pricing references`,
+    `[ComputePrices] Read ${existingRefs.size} existing pricing references`,
   );
 
   let groupsProcessed = 0;
   let recordsWritten = 0;
   let adjustmentEventsWritten = 0;
 
-  // Step 6-9: Process each group
+  // Step 8–11: Process each group
   for (const [groupKey, stats] of groupStats) {
     try {
       const previousRef = existingRefs.get(groupKey) ?? null;
 
-      // Compute price ratio for this group
+      // Compute price ratio
       const priceRatio =
         stats.medianTagPrice > 0
           ? stats.medianSalePrice / stats.medianTagPrice
           : 1;
 
-      // Build the previous pricing ref in the shape expected by detectAdjustment
+      // Build previous pricing ref for adjustment detection
       const previousPricingRef: PricingRef | null = previousRef
         ? {
             referencePrice: previousRef.referencePrice,
@@ -360,7 +347,7 @@ export async function handler(): Promise<void> {
           }
         : null;
 
-      // Build current computed stats for adjustment detection
+      // Build current stats for adjustment detection
       const currentStats: ComputedStats = {
         referencePrice: stats.medianSalePrice,
         sellThroughRate: stats.sellThroughRate,
@@ -374,20 +361,17 @@ export async function handler(): Promise<void> {
         previousPricingRef,
         currentStats,
         stats.brand,
-        stats.categoryName,
-        stats.categoryId,
+        stats.description,
         stats.discountFrequency,
       );
 
-      // The adjusted price is the new reference price
       const newReferencePrice = adjustedPrice;
-
       const originalBaseline =
         previousRef?.originalBaseline ??
         previousRef?.referencePrice ??
         newReferencePrice;
 
-      // Compute velocity multiplier for storage
+      // Compute velocity multiplier
       const velocityMultiplier = computeVelocityMultiplier(
         stats.sellThroughRate,
         priceRatio,
@@ -397,18 +381,17 @@ export async function handler(): Promise<void> {
 
       const computedAt = now.toISOString();
 
-      // Step 7: Write PRICING_REF record
+      // Write PRICING_REF record
       await docClient.send(
         new PutCommand({
           TableName: PRICING_TABLE_NAME,
           Item: {
-            PK: `PRICING_REF#${stats.brand}#${stats.categoryId}`,
+            PK: `PRICING_REF#${stats.brand}#${stats.description}`,
             SK: "METADATA",
             GSI1PK: "PRICING_REFS",
-            GSI1SK: `PRICING_REF#${stats.brand}#${stats.categoryId}`,
+            GSI1SK: `PRICING_REF#${stats.brand}#${stats.description}`,
             brand: stats.brand,
-            categoryId: stats.categoryId,
-            categoryName: stats.categoryName,
+            description: stats.description,
             referencePrice: newReferencePrice,
             previousReferencePrice: previousRef?.referencePrice ?? null,
             originalBaseline,
@@ -423,6 +406,7 @@ export async function handler(): Promise<void> {
             velocityMultiplier,
             lowConfidence: stats.sampleSize < 5,
             colorAdjustments: stats.colorAdjustments,
+            patternAdjustments: stats.patternAdjustments,
             sizeAdjustments: stats.sizeAdjustments,
             computedAt,
             updatedAt: computedAt,
@@ -431,7 +415,7 @@ export async function handler(): Promise<void> {
       );
       recordsWritten++;
 
-      // Step 9: Write ADJUSTMENT_EVENT if detected
+      // Write ADJUSTMENT_EVENT if detected
       if (adjustmentEvent) {
         const adjustmentId = crypto.randomUUID();
         const timestamp = computedAt;
@@ -446,8 +430,7 @@ export async function handler(): Promise<void> {
               GSI1SK: `ADJUSTMENT#${timestamp}`,
               id: adjustmentId,
               brand: adjustmentEvent.brand,
-              category: adjustmentEvent.category,
-              categoryId: adjustmentEvent.categoryId,
+              description: adjustmentEvent.description,
               previousPrice: adjustmentEvent.previousPrice,
               newPrice: adjustmentEvent.newPrice,
               direction: adjustmentEvent.direction,
@@ -463,109 +446,18 @@ export async function handler(): Promise<void> {
 
       groupsProcessed++;
     } catch (error) {
-      console.error(`[Aggregator] Error processing group ${groupKey}:`, error);
-      // Continue to next group — be resilient
-    }
-  }
-
-  // Step 6b: Process description-based groups
-  let descRecordsWritten = 0;
-  for (const [groupKey, stats] of descGroupStats) {
-    try {
-      const computedAt = now.toISOString();
-
-      const velocityMultiplier = computeVelocityMultiplier(
-        stats.sellThroughRate,
-        stats.medianTagPrice > 0
-          ? stats.medianSalePrice / stats.medianTagPrice
-          : 1,
-        stats.medianDaysOnShelf,
-        stats.sampleSize,
-      );
-
-      await docClient.send(
-        new PutCommand({
-          TableName: PRICING_TABLE_NAME,
-          Item: {
-            PK: `PRICING_REF#${groupKey}`,
-            SK: "METADATA",
-            GSI1PK: "PRICING_REFS",
-            GSI1SK: `PRICING_REF#${groupKey}`,
-            brand: stats.brand,
-            description: stats.description,
-            referencePrice: stats.medianSalePrice,
-            medianTagPrice: stats.medianTagPrice,
-            medianSalePrice: stats.medianSalePrice,
-            sellThroughRate: stats.sellThroughRate,
-            medianDaysOnShelf: stats.medianDaysOnShelf,
-            discountFrequency: stats.discountFrequency,
-            sampleSize: stats.sampleSize,
-            totalItems: stats.totalItems,
-            unsoldCount: stats.unsoldCount,
-            velocityMultiplier,
-            lowConfidence: stats.sampleSize < 5,
-            colorAdjustments: stats.colorAdjustments,
-            sizeAdjustments: stats.sizeAdjustments,
-            computedAt,
-            updatedAt: computedAt,
-          },
-        }),
-      );
-      descRecordsWritten++;
-    } catch (error) {
       console.error(
-        `[Aggregator] Error processing description group ${groupKey}:`,
+        `[ComputePrices] Error processing group ${groupKey}:`,
         error,
       );
     }
   }
 
-  recordsWritten += descRecordsWritten;
-
-  // Step 8: Write EMPLOYEE_PRICING records
-  let employeeRecordsWritten = 0;
-  for (const [employeeId, records] of employeeSaleRecords) {
-    try {
-      const result = computeEmployeeAccuracy(records, now);
-
-      await docClient.send(
-        new PutCommand({
-          TableName: PRICING_TABLE_NAME,
-          Item: {
-            PK: `EMPLOYEE_PRICING#${employeeId}`,
-            SK: "METADATA",
-            employeeId: result.employeeId,
-            employeeName: result.employeeName,
-            pricingAccuracy: result.pricingAccuracy,
-            sampleSize: result.sampleSize,
-            creatorAdjustment: result.creatorAdjustment,
-            computedAt: now.toISOString(),
-          },
-        }),
-      );
-      employeeRecordsWritten++;
-    } catch (error) {
-      console.error(
-        `[Aggregator] Error writing employee pricing for ${employeeId}:`,
-        error,
-      );
-    }
-  }
-
-  recordsWritten += employeeRecordsWritten;
-
-  // Step 10: Log execution metrics
+  // Log execution metrics
   const duration = Date.now() - startTime;
-  console.log(`[Aggregator] Completed pricing aggregation:`);
-  console.log(`  Category groups processed: ${groupsProcessed}`);
-  console.log(`  Description groups processed: ${descRecordsWritten}`);
-  console.log(
-    `  Pricing refs written: ${groupsProcessed + descRecordsWritten}`,
-  );
-  console.log(`  Employee records written: ${employeeRecordsWritten}`);
+  console.log(`[ComputePrices] Completed:`);
+  console.log(`  Groups processed: ${groupsProcessed}`);
+  console.log(`  Pricing refs written: ${recordsWritten}`);
   console.log(`  Adjustment events written: ${adjustmentEventsWritten}`);
-  console.log(
-    `  Total records written: ${recordsWritten + adjustmentEventsWritten}`,
-  );
   console.log(`  Duration: ${duration}ms`);
 }
